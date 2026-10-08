@@ -1,0 +1,78 @@
+# Machine-readable decisions for the policy ambiguities. Rationale: 0001-policy-ambiguities.md.
+# Decided by Luis on 2026-10-08. The engine and the spec cite these IDs.
+- id: A1
+  rule_ids: [REG-03, REG-04, REG-05, DOC-04]
+  decision: >-
+    One FX component with settings date_basis (transaction | billing; default transaction) and
+    rate_kind (recorded | mid | high | low; default recorded). Default uses the rate recorded on
+    the receipt. A missing euro rate is looked up in a versioned table with source and fetch date;
+    if absent, the receipt goes to review, never pass.
+  config:
+    fx.date_basis: transaction
+    fx.rate_kind: recorded
+    fx.missing_rate_disposition: review
+  status: decided
+  open_question: Q1
+- id: A2
+  rule_ids: [REG-04]
+  decision: >-
+    Optional vat_number input field. REG-04 applies to EMEA-entity employees above EUR 50
+    (converted per A1); an absent vat_number is missing and raises a low exception. The
+    evaluation reports how many REG-04 exceptions come only from the missing field.
+  config:
+    reg04.scope: employee_entity
+  status: decided
+  open_question: Q2
+- id: A3
+  rule_ids: [EXC-03]
+  decision: >-
+    Confidence threshold chosen on the synthetic dev set (coverage curve, Brier, ECE) before the
+    28-receipt run; report how often it fired and its cost; argue a higher production threshold.
+    Applied to the cached response so re-runs decide identically.
+  config:
+    exc03.threshold: TBD_ON_DEV
+  status: decided
+- id: A4
+  rule_ids: [HEALTH-01]
+  decision: >-
+    When a trip's OTC total exceeds $25, raise a low HEALTH-01 on every receipt of that trip with
+    OTC lines, each citing its own medication lines.
+  status: decided
+- id: A5
+  rule_ids: [EXC-02, TECH-02, ENT-01, TECH-04, PERS-01, PERS-02]
+  decision: >-
+    Reference kind inferred from a configurable prefix table. PA- is a pre-approval and only
+    satisfies TECH-02; no known prefix maps to VP, manager or baggage-delay references.
+  config:
+    reference_prefixes:
+      PA-: pre_approval
+  status: decided
+- id: A6
+  rule_ids: [ENT-01, TECH-03, HEALTH-01]
+  decision: >-
+    For category other, the classifier returns a closed subtype (event_ticket, mobile_handset,
+    prescription_medication, none). The engine reads only that field, never free text.
+  status: decided
+- id: A7
+  rule_ids: [GIFT-01]
+  decision: >-
+    Literal definition: a gift only if the receipt is declared Client Gifts or the line names a
+    recipient. Other gift-category items are not tested under GIFT-01; DOC-03 catches the mismatch.
+  status: decided
+- id: A8
+  rule_ids: [MEAL-01]
+  decision: >-
+    Home currency from a full ISO 4217 country-to-currency table, versioned as data with its
+    source. International when the receipt currency differs from the home currency.
+  status: decided
+open_questions:
+  - id: Q1
+    for: review session
+    question: >-
+      Convert at the transaction date or the billing date? Use the recorded rate or a reference
+      mid/high/low rate? Which rate source is authoritative?
+  - id: Q2
+    for: review session
+    question: >-
+      Will production expense records carry a VAT number field, in what format, and should its
+      validity be checked or only its presence?

@@ -1,0 +1,897 @@
+- rule_id: EXC-01
+  policy_doc: approval-and-exception-handling.md
+  severity: none
+  scope: none
+  triggers:
+  - disposition = f(max severity of exceptions, any review signal)
+  required_fields:
+  - exceptions[].severity
+  - review_signals
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: 'EXC-01 — Receipt disposition. A receipt''s disposition is determined by the most severe
+    exception raised against it:'
+  notes: critical|high|medium -> flag; low only or signals only -> review; none -> pass.
+  status: DRAFT
+- rule_id: EXC-02
+  policy_doc: approval-and-exception-handling.md
+  severity: none
+  scope: none
+  triggers:
+  - rule requires a reference -> check pre_approval_ref and its kind
+  required_fields:
+  - pre_approval_ref
+  thresholds: []
+  carve_outs:
+  - rule: TECH-02
+    reference_kind: pre-approval
+  - rule: ENT-01
+    reference_kind: VP approval
+  - rule: TECH-04
+    reference_kind: manager approval
+  - rule: PERS-01
+    reference_kind: baggage-delay reference
+  - rule: PERS-02
+    reference_kind: baggage-delay reference
+  replaces: []
+  literal_text: 'EXC-02 — Approval references. Every approval or exception reference — a pre-approval,
+    a VP or manager approval, or a baggage-delay reference — is recorded in one field on the expense (`pre_approval_ref`
+    in the data). Where a rule requires such a reference, a recorded one satisfies that rule and no exception
+    is raised — provided it is the kind the rule asks for: a pre-approval for TECH-02, a VP approval for
+    ENT-01, a manager approval for TECH-04, a baggage-delay reference for the PERS-01 and PERS-02 carve-outs.
+    A reference does not waive any other rule.'
+  notes: 'Reference waives nothing else. Data: every ref is PA- (pre-approval kind).'
+  status: DRAFT
+- rule_id: EXC-03
+  policy_doc: approval-and-exception-handling.md
+  severity: review_signal
+  scope: line_items
+  triggers:
+  - item.confidence < CONF_THRESHOLD
+  required_fields:
+  - line_items[].confidence
+  thresholds:
+  - value: unspecified
+    unit: classifier confidence
+    basis: per item
+  carve_outs:
+  - condition: non-itemized charge is `other`, never uncertain
+    reference_kind: null
+  replaces: []
+  literal_text: 'EXC-03 — Uncertainty. Where the category of an item cannot be determined with sufficient
+    confidence, raise a review signal with rule ID `EXC-03` rather than an exception, and leave that item
+    out of every other rule''s calculation for the receipt. A non-itemized charge is not an uncertain
+    category: it is `other` by definition, and raises no EXC-03 signal. An unnecessary exception costs
+    a reviewer''s time and erodes trust in the system; a missed review costs far less than a false accusation
+    against an employee.'
+  notes: Uncertain line excluded from every other rule on the receipt.
+  status: DRAFT
+- rule_id: EXC-04
+  policy_doc: approval-and-exception-handling.md
+  severity: none
+  scope: none
+  triggers:
+  - every exception emitted
+  required_fields:
+  - rule_id
+  - policy_doc
+  - line_ids
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: EXC-04 — Evidence. Every exception must cite the rule identifier, the policy document
+    it comes from, and the line items it concerns. An exception that cannot name its evidence must not
+    be raised.
+  notes: 'Item rules: line_ids = offending lines, never service_fee. Receipt rules: line_ids = []. One
+    per rule per receipt.'
+  status: DRAFT
+- rule_id: GIFT-01
+  policy_doc: gifts-and-awards-policy.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - is_gift(line) := type == "Client Gifts" or line names a recipient
+  - sum(amount_usd of gift lines with same recipient) > 50
+  - is_gift(line) and line.amount_usd >= 10 and recipient unnamed
+  required_fields:
+  - submitted_expense_type
+  - line_items[].description_raw
+  - line_items[].amount_usd
+  - line_items[].category
+  thresholds:
+  - value: 50
+    unit: USD
+    basis: per recipient per receipt (occasion)
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  - value: 10
+    unit: USD
+    basis: per line, named-recipient test
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs:
+  - condition: cards and small tokens under $10 need no named recipient
+    reference_kind: null
+  - condition: gift cards and cash equivalents go to GIFT-02 alone
+    reference_kind: null
+  - condition: food, drink and gratuities consumed at a meal are not gifts
+    reference_kind: null
+  replaces: []
+  literal_text: GIFT-01 — Client gift cap. Gifts to clients and prospects are capped at $50 per recipient
+    per occasion. An occasion is one receipt; lines on it that name the same recipient are added together
+    for the cap, and the $10 test applies to each line. Spend above the cap is a medium exception. Any
+    gift of $10 or more must also name its recipient, in the line description or elsewhere on the expense;
+    an unnamed gift at that value is a medium exception. Cards and small tokens under $10 need no named
+    recipient. Gift cards and other cash equivalents fall under GIFT-02 alone and are not also tested
+    here. Unnamed gifts are each tested on their own, and when both parts of GIFT-01 apply, one exception
+    cites every line involved.
+  notes: ''
+  status: DRAFT
+- rule_id: GIFT-02
+  policy_doc: gifts-and-awards-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == gift_card
+  required_fields:
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces:
+  - GIFT-01
+  literal_text: GIFT-02 — Gift cards and cash equivalents. Gift cards, prepaid cards, vouchers, and any
+    other cash equivalent are never reimbursable, at any amount and for any recipient. This is a high
+    exception.
+  notes: gift_card lines skip GIFT-01.
+  status: DRAFT
+- rule_id: GIFT-03
+  policy_doc: gifts-and-awards-policy.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line is an employee recognition gift or award
+  required_fields:
+  - line_items[].description_raw
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: GIFT-03 — Employee gifts and awards. Recognition gifts for employees must be processed
+    through HR and are not reimbursable on an expense report. This is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: GIFT-04
+  policy_doc: gifts-and-awards-policy.md
+  severity: critical
+  scope: line_items
+  triggers:
+  - line provided to recipient in {government official, public employee, SOE employee}
+  required_fields:
+  - line_items[].description_raw
+  thresholds:
+  - value: 0
+    unit: USD
+    basis: any amount
+  carve_outs:
+  - condition: gratuity lines are never cited (EXC-04)
+    reference_kind: null
+  replaces:
+  - GIFT-01
+  literal_text: GIFT-04 — Government officials. Gifts, meals, or anything of value provided to a government
+    official, public employee, or state-owned enterprise employee are prohibited under our anti-corruption
+    policy, at any amount. The exception cites every line provided to the official — including a meal
+    line that also covers the employee's own meal, but not a gratuity (EXC-04) — and replaces GIFT-01
+    for those lines. Other rules, such as the meal cap, still apply to the receipt. This is a critical
+    exception and is routed to Compliance immediately, never to the standard audit queue.
+  notes: line_ids include the official's meal line (employee share too), never service_fee. Meal caps
+    still evaluated.
+  status: DRAFT
+- rule_id: ALC-01
+  policy_doc: meals-and-entertainment-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == alcohol and mcc in {5812, 5813, 7011} and not (type == "Client Entertainment" and
+    attendee_count >= 2)
+  required_fields:
+  - mcc
+  - submitted_expense_type
+  - attendee_count
+  - line_items[].category
+  thresholds:
+  - value: 2
+    unit: attendees
+    basis: minimum attendee count, including the employee
+  carve_outs:
+  - condition: declared Client Entertainment with attendee_count >= 2
+    reference_kind: null
+  replaces: []
+  literal_text: ALC-01 — Alcohol requires a documented entertainment context. Alcohol is reimbursable
+    only on a receipt declared as Client Entertainment that records an attendee count of two or more.
+    Alcohol on any other receipt — an individual or team meal, or any receipt without an attendee count
+    — is a high exception.
+  notes: ''
+  status: DRAFT
+- rule_id: ALC-02
+  policy_doc: meals-and-entertainment-policy.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - ALC-01 satisfied and sum(alcohol amount_usd) / attendee_count > 30
+  required_fields:
+  - attendee_count
+  - line_items[].category
+  - line_items[].amount_usd
+  thresholds:
+  - value: 30
+    unit: USD
+    basis: per attendee, alcohol lines only
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces: []
+  literal_text: 'ALC-02 — Alcohol per-attendee cap. Where alcohol is permitted under ALC-01, it is capped
+    at $30 per attendee: the USD total of the alcohol lines, divided by the attendee count. Spend above
+    that cap is a medium exception.'
+  notes: ''
+  status: DRAFT
+- rule_id: ALC-03
+  policy_doc: meals-and-entertainment-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == alcohol and mcc not in {5812, 5813, 7011}
+  required_fields:
+  - mcc
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: ALC-03 — Retail alcohol. Alcohol purchased from a package store, liquor store, or any
+    other merchant that is not a restaurant, bar or hotel is never reimbursable, regardless of business
+    context. This is a high exception. See also MCC-01 in `merchant-category-risk.md`.
+  notes: Context irrelevant. mcc 5921 -> MCC-01 as well.
+  status: DRAFT
+- rule_id: ENT-01
+  policy_doc: meals-and-entertainment-policy.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line is venue spend (golf, sport, theatre, concert, similar) and ref kind != VP approval
+  required_fields:
+  - line_items[].description_raw
+  - mcc
+  - pre_approval_ref
+  thresholds: []
+  carve_outs:
+  - condition: VP approval recorded
+    reference_kind: VP approval
+  replaces: []
+  literal_text: ENT-01 — Entertainment venues. Golf, sporting events, theatre, concerts, and similar venue
+    spend requires prior VP approval, recorded as an approval reference (see EXC-02). Without one this
+    is a medium exception.
+  notes: 'Tickets: no taxonomy category -> other.'
+  status: DRAFT
+- rule_id: ENT-02
+  policy_doc: meals-and-entertainment-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == gambling
+  required_fields:
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: ENT-02 — Gambling. Gambling spend of any kind is prohibited and is a high exception.
+  notes: ''
+  status: DRAFT
+- rule_id: MEAL-01
+  policy_doc: meals-and-entertainment-policy.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - is_meal_receipt := type in MEAL_TYPES and (has food_beverage/alcohol line or not itemized)
+  - entity == GLOBAL and sum over (employee_id, date) of meal_spend / persons > cap(day)
+  required_fields:
+  - employee_id
+  - transaction_datetime
+  - submitted_expense_type
+  - currency
+  - employee_country
+  - attendee_count
+  - line_items[].category
+  - line_items[].amount_usd
+  - total_amount_usd
+  - itemized
+  thresholds:
+  - value: 75
+    unit: USD
+    basis: per person per day, domestic
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  - value: 100
+    unit: USD
+    basis: per person per day, international (receipt currency differs from home-country currency); the
+      higher cap on a mixed day
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces: []
+  literal_text: 'MEAL-01 — Daily meal cap. Meal spend is capped at $75 per person per day for domestic
+    travel and $100 per person per day for international travel. Spend above the cap is a medium exception.
+    For this rule:'
+  notes: Emit on each contributing meal receipt of the breached day. APAC -> REG-02, EMEA -> REG-03.
+  status: DRAFT
+- rule_id: MEAL-02
+  policy_doc: meals-and-entertainment-policy.md
+  severity: low
+  scope: receipt
+  triggers:
+  - is_meal_receipt and total_amount_usd > 150 and attendee_count is null
+  required_fields:
+  - submitted_expense_type
+  - total_amount_usd
+  - attendee_count
+  thresholds:
+  - value: 150
+    unit: USD
+    basis: receipt total
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces: []
+  literal_text: MEAL-02 — Attendee documentation. Any meal receipt (as defined in MEAL-01) whose receipt
+    total is above $150 in USD must record the number of attendees. A missing attendee count is a low
+    exception.
+  notes: ''
+  status: DRAFT
+- rule_id: MCC-01
+  policy_doc: merchant-category-risk.md
+  severity: high
+  scope: receipt
+  triggers:
+  - mcc in {5921, 5993, 7995, 7297, 5944}
+  required_fields:
+  - mcc
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: MCC-01 — High-risk merchant category. A transaction at a high-risk MCC raises a high exception
+    on its own, whatever the line items say. These categories are not consistent with any routine business
+    purpose.
+  notes: Independent of lines; APAC keeps it next to REG-01.
+  status: DRAFT
+- rule_id: MCC-02
+  policy_doc: merchant-category-risk.md
+  severity: review_signal
+  scope: receipt
+  triggers:
+  - mcc in {5813, 5912, 5311, 5411, 5732}
+  required_fields:
+  - mcc
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: MCC-02 — Medium-risk merchant category. A medium-risk MCC raises a review signal only.
+    It is not an exception by itself and must never be reported as one; it exists to prioritise sampling
+    and to add context to an exception raised by another rule. It is always reported as its own review
+    signal, even when another rule raises an exception on the same receipt.
+  notes: Signal only; emitted next to any exceptions.
+  status: DRAFT
+- rule_id: MCC-03
+  policy_doc: merchant-category-risk.md
+  severity: none
+  scope: none
+  triggers:
+  - mcc == 5813 -> treat as on-premises for ALC-01/ALC-02
+  required_fields:
+  - mcc
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: MCC-03 — Bars and taverns. A bar (MCC 5813) serves alcohol on the premises, so ALC-01
+    and ALC-02 apply to it exactly as they do to a restaurant, and it is never treated as retail under
+    ALC-03.
+  notes: '5813 on-premises: ALC-01/ALC-02, never ALC-03.'
+  status: DRAFT
+- rule_id: HEALTH-01
+  policy_doc: non-reimbursable-items.md
+  severity:
+    otc_medication: low
+    prescription_medication: medium
+  scope: line_items
+  triggers:
+  - line.category == health_otc and trip_id is null
+  - line.category == health_otc and sum(health_otc amount_usd over trip_id) > 25
+  - line is prescription medication (category other) -> medium
+  required_fields:
+  - trip_id
+  - line_items[].category
+  - line_items[].amount_usd
+  - line_items[].description_raw
+  thresholds:
+  - value: 25
+    unit: USD
+    basis: OTC total per trip, across receipts
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs:
+  - condition: OTC medication on a trip-linked receipt within the $25 trip total
+    reference_kind: null
+  replaces: []
+  literal_text: HEALTH-01 — Over-the-counter medication. OTC medication is reimbursable only on a receipt
+    linked to a trip, up to $25 in total across all of that trip's receipts. Above $25, or on a receipt
+    with no trip record, it is a low exception, raised on each such receipt and citing its medication
+    lines. Prescription medication is never reimbursable on an expense report and is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: HOUSE-01
+  policy_doc: non-reimbursable-items.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line.category == household_goods
+  required_fields:
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: HOUSE-01 — Household goods. Cleaning supplies, laundry products, household paper goods
+    (paper towels, toilet paper, tissues), kitchenware and drinkware, bedding, furniture, small appliances,
+    and home décor are not reimbursable, whether bought for home or for an office — office stock of this
+    kind is bought centrally. This is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: LAUNDRY-01
+  policy_doc: non-reimbursable-items.md
+  severity: low
+  scope: line_items
+  triggers:
+  - line.category == laundry_service and (trip_id is null or trip_nights < 4)
+  required_fields:
+  - trip_id
+  - trip_nights
+  - line_items[].category
+  thresholds:
+  - value: 4
+    unit: nights
+    basis: minimum trip length, from the receipt
+  carve_outs:
+  - condition: trip of four or more nights
+    reference_kind: null
+  replaces: []
+  literal_text: LAUNDRY-01 — Laundry and dry cleaning. Reimbursable only on trips of four or more nights,
+    using the trip length on the receipt. On shorter trips, or on a receipt with no trip record, it is
+    a low exception.
+  notes: ''
+  status: DRAFT
+- rule_id: PERS-01
+  policy_doc: non-reimbursable-items.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line.category == personal_care and not baggage_delay_allowance_applies
+  required_fields:
+  - line_items[].category
+  - pre_approval_ref
+  thresholds:
+  - value: 150
+    unit: USD
+    basis: baggage-delay allowance, shared with PERS-02, per delay
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs:
+  - condition: 'checked baggage delayed more than 24 hours: essential toiletries up to $150'
+    reference_kind: baggage-delay reference
+  replaces: []
+  literal_text: PERS-01 — Personal care and grooming. Toiletries, cosmetics, razors, haircuts, salon services,
+    spa treatments, and massage are not reimbursable. This is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: PERS-02
+  policy_doc: non-reimbursable-items.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line.category == clothing and not baggage_delay_allowance_applies
+  required_fields:
+  - line_items[].category
+  - pre_approval_ref
+  thresholds:
+  - value: 150
+    unit: USD
+    basis: baggage-delay allowance, shared with PERS-01, per delay
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs:
+  - condition: baggage delayed more than 24 hours, one shared $150 allowance
+    reference_kind: baggage-delay reference
+  replaces: []
+  literal_text: 'PERS-02 — Clothing and footwear. Clothing, footwear, and fashion accessories such as
+    belts, ties and bags are not reimbursable; a medium exception. The same $150 baggage-delay exception
+    applies: one $150 allowance per delay, shared between toiletries and clothing. Above it, the exception
+    cites every line involved.'
+  notes: ''
+  status: DRAFT
+- rule_id: PERS-03
+  policy_doc: non-reimbursable-items.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == tobacco
+  required_fields:
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: PERS-03 — Tobacco and vaping. Cigarettes, cigars, loose tobacco, vaping devices and e-liquids
+    are not reimbursable. This is a high exception.
+  notes: ''
+  status: DRAFT
+- rule_id: DOC-01
+  policy_doc: receipt-documentation-requirements.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - not itemized and total_amount_usd > 75
+  required_fields:
+  - itemized
+  - total_amount_usd
+  thresholds:
+  - value: 75
+    unit: USD
+    basis: receipt total
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces: []
+  literal_text: DOC-01 — Itemization threshold. Any receipt with a total above $75 (in USD) must be itemized.
+    A non-itemized receipt above that threshold is a medium exception, because the contents cannot be
+    audited.
+  notes: ''
+  status: DRAFT
+- rule_id: DOC-02
+  policy_doc: receipt-documentation-requirements.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - merchant_name or transaction_datetime or total_amount missing
+  required_fields:
+  - merchant_name
+  - transaction_datetime
+  - total_amount
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: DOC-02 — Legibility. A receipt must show the merchant name, the transaction date, and
+    the total. A receipt missing any of these is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: DOC-03
+  policy_doc: receipt-documentation-requirements.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - kept := lines minus {service_fee, other}; kept non-empty and no kept.category in COVERS[type]
+  required_fields:
+  - submitted_expense_type
+  - line_items[].category
+  thresholds: []
+  carve_outs:
+  - condition: 'no items left after removing service fees, gratuities and `other`: DOC-03 does not apply'
+    reference_kind: null
+  replaces: []
+  literal_text: DOC-03 — Expense type must match the contents. A receipt is misclassified when none of
+    its line items belongs to a category that its declared expense type covers. Service fees, gratuities
+    and items in the `other` category are ignored for this test; if no items remain, DOC-03 does not apply.
+    A misclassification is a medium exception, reported in addition to any exception raised by the items
+    themselves, not instead of it.
+  notes: 'Additive: emitted next to item-rule exceptions.'
+  status: DRAFT
+- rule_id: DOC-04
+  policy_doc: receipt-documentation-requirements.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - currency != USD and (currency missing or fx_rate_to_usd missing)
+  required_fields:
+  - currency
+  - fx_rate_to_usd
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: DOC-04 — Foreign currency. Receipts in a currency other than USD must record the transaction
+    currency and the conversion rate used; a receipt missing either is a medium exception. All policy
+    thresholds are evaluated on the USD converted amount.
+  notes: ''
+  status: DRAFT
+- rule_id: REG-01
+  policy_doc: regional-addendum.md
+  severity: high
+  scope: line_items
+  triggers:
+  - entity == APAC and line.category == alcohol
+  required_fields:
+  - entity
+  - employee_country
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces:
+  - ALC-01
+  - ALC-02
+  - ALC-03
+  literal_text: 'REG-01 — Alcohol. Alcohol is never reimbursable for APAC-entity employees, including
+    within client entertainment. This overrides ALC-01 and ALC-02: where those rules would have permitted
+    alcohol with an attendee count, REG-01 still makes it a high exception. For APAC employees REG-01
+    replaces ALC-01, ALC-02 and ALC-03: report REG-01 instead of those three. Rules about the merchant,
+    such as MCC-01, still apply.'
+  notes: MCC-01 unaffected.
+  status: DRAFT
+- rule_id: REG-02
+  policy_doc: regional-addendum.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - entity == APAC and per-person meal spend per (employee_id, date) > 60
+  required_fields:
+  - entity
+  - employee_id
+  - transaction_datetime
+  - attendee_count
+  - line_items[].category
+  - line_items[].amount_usd
+  thresholds:
+  - value: 60
+    unit: USD
+    basis: per person per day
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces:
+  - MEAL-01
+  literal_text: REG-02 — Meal cap. The APAC daily meal cap is $60 per person, replacing both MEAL-01 figures
+    for APAC employees. Meal spend, per person and per day are defined as in MEAL-01. A breach is a medium
+    exception, reported as REG-02, not MEAL-01.
+  notes: ''
+  status: DRAFT
+- rule_id: REG-03
+  policy_doc: regional-addendum.md
+  severity: medium
+  scope: receipt
+  triggers:
+  - entity == EMEA and per-person meal spend per (employee_id, date) > 70 * eur_usd(date)
+  required_fields:
+  - entity
+  - employee_id
+  - transaction_datetime
+  - currency
+  - fx_rate_to_usd
+  - attendee_count
+  - line_items[].category
+  - line_items[].amount_usd
+  thresholds:
+  - value: 70
+    unit: EUR
+    basis: per person per day
+    conversion: EUR converted to USD at the euro rate on the transaction date (receipt's own rate for
+      EUR receipts)
+  carve_outs: []
+  replaces:
+  - MEAL-01
+  literal_text: REG-03 — Meal cap. The EMEA daily meal cap is EUR 70 per person, replacing both MEAL-01
+    figures for EMEA employees. Convert EUR 70 to USD at the euro rate on the transaction date — for a
+    euro receipt, that is the receipt's own rate — before comparing. Meal spend, per person and per day
+    are defined as in MEAL-01. A breach is a medium exception, reported as REG-03, not MEAL-01.
+  notes: ''
+  status: DRAFT
+- rule_id: REG-04
+  policy_doc: regional-addendum.md
+  severity: low
+  scope: receipt
+  triggers:
+  - entity == EMEA and total_amount_usd > 50 * eur_usd(date) and vat_number is null
+  required_fields:
+  - entity
+  - total_amount
+  - currency
+  - fx_rate_to_usd
+  thresholds:
+  - value: 50
+    unit: EUR
+    basis: receipt total
+    conversion: EUR converted to USD at the euro rate on the transaction date (receipt's own rate for
+      EUR receipts)
+  carve_outs: []
+  replaces: []
+  literal_text: REG-04 — VAT documentation. Receipts above EUR 50 — converted at the euro rate on the
+    transaction date for a receipt in another currency — must be valid VAT receipts showing the merchant
+    VAT number. A missing VAT number is a low exception. Where the expense record does not capture a VAT
+    number, treat it as missing.
+  notes: ''
+  status: DRAFT
+- rule_id: REG-05
+  policy_doc: regional-addendum.md
+  severity: none
+  scope: none
+  triggers:
+  - any comparison of a non-USD amount with a threshold
+  required_fields:
+  - fx_rate_to_usd
+  - transaction_datetime
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: REG-05 — Conversion rate. Currency conversion uses the rate on the transaction date, which
+    must be recorded on the expense record. REG-05 says which rate to use and raises nothing on its own;
+    a missing rate is reported under DOC-04.
+  notes: Rate definition; missing rate -> DOC-04.
+  status: DRAFT
+- rule_id: TECH-01
+  policy_doc: technology-and-equipment-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line.category == personal_electronics
+  required_fields:
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: 'TECH-01 — Personal electronics are not reimbursable. This includes, and is not limited
+    to: headphones and earbuds, smart watches and fitness trackers, tablets and e-readers, games consoles,
+    cameras and drones, televisions, portable speakers, and item trackers. Accessories made for such a
+    device — cases, chargers, screen protectors — count as personal electronics too. Purchase of any of
+    these on an expense report is a high exception, regardless of stated business purpose.'
+  notes: Purpose irrelevant; Computer Equipment declaration still fires.
+  status: DRAFT
+- rule_id: TECH-02
+  policy_doc: technology-and-equipment-policy.md
+  severity: medium
+  scope: line_items
+  triggers:
+  - line.category == computer_accessory and unit_price * fx_rate_to_usd > 200 and ref kind != pre-approval
+  required_fields:
+  - line_items[].category
+  - line_items[].unit_price
+  - fx_rate_to_usd
+  - pre_approval_ref
+  thresholds:
+  - value: 200
+    unit: USD
+    basis: unit price per item, not line total
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs:
+  - condition: pre-approval reference recorded
+    reference_kind: pre-approval
+  replaces: []
+  literal_text: TECH-02 — Peripherals under $200. Computer accessories and peripherals — cables, adapters,
+    docking stations, mice, keyboards, monitors, laptop stands, webcams — are reimbursable up to $200
+    per item, judged on the item's unit price in USD. Any accessory or peripheral above $200 requires
+    a pre-approval reference (see EXC-02); without one it is a medium exception.
+  notes: ''
+  status: DRAFT
+- rule_id: TECH-03
+  policy_doc: technology-and-equipment-policy.md
+  severity: high
+  scope: line_items
+  triggers:
+  - line is mobile phone hardware (category other)
+  required_fields:
+  - line_items[].description_raw
+  - line_items[].category
+  thresholds: []
+  carve_outs: []
+  replaces: []
+  literal_text: TECH-03 — Mobile handsets. Mobile phone hardware is procured centrally by IT and is never
+    reimbursable on an expense report. This is a high exception.
+  notes: ''
+  status: DRAFT
+- rule_id: TECH-04
+  policy_doc: technology-and-equipment-policy.md
+  severity: low
+  scope: line_items
+  triggers:
+  - line.category == software_subscription and ref kind != manager approval
+  required_fields:
+  - line_items[].category
+  - pre_approval_ref
+  thresholds: []
+  carve_outs:
+  - condition: manager approval recorded
+    reference_kind: manager approval
+  replaces: []
+  literal_text: TECH-04 — Software subscriptions. Any software or SaaS subscription on an expense report
+    requires a manager approval reference (see EXC-02). Without one this is a low exception.
+  notes: ''
+  status: DRAFT
+- rule_id: TIME-01
+  policy_doc: transaction-pattern-rules.md
+  severity: review_signal
+  scope: receipt
+  triggers:
+  - time(transaction_datetime) in [00:00, 05:00)
+  required_fields:
+  - transaction_datetime
+  thresholds:
+  - value: 00:00-05:00
+    unit: local time
+    basis: half-open interval
+  carve_outs: []
+  replaces: []
+  literal_text: TIME-01 — Overnight transactions. A transaction timed from 00:00 up to, but not including,
+    05:00 raises a review signal. Transaction times are recorded in local time at the merchant.
+  notes: ''
+  status: DRAFT
+- rule_id: TIME-02
+  policy_doc: transaction-pattern-rules.md
+  severity: review_signal
+  scope: receipt
+  triggers:
+  - type in {Meals - Individual, Lodging, Travel - Other} and trip_id is null
+  required_fields:
+  - submitted_expense_type
+  - trip_id
+  thresholds: []
+  carve_outs:
+  - condition: team meals and client entertainment are not covered
+    reference_kind: null
+  replaces: []
+  literal_text: TIME-02 — No associated trip. An individual travel expense — declared as Meals - Individual,
+    Lodging, or Travel - Other — with no associated trip record raises a review signal. Team meals and
+    client entertainment often happen without travel and are not covered.
+  notes: ''
+  status: DRAFT
+- rule_id: TIME-03
+  policy_doc: transaction-pattern-rules.md
+  severity: high
+  scope: receipt
+  triggers:
+  - group := receipts by (employee_id, merchant_name, date), size >= 2; each <= threshold and sum > threshold
+  required_fields:
+  - employee_id
+  - merchant_name
+  - transaction_datetime
+  - itemized
+  - total_amount_usd
+  - attendee_count
+  - line_items[].amount_usd
+  thresholds:
+  - value: 75
+    unit: USD
+    basis: itemization threshold, all receipts non-itemized (DOC-01)
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  - value: employee meal cap
+    unit: USD per person
+    basis: MEAL-01, REG-02 or REG-03
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  - value: 50
+    unit: USD
+    basis: gift cap for one recipient (GIFT-01)
+    conversion: converted to USD with fx_rate_to_usd on the receipt (REG-05)
+  carve_outs: []
+  replaces:
+  - DOC-01
+  - MEAL-01
+  - REG-02
+  - REG-03
+  - GIFT-01
+  literal_text: 'TIME-03 — Split transactions. Two or more receipts by the same employee, at the same
+    merchant (by merchant name), on the same calendar date, are treated as a deliberate split when each
+    one is at or below one of these thresholds but together they are above it: the $75 itemization threshold,
+    when every receipt in the group is non-itemized (DOC-01); the employee''s meal cap, compared per person
+    (MEAL-01, REG-02, REG-03); or the $50 gift cap for one recipient (GIFT-01). This is an exception,
+    at high severity, and applies to every receipt in the group. It replaces the threshold rule being
+    split around: report the split, not a separate breach of that threshold.'
+  notes: Out of scoring scope. Emit on every receipt of the group; replaces only the split-around threshold.
+  status: DRAFT
+- rule_id: TIME-04
+  policy_doc: transaction-pattern-rules.md
+  severity: review_signal
+  scope: receipt
+  triggers:
+  - weekend date outside trip start/end (needs trip dates)
+  required_fields:
+  - transaction_datetime
+  - trip_id
+  thresholds: []
+  carve_outs:
+  - condition: requires trip start/end dates; absent in data -> never fires
+    reference_kind: null
+  replaces: []
+  literal_text: TIME-04 — Weekend spend on a weekday trip. A transaction dated on a weekend that falls
+    outside the trip's recorded start and end dates raises a review signal. It applies only when the trip
+    record includes those dates; where there is no trip record at all, TIME-02 covers it.
+  notes: ''
+  status: DRAFT

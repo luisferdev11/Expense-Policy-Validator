@@ -1,0 +1,254 @@
+{
+ "RCP-001": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01"
+ ],
+ "RCP-002": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "ENT-01",
+  "GIFT-04",
+  "MEAL-01",
+  "MEAL-02"
+ ],
+ "RCP-003": [
+  "DOC-03",
+  "HOUSE-01",
+  "TECH-02"
+ ],
+ "RCP-004": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01"
+ ],
+ "RCP-005": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "LAUNDRY-01",
+  "PERS-01"
+ ],
+ "RCP-006": [
+  "DOC-03",
+  "HOUSE-01",
+  "TECH-01",
+  "TECH-02",
+  "TECH-03"
+ ],
+ "RCP-007": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01",
+  "MEAL-02"
+ ],
+ "RCP-008": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "DOC-04",
+  "GIFT-04",
+  "REG-03"
+ ],
+ "RCP-009": [
+  "DOC-03",
+  "HEALTH-01",
+  "LAUNDRY-01",
+  "PERS-01",
+  "PERS-02"
+ ],
+ "RCP-010": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01"
+ ],
+ "RCP-011": [
+  "ALC-03",
+  "DOC-03",
+  "ENT-01",
+  "GIFT-04",
+  "MCC-01",
+  "MEAL-01"
+ ],
+ "RCP-012": [
+  "DOC-03",
+  "HOUSE-01",
+  "MCC-02",
+  "TECH-01",
+  "TECH-02",
+  "TECH-03"
+ ],
+ "RCP-013": [
+  "DOC-03",
+  "GIFT-01",
+  "GIFT-02",
+  "GIFT-03",
+  "GIFT-04",
+  "HOUSE-01",
+  "MCC-02",
+  "PERS-01",
+  "PERS-02",
+  "TECH-01"
+ ],
+ "RCP-014": [
+  "ALC-03",
+  "DOC-03",
+  "HEALTH-01",
+  "HOUSE-01",
+  "MCC-02",
+  "PERS-01",
+  "TECH-02"
+ ],
+ "RCP-015": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "ENT-01",
+  "GIFT-04",
+  "MEAL-01",
+  "MEAL-02"
+ ],
+ "RCP-016": [
+  "DOC-03",
+  "DOC-04",
+  "ENT-01",
+  "GIFT-04",
+  "REG-01",
+  "REG-02"
+ ],
+ "RCP-017": [
+  "DOC-03",
+  "LAUNDRY-01",
+  "MCC-01",
+  "PERS-01"
+ ],
+ "RCP-018": [
+  "DOC-03",
+  "GIFT-01",
+  "GIFT-02",
+  "GIFT-03",
+  "GIFT-04",
+  "MCC-01"
+ ],
+ "RCP-019": [
+  "DOC-03",
+  "DOC-04",
+  "MCC-02",
+  "TECH-01",
+  "TECH-02",
+  "TECH-03"
+ ],
+ "RCP-020": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01",
+  "TIME-03"
+ ],
+ "RCP-021": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01",
+  "TIME-03"
+ ],
+ "RCP-022": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "ENT-01",
+  "GIFT-04",
+  "MEAL-01"
+ ],
+ "RCP-023": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-01",
+  "GIFT-04",
+  "MEAL-01",
+  "MEAL-02"
+ ],
+ "RCP-024": [
+  "ALC-03",
+  "DOC-03",
+  "HEALTH-01",
+  "HOUSE-01",
+  "MCC-02",
+  "MEAL-01",
+  "PERS-01"
+ ],
+ "RCP-025": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "DOC-04",
+  "GIFT-04",
+  "REG-03"
+ ],
+ "RCP-026": [
+  "DOC-03",
+  "HOUSE-01",
+  "TECH-01",
+  "TECH-02",
+  "TECH-03"
+ ],
+ "RCP-027": [
+  "DOC-03",
+  "GIFT-01",
+  "HEALTH-01",
+  "HOUSE-01",
+  "LAUNDRY-01",
+  "MCC-02",
+  "PERS-01",
+  "PERS-02",
+  "TECH-01"
+ ],
+ "RCP-028": [
+  "DOC-03",
+  "HEALTH-01",
+  "HOUSE-01",
+  "LAUNDRY-01",
+  "MCC-02",
+  "PERS-01",
+  "PERS-02"
+ ],
+ "RCP-029": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01",
+  "TIME-01"
+ ],
+ "RCP-030": [
+  "ALC-01",
+  "ALC-02",
+  "DOC-03",
+  "GIFT-04",
+  "MEAL-01",
+  "TIME-02"
+ ],
+ "RCP-031": [
+  "DOC-03",
+  "DOC-04",
+  "HEALTH-01",
+  "LAUNDRY-01",
+  "PERS-01",
+  "PERS-02"
+ ],
+ "RCP-032": [
+  "DOC-03",
+  "TECH-04"
+ ]
+}

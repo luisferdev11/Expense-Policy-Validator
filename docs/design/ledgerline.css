@@ -1,0 +1,86 @@
+@import url("https://fonts.googleapis.com/css2?family=Geist:wght@400;500;600;700&family=Geist+Mono:wght@400;500&display=swap");
+
+/* Ledgerline components. Every value comes from tokens.css. */
+
+.ll-root { background: var(--canvas); color: var(--ink); font-family: var(--font-sans); font-size: 14px; line-height: 21px; }
+.ll-root *:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.ll-num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+
+/* Button */
+.ll-btn { display: inline-flex; align-items: center; gap: var(--space-2); height: var(--control); padding: 0 var(--space-4); border-radius: var(--radius-md); font: 500 14px/20px var(--font-sans); cursor: pointer; border: 1px solid transparent; white-space: nowrap; }
+.ll-btn svg { width: 16px; height: 16px; flex: none; }
+.ll-btn--primary { background: var(--accent); color: var(--on-accent); }
+.ll-btn--secondary { background: var(--surface); color: var(--ink); border-color: var(--border-control); }
+.ll-btn--ghost { background: transparent; color: var(--accent); }
+.ll-btn--critical { background: var(--critical); color: var(--on-critical); }
+.ll-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+.ll-btn .ll-kbd { margin-left: var(--space-1); }
+.ll-btn--primary .ll-kbd { background: transparent; color: var(--on-accent); border-color: var(--on-accent); }
+.ll-btn--critical .ll-kbd { background: transparent; color: var(--on-critical); border-color: var(--on-critical); }
+
+/* Keyboard hint */
+.ll-kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; box-sizing: border-box; border: 1px solid var(--border-control); border-radius: var(--radius-sm); background: var(--surface-sunken); color: var(--ink-muted); font: 500 11px/16px var(--font-mono); }
+
+/* Disposition badge */
+.ll-badge { display: inline-flex; align-items: center; gap: 6px; height: 24px; padding: 0 10px; border-radius: var(--radius-pill); font: 600 12px/16px var(--font-sans); letter-spacing: 0.02em; white-space: nowrap; }
+.ll-badge svg { width: 14px; height: 14px; }
+.ll-badge--flag { background: var(--high); color: var(--on-high); }
+.ll-badge--review { background: var(--low); color: var(--on-low); }
+.ll-badge--pass { background: var(--pass); color: var(--on-pass); }
+.ll-badge--proposed { background: transparent; padding: 0; }
+.ll-badge__prefix { color: var(--ink-muted); font-weight: 500; }
+
+/* Severity chip and review signal */
+.ll-chip { display: inline-flex; align-items: center; gap: 6px; height: 22px; padding: 0 8px; border-radius: var(--radius-sm); font: 500 12px/16px var(--font-mono); white-space: nowrap; }
+.ll-chip__sev { font-family: var(--font-sans); }
+.ll-chip--critical { background: var(--critical); color: var(--on-critical); }
+.ll-chip--high { background: var(--high); color: var(--on-high); }
+.ll-chip--medium { background: var(--medium); color: var(--on-medium); }
+.ll-chip--low { background: var(--low); color: var(--on-low); }
+.ll-chip--signal { background: transparent; color: var(--low); border: 1px dashed var(--low); }
+
+/* Confidence band */
+.ll-conf { display: inline-flex; align-items: center; gap: var(--space-2); font-size: 13px; }
+.ll-conf__bars { display: inline-flex; gap: 2px; }
+.ll-conf__bars span { width: 10px; height: 6px; border-radius: 2px; background: var(--border); }
+.ll-conf--certain .ll-conf__bars span { background: var(--ink-muted); }
+.ll-conf--likely .ll-conf__bars span:nth-child(-n+2) { background: var(--ink-muted); }
+.ll-conf--uncertain .ll-conf__bars span:first-child { background: var(--low); }
+.ll-conf--uncertain { color: var(--low); }
+.ll-conf--uncertain .ll-conf__word { border-bottom: 1px dashed var(--low); }
+
+/* Panel */
+.ll-panel { background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-lg); box-shadow: var(--shadow-raised); padding: var(--space-4); }
+
+/* Finding card */
+.ll-finding { border-radius: var(--radius-md); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); border: 1px solid var(--border); }
+.ll-finding--critical { background: var(--critical-soft); }
+.ll-finding--high { background: var(--high-soft); }
+.ll-finding--medium { background: var(--medium-soft); }
+.ll-finding--low { background: var(--low-soft); }
+.ll-finding__head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ll-finding__title { font: 600 15px/22px var(--font-sans); margin: 0; flex: 1 1 240px; }
+.ll-finding__meta { color: var(--ink-muted); font-size: 13px; }
+.ll-finding__quote { margin: 0; padding: var(--space-3); background: var(--surface); border-radius: var(--radius-sm); color: var(--ink); }
+.ll-finding__quote cite { display: block; margin-top: var(--space-1); color: var(--ink-subtle); font: 400 12px/16px var(--font-sans); font-style: normal; }
+.ll-finding__steps { margin: 0; padding-left: 20px; font: 400 13px/22px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+
+/* Queue table */
+.ll-table { width: 100%; border-collapse: collapse; background: var(--surface); }
+.ll-table th { text-align: left; font: 500 12px/16px var(--font-sans); letter-spacing: 0.02em; color: var(--ink-muted); background: var(--surface-sunken); padding: var(--space-2) var(--space-3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ll-table td { height: var(--row-default); padding: 0 var(--space-3); border-bottom: 1px solid var(--border); white-space: nowrap; }
+.ll-table--compact td { height: var(--row-compact); }
+.ll-table tr:hover td { background: var(--surface-hover); }
+.ll-table tr.is-selected td { background: var(--surface-selected); }
+.ll-table tr.is-selected td:first-child { box-shadow: inset 3px 0 0 var(--accent); }
+.ll-table .is-num { text-align: right; font-family: var(--font-mono); font-variant-numeric: tabular-nums; }
+.ll-table a { color: var(--ink); font: 500 13px/20px var(--font-mono); text-decoration: none; }
+.ll-table a:hover { color: var(--accent); text-decoration: underline; }
+.ll-table .is-muted { color: var(--ink-muted); }
+
+/* Decision bar */
+.ll-decision { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--surface); border-top: 1px solid var(--border); }
+.ll-decision__hint { margin-left: auto; color: var(--ink-subtle); font-size: 12px; }
+.ll-field { display: flex; flex-direction: column; gap: var(--space-1); }
+.ll-field label { font: 500 12px/16px var(--font-sans); color: var(--ink-muted); }
+.ll-select, .ll-input { height: var(--control); padding: 0 var(--space-3); border: 1px solid var(--border-control); border-radius: var(--radius-md); background: var(--surface); color: var(--ink); font: 400 14px/20px var(--font-sans); }

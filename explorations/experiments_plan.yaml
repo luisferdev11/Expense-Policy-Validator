@@ -1,0 +1,117 @@
+# Classification experiments, planned before running. One factor at a time, on the synthetic dev
+# set, never on the 28 receipts. The decision rule is fixed here, before any result is seen.
+#
+# Default decision rule (unless an experiment states its own):
+#   Adopt variant B over the current baseline A only if, on the same dev items,
+#   (1) McNemar exact two-sided p < 0.05 on correctness, AND
+#   (2) the accuracy gain is at least the minimum detectable difference at that N
+#       (unpaired, alpha 0.05, power 0.8; 0.118 at N=109 around 95 % accuracy), AND
+#   (3) restricted F1 does not drop.
+#   Otherwise keep the cheaper variant (cost per 1,000 items, then median latency).
+# Report every comparison with its N, Wilson intervals and the McNemar b/c counts.
+#
+# Status: planned unless stated. Runner: explorations/run_trial.py (one model per call);
+# classifiers: explorations/decision_adapters.py.
+
+prerequisites:
+  - id: P0
+    what: Luis verifies the DRAFT labels (start with the 8 marked debatable) and freezes a new SHA-256.
+  - id: P1
+    what: >-
+      Harden the dev set. Package 6 showed every API model between 91.7 % and 99.1 % with
+      overlapping intervals: the set does not separate models. Add boundary items, receipt-style
+      noise (abbreviations, truncation, SKU codes, ALL CAPS, typos), more Japanese and Portuguese,
+      and items whose label needs the merchant or MCC. Labels written or reviewed by Luis, not by
+      the assistant that also drafts prompts.
+  - id: P2
+    what: >-
+      Split the dev set into a prompt-development part (few-shot examples, prompt edits) and a
+      decision part that no prompt ever sees, so few-shot experiments cannot leak.
+
+experiments:
+  - id: E1
+    factor: model size
+    variants: [openai/gpt-oss-120b, openai/gpt-oss-20b]
+    held_fixed: provider DeepInfra, prompt cls-v1, reasoning low
+    question: Does the 6x smaller model lose accuracy on traps and non-English items?
+    status: preliminary result exists (package 6, DRAFT labels); rerun on the hardened set.
+
+  - id: E2
+    factor: provider for the same model
+    variants: [groq, deepinfra]
+    held_fixed: gpt-oss-120b, prompt cls-v1
+    question: Do providers serving the same weights agree item by item, and is either better?
+    decision_rule: Report agreement and McNemar; pin the cheaper provider unless rule (1)-(3) favours the other.
+    status: preliminary result exists (agreement 97.2 % for 120b, 96.3 % for 20b).
+
+  - id: E3
+    factor: reasoning effort
+    variants: [low, medium]
+    held_fixed: gpt-oss-120b on the pinned provider
+    question: Does more reasoning fix the boundary items, and at what token cost?
+
+  - id: E4
+    factor: input context
+    variants: [item text only, item + merchant + MCC]
+    question: >-
+      How much do merchant and MCC help? Never the declared expense type or attendee count
+      (project rule 8).
+
+  - id: E5
+    factor: translation
+    variants: [classify the original text, translate to English first then classify]
+    question: Does a translation step help Japanese and Portuguese items, or only add cost and a second failure point?
+
+  - id: E6
+    factor: prompt
+    variants: [taxonomy only, taxonomy + names-lie rules (cls-v1), cls-v1 + few-shot examples from the prompt-development split]
+    question: Which part of the prompt carries the trap accuracy?
+    needs: prompt versions in classifier_prompt.py (cls-v0, cls-v2) and P2.
+
+  - id: E7
+    factor: confidence source and EXC-03 threshold
+    variants:
+      - self-reported confidence from the chat model
+      - agreement between gpt-oss-120b and gpt-oss-20b (two calls)
+      - probability distribution from a decision model (E8)
+    metrics: [Brier score, ECE (10 bins), reliability diagram, coverage vs accuracy curve]
+    question: Which signal best separates right from wrong answers, and which threshold sends the fewest correct items to review?
+    decision_rule: Choose the signal with the lowest Brier score; set the EXC-03 threshold on the decision split and report how often it fires.
+
+  - id: E8
+    factor: decision models as challengers
+    variants:
+      - typesafe:jev-latest (native API; needs TYPESAFE_API_KEY and access off the waitlist)
+      - openrouter:typesafe/jev-1.13 (alpha decisions endpoint; needs the renewed OpenRouter key)
+      - openai:decisions-preview (limited preview; schema and price not public yet)
+      - local:gliner2.5-decide (open weights, 340M; serve locally)
+    question: >-
+      Does a model that returns a probability distribution instead of text match gpt-oss on
+      accuracy, and are its probabilities better calibrated? Also: is it deterministic (repeat
+      the run and compare, since jev is reported to vary between calls)?
+    status: scaffolding ready (decision_adapters.py, budget.call_http, run_trial.py routing). Not run; no keys.
+    before_first_call: >-
+      Verify the request and response schema against the provider's docs, set `verified: true`,
+      add an official price to budget.PRICES (calls are refused until then), and add the key to
+      .env.
+
+  - id: E9
+    factor: keyword baseline (required by the brief)
+    variants: [keyword matcher over restricted words, best LLM variant]
+    question: Where does keyword matching win, and where do the traps break it?
+    needs: a deterministic keyword classifier; no model call.
+
+  - id: E10
+    factor: non-generative baseline
+    variants: [embedding nearest-neighbour over the prompt-development split (in memory, no vector database), best LLM variant]
+    question: How far does a cheap embedding classifier get, and on which categories?
+
+  - id: E11
+    factor: determinism and repeatability
+    variants: [same model, same input, three runs with the cache disabled]
+    question: Is the output byte-identical at temperature 0 on each provider? Feeds the reproducibility rule.
+
+  - id: E12
+    factor: self-consistency
+    variants: [single call, majority of three gpt-oss-20b calls]
+    question: Does a cheap ensemble beat one 120b call on cost per correct item?

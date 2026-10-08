@@ -1,0 +1,59 @@
+# Models run in package 6. Every id was confirmed live with GET /models on 2026-10-08
+# (05_models_live.json). Prices are USD per million tokens from the source page, fetched 2026-10-07.
+# Gemini was optional and is not run: the shortlist already uses most of the 900-call budget.
+- provider: groq
+  model: openai/gpt-oss-120b
+  params: 117B total, mixture of experts (about 5B active)
+  why: The model chosen for the deliverable; with strict json_schema enforced it sets the accuracy ceiling every cheaper option is compared against.
+  price_input_per_mtok: 0.15
+  price_output_per_mtok: 0.60
+  source_url: https://console.groq.com/docs/models
+  fetched_at: "2026-10-07"
+- provider: groq
+  model: openai/gpt-oss-20b
+  params: 21B total, mixture of experts (about 3.6B active)
+  why: Same family and same provider at half the price; answers whether the smaller model loses accuracy on these categories, especially traps and Japanese items.
+  price_input_per_mtok: 0.075
+  price_output_per_mtok: 0.30
+  source_url: https://console.groq.com/docs/models
+  fetched_at: "2026-10-07"
+- provider: deepinfra
+  model: openai/gpt-oss-120b
+  params: 117B total, mixture of experts, bf16
+  why: Same model on a second provider, the one OpenRouter would be pinned to; answers whether provider or precision changes the predictions when the model is held fixed.
+  price_input_per_mtok: 0.037
+  price_output_per_mtok: 0.17
+  source_url: https://deepinfra.com/openai/gpt-oss-120b
+  fetched_at: "2026-10-07"
+- provider: deepinfra
+  model: openai/gpt-oss-20b
+  params: 21B total, mixture of experts, bf16
+  why: Completes the two-by-two grid of model size and provider; answers whether the 120b-versus-20b gap seen on Groq holds on a second provider.
+  price_input_per_mtok: 0.03
+  price_output_per_mtok: 0.14
+  source_url: https://deepinfra.com/openai/gpt-oss-20b
+  fetched_at: "2026-10-07"
+- provider: deepinfra
+  model: Qwen/Qwen3.5-9B
+  params: 9B dense, bf16
+  why: The current small Qwen with 201 languages, run with thinking off; answers whether a cheap 9B model is good enough on the multilingual and trap items.
+  price_input_per_mtok: 0.10
+  price_output_per_mtok: 0.15
+  source_url: https://deepinfra.com/Qwen/Qwen3.5-9B
+  fetched_at: "2026-10-07"
+- provider: deepinfra
+  model: google/gemma-3-12b-it
+  params: 12B dense, bf16
+  why: A different model family under 14B with over 140 languages; answers whether small-model results depend on the family rather than on size alone.
+  price_input_per_mtok: 0.05
+  price_output_per_mtok: 0.15
+  source_url: https://deepinfra.com/google/gemma-3-12b-it
+  fetched_at: "2026-10-07"
+- provider: deepinfra
+  model: ibm-granite/granite-4.2-8b
+  params: 8B dense, bf16
+  why: An 8B model that explicitly lists all six target languages; answers whether a small model with no reasoning and only JSON-object mode (json_schema is rejected with HTTP 405) can still return valid categories.
+  price_input_per_mtok: 0.06
+  price_output_per_mtok: 0.25
+  source_url: https://deepinfra.com/ibm-granite/granite-4.2-8b
+  fetched_at: "2026-10-07"

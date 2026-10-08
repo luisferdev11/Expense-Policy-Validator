@@ -1,0 +1,96 @@
+{
+  "openai/gpt-oss-120b": {
+    "n": 109,
+    "correct": 105,
+    "accuracy": 0.963302752293578,
+    "accuracy_wilson95": [
+      0.9094227992822939,
+      0.9856382984343681
+    ],
+    "restricted_f1": 1.0,
+    "restricted_tp_fp_fn": [
+      50,
+      0,
+      0
+    ],
+    "macro_f1": 0.9584965299251015,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 0.449,
+    "latency_s_p95": 0.9531999999999998,
+    "provider": "groq",
+    "status": "PRELIMINARY: DRAFT labels",
+    "cost_est_usd": 0.015828,
+    "calls_logged": 109,
+    "cross_provider_agreement_vs_deepinfra": 0.9724770642201835
+  },
+  "openai/gpt-oss-20b": {
+    "n": 109,
+    "correct": 106,
+    "accuracy": 0.9724770642201835,
+    "accuracy_wilson95": [
+      0.9221889357113375,
+      0.9905961441383277
+    ],
+    "restricted_f1": 0.98989898989899,
+    "restricted_tp_fp_fn": [
+      49,
+      0,
+      1
+    ],
+    "macro_f1": 0.9688586545729404,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 0.374,
+    "latency_s_p95": 0.7337999999999998,
+    "provider": "groq",
+    "status": "PRELIMINARY: DRAFT labels",
+    "cost_est_usd": 0.007415,
+    "calls_logged": 109,
+    "cross_provider_agreement_vs_deepinfra": 0.963302752293578
+  },
+  "gemma3:4b": {
+    "n": 109,
+    "correct": 96,
+    "accuracy": 0.8807339449541285,
+    "accuracy_wilson95": [
+      0.8065849974518469,
+      0.9289602610677865
+    ],
+    "restricted_f1": 0.94,
+    "restricted_tp_fp_fn": [
+      47,
+      3,
+      3
+    ],
+    "macro_f1": 0.8886758743901602,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 0.636,
+    "latency_s_p95": 0.6652,
+    "provider": "ollama",
+    "status": "PRELIMINARY: DRAFT labels"
+  },
+  "qwen3:4b": {
+    "n": 109,
+    "correct": 97,
+    "accuracy": 0.8899082568807339,
+    "accuracy_wilson95": [
+      0.8173772800737439,
+      0.9358919605788926
+    ],
+    "restricted_f1": 0.9494949494949495,
+    "restricted_tp_fp_fn": [
+      47,
+      2,
+      3
+    ],
+    "macro_f1": 0.8854806374764359,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 0.532,
+    "latency_s_p95": 0.5624,
+    "provider": "ollama",
+    "status": "PRELIMINARY: DRAFT labels"
+  }
+}

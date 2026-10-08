@@ -1,0 +1,1 @@
+{"timestamp": "2026-10-08T05:58:30+00:00", "provider": "deepinfra", "model": "ibm-granite/granite-4.2-8b", "status": 405, "attempt": 1, "purpose": "06_trial", "body": "{'message': 'json_schema response format is not supported for model: ibm-granite/granite-4.2-8b', 'type': 'invalid_request_error', 'param': 'response_format', 'code': None}"}

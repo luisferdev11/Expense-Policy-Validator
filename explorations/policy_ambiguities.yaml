@@ -1,0 +1,77 @@
+- rule_ids:
+  - REG-03
+  - REG-04
+  quote: Convert EUR 70 to USD at the euro rate on the transaction date — for a euro receipt, that is
+    the receipt's own rate
+  why: For an EMEA employee paying in USD, INR or JPY the record only carries that currency's rate to
+    USD, so the euro rate on that date is not on the expense and has to come from somewhere else.
+  proposed_assumption: Use the receipt's own rate for EUR receipts; for other currencies use a fixed EUR-USD
+    table keyed by date, kept in the repo with its source, and route to review if the date is missing
+    from it.
+  status: DRAFT
+- rule_ids:
+  - REG-04
+  quote: Where the expense record does not capture a VAT number, treat it as missing.
+  why: The data never captures a VAT number, so read literally every EMEA receipt above EUR 50 raises
+    REG-04, and it is not stated whether the rule follows the employee's entity or the country where the
+    money was spent.
+  proposed_assumption: Apply REG-04 to every receipt of an EMEA-entity employee above EUR 50, because
+    the rule sits under the EMEA entity heading, and accept the many low exceptions it produces.
+  status: DRAFT
+- rule_ids:
+  - EXC-03
+  quote: Where the category of an item cannot be determined with sufficient confidence, raise a review
+    signal with rule ID EXC-03
+  why: The policy names no confidence threshold, model confidence is not calibrated by default, and the
+    evaluation counts every EXC-03 signal as unmatched while the policy says a missed review is cheaper
+    than a false accusation.
+  proposed_assumption: Pick the threshold on the synthetic dev set, report how often it fired and what
+    it cost in the evaluation, and argue for a higher threshold in production.
+  status: DRAFT
+- rule_ids:
+  - HEALTH-01
+  quote: Above $25, or on a receipt with no trip record, it is a low exception, raised on each such receipt
+    and citing its medication lines.
+  why: When a trip's OTC total crosses $25 across several receipts, it is unclear whether every receipt
+    with medication on that trip raises the exception or only the receipts from the one that crossed the
+    limit onward.
+  proposed_assumption: Raise HEALTH-01 on every trip-linked receipt that has OTC medication lines once
+    the trip total exceeds $25, because each such receipt contributes to the breach.
+  status: DRAFT
+- rule_ids:
+  - PERS-01
+  - PERS-02
+  - EXC-02
+  quote: a baggage-delay reference for the PERS-01 and PERS-02 carve-outs
+  why: The single reference field does not say what kind of reference it holds, and the data dictionary
+    says every reference in the dataset is a PA- pre-approval, so the engine has to infer the kind from
+    the format.
+  proposed_assumption: 'Infer the kind from the prefix: PA- is a pre-approval and only satisfies TECH-02;
+    no prefix in the data maps to a baggage-delay, VP or manager approval, so those carve-outs never apply.'
+  status: DRAFT
+- rule_ids:
+  - ENT-01
+  - TECH-03
+  quote: Golf, sporting events, theatre, concerts, and similar venue spend requires prior VP approval
+  why: The taxonomy has no category for event tickets or mobile phones and sends them to other, so the
+    engine cannot detect these rules from the category alone and needs either the MCC or the item text.
+  proposed_assumption: Let the classifier return other plus a short subtype (event_ticket, mobile_handset,
+    prescription_medication) and have the engine read only that structured subtype, never free text.
+  status: DRAFT
+- rule_ids:
+  - GIFT-01
+  quote: An item is a gift when the receipt is declared as Client Gifts or the line names who it is for.
+  why: An item in the gift category on a receipt declared as something else with no recipient named is,
+    by this definition, not a gift, so a bouquet on an Office Supplies receipt escapes GIFT-01 entirely.
+  proposed_assumption: 'Follow the definition literally: such an item is not tested under GIFT-01, and
+    DOC-03 catches the mismatch between the declared type and the contents.'
+  status: DRAFT
+- rule_ids:
+  - MEAL-01
+  quote: travel is international when the receipt's currency differs from the currency of the employee's
+    home country, and domestic otherwise.
+  why: The data has no home-currency field, so the engine needs a country-to-currency table, and a GLOBAL
+    employee from a country with a currency missing from the data has no defined domestic currency.
+  proposed_assumption: Keep a small explicit country-to-currency table for the countries in the data,
+    and treat an unknown home currency as a reason to route the receipt to review rather than guess.
+  status: DRAFT

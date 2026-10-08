@@ -1,0 +1,10 @@
+# Regenerable or bulky: raw provider bodies and the response cache (several MB).
+raw/
+cache/
+.ipynb_checkpoints/
+
+# Process notes for the overnight run itself (Spanish summary, local paths); kept local.
+MORNING_REPORT.md
+RUN_LOG.md
+blocked.yaml
+make_report.py

@@ -28,6 +28,14 @@ except urllib.error.HTTPError as exc:
     status, body = exc.code, exc.read().decode()
 except Exception as exc:
     status, body = None, f"{type(exc).__name__}: {exc}"
+# Keep only what matters for budgeting; drop the key label and account identifiers.
+SAFE = ("limit", "limit_remaining", "usage", "usage_daily", "is_free_tier", "expires_at")
+try:
+    parsed = json.loads(body)
+    data = parsed.get("data")
+    body = json.dumps({"data": {k: data.get(k) for k in SAFE}} if data else parsed)
+except (json.JSONDecodeError, AttributeError):
+    pass
 row = {
     "timestamp": now(),
     "url": "GET https://openrouter.ai/api/v1/key",

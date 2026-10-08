@@ -2,8 +2,14 @@
 
 Rules it enforces (the exploration budget rules):
 
-- Hard cap $0.50 across providers; refuses a call once total spend since start is $0.45 or more,
-  or once the run has made 900 billable calls.
+- Hard cap $0.50 across the direct providers (Groq, DeepInfra, Gemini, decision APIs); refuses a
+  call once their total spend is $0.45 or more, or once they have made 900 billable calls (the
+  overnight exploration budget).
+- OpenRouter has its own cap, because its key is the case's model budget ($5, firm): exploration
+  may spend at most $1.00 of it (measured from GET /api/v1/key against a baseline, and from the
+  cost each response reports), leaving the rest for the deliverable's runs. Every OpenRouter call
+  is pinned to one provider endpoint with no fallbacks (OPENROUTER_PIN) and records which
+  provider served it.
 - DeepInfra spend is measured from its usage API (baseline at start, delta later). Groq and
   Gemini spend is estimated from logged tokens times published prices, rounded up per call.
   The refusal check uses the larger of measured and estimated spend for DeepInfra.
@@ -52,6 +58,19 @@ PROVIDERS: dict[str, dict[str, str]] = {
         "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
         "key": "GEMINI_API_KEY",
     },
+    "openrouter": {"base_url": "https://openrouter.ai/api/v1", "key": "OPENROUTER_API_KEY"},
+}
+
+OPENROUTER_REFUSE_USD = 1.00
+OPENROUTER_MAX_CALLS = 3000
+# Pin one endpoint: DeepInfra bf16, the cheapest gpt-oss host with structured outputs
+# (https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints, fetched 2026-10-08).
+# No fallbacks, only endpoints that honour every parameter, no providers that store data.
+OPENROUTER_PIN: dict[str, Any] = {
+    "order": ["deepinfra/bf16"],
+    "allow_fallbacks": False,
+    "require_parameters": True,
+    "data_collection": "deny",
 }
 
 # USD per million tokens (input, output). Groq figures checked by Luis on 2026-10-07 and
@@ -69,6 +88,10 @@ PRICES: dict[tuple[str, str], tuple[float, float]] = {
     # jev launch post, https://typesafe.ai/blog/introducing-system-one-models-and-jev (fetched
     # 2026-10-07): "$0.042 / MTok" input, output "FREE". Usage reporting not yet verified.
     ("typesafe", "jev-latest"): (0.042, 0.0),
+    # OpenRouter, endpoint deepinfra/bf16, from the endpoints API fetched 2026-10-08:
+    # 120b prompt 0.000000037 / completion 0.00000017 per token; 20b 0.00000003 / 0.00000014.
+    ("openrouter", "openai/gpt-oss-120b"): (0.037, 0.17),
+    ("openrouter", "openai/gpt-oss-20b"): (0.03, 0.14),
     # No price is recorded for OpenAI Decisions or OpenRouter decisions yet, so budget.py refuses
     # those calls until one is added from an official page.
 }
@@ -131,6 +154,33 @@ def deepinfra_usage_usd() -> float:
     return cents / 100
 
 
+def openrouter_key_info() -> dict[str, Any]:
+    """Usage and limit of the OpenRouter key (GET /api/v1/key); account ids are dropped."""
+    resp = requests.get(
+        "https://openrouter.ai/api/v1/key",
+        headers={
+            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
+            "User-Agent": USER_AGENT,
+        },
+        timeout=30,
+    )
+    resp.raise_for_status()
+    d = resp.json()["data"]
+    return {k: d.get(k) for k in ("limit", "limit_remaining", "usage", "usage_daily", "expires_at")}
+
+
+def openrouter_baseline() -> float:
+    """Record the key's usage once, before the first OpenRouter call of this exploration."""
+    st = state()
+    if st.get("openrouter_baseline_usd") is None:
+        info = openrouter_key_info()
+        st["openrouter_baseline_usd"] = float(info["usage"])
+        st["openrouter_baseline_at"] = now()
+        st["openrouter_key_limit_usd"] = info["limit"]
+        STATE.write_text(json.dumps(st, indent=2))
+    return float(st["openrouter_baseline_usd"])
+
+
 def state() -> dict[str, Any]:
     return json.loads(STATE.read_text()) if STATE.exists() else {}
 
@@ -157,8 +207,15 @@ def estimated_cost(provider: str, model: str, prompt_tokens: int, completion_tok
     return math.ceil(raw * 1e6) / 1e6  # round up to the micro-dollar
 
 
-def spend_report(measure_deepinfra: bool = True) -> dict[str, Any]:
+def spend_report(
+    measure_deepinfra: bool = True, measure_openrouter: bool = False
+) -> dict[str, Any]:
     rows = [r for r in _read_jsonl(LOG) if not r.get("cached")]
+    or_rows = [r for r in rows if r["provider"] == "openrouter"]
+    rows = [r for r in rows if r["provider"] != "openrouter"]
+    or_reported = sum(
+        float(r.get("cost_usd_reported") or r.get("cost_usd_est") or 0) for r in or_rows
+    )
     est: dict[str, float] = {}
     calls: dict[str, int] = {}
     for r in rows:
@@ -180,6 +237,20 @@ def spend_report(measure_deepinfra: bool = True) -> dict[str, Any]:
     out["deepinfra_measured_usd"] = None if di_measured is None else round(di_measured, 6)
     di = max(est.get("deepinfra", 0.0), di_measured or 0.0)
     out["total_for_cap_usd"] = round(sum(v for k, v in est.items() if k != "deepinfra") + di, 6)
+    or_measured = None
+    if measure_openrouter and st.get("openrouter_baseline_usd") is not None:
+        try:
+            or_measured = float(openrouter_key_info()["usage"]) - float(
+                st["openrouter_baseline_usd"]
+            )
+        except Exception as exc:
+            out["openrouter_measure_error"] = scrub(str(exc))[:300]
+    out["openrouter"] = {
+        "calls": len(or_rows),
+        "reported_usd": round(or_reported, 6),
+        "measured_usd": None if or_measured is None else round(or_measured, 6),
+        "for_cap_usd": round(max(or_reported, or_measured or 0.0), 6),
+    }
     return out
 
 
@@ -230,13 +301,25 @@ def call(
         hit["cached"] = True
         return hit
 
-    rep = spend_report(measure_deepinfra=(provider == "deepinfra"))
-    if rep["total_for_cap_usd"] >= SPEND_REFUSE_USD:
-        raise RuntimeError(
-            f"budget refused: spend ${rep['total_for_cap_usd']:.4f} >= ${SPEND_REFUSE_USD}"
-        )
-    if rep["total_calls"] >= MAX_CALLS:
-        raise RuntimeError(f"budget refused: {rep['total_calls']} calls >= {MAX_CALLS}")
+    if provider == "openrouter":
+        openrouter_baseline()
+        rep = spend_report(measure_deepinfra=False, measure_openrouter=True)["openrouter"]
+        if rep["for_cap_usd"] >= OPENROUTER_REFUSE_USD:
+            raise RuntimeError(f"budget refused: OpenRouter spend ${rep['for_cap_usd']:.4f}")
+        if rep["calls"] >= OPENROUTER_MAX_CALLS:
+            raise RuntimeError(f"budget refused: {rep['calls']} OpenRouter calls")
+        extra_body = {**(extra_body or {}), "provider": OPENROUTER_PIN}
+        if reasoning_effort is not None:
+            extra_body["reasoning"] = {"effort": reasoning_effort}
+            reasoning_effort = None
+    else:
+        rep = spend_report(measure_deepinfra=(provider == "deepinfra"))
+        if rep["total_for_cap_usd"] >= SPEND_REFUSE_USD:
+            raise RuntimeError(
+                f"budget refused: spend ${rep['total_for_cap_usd']:.4f} >= ${SPEND_REFUSE_USD}"
+            )
+        if rep["total_calls"] >= MAX_CALLS:
+            raise RuntimeError(f"budget refused: {rep['total_calls']} calls >= {MAX_CALLS}")
 
     kwargs: dict[str, Any] = {
         "model": model,
@@ -300,6 +383,12 @@ def call(
     (RAW / provider).mkdir(parents=True, exist_ok=True)
     (RAW / provider / f"{safe_id(request_id)}.json").write_text(scrub(body_text))
     content = completion.choices[0].message.content if completion.choices else None
+    try:
+        body_json = json.loads(body_text)
+    except json.JSONDecodeError:
+        body_json = {}
+    served_by = body_json.get("provider")  # OpenRouter names the provider that served the call
+    cost_reported = (body_json.get("usage") or {}).get("cost")
     row = {
         "request_id": request_id,
         "provider": provider,
@@ -316,6 +405,8 @@ def call(
             "x-ratelimit-remaining-requests"
         ),
         "ratelimit_remaining_tokens": raw.http_response.headers.get("x-ratelimit-remaining-tokens"),
+        "served_by": served_by,
+        "cost_usd_reported": cost_reported,
     }
     _append(LOG, row)
     result = {
@@ -329,6 +420,7 @@ def call(
         "latency_s": round(latency, 3),
         "prompt_version": prompt_version,
         "timestamp": row["timestamp"],
+        "served_by": served_by,
     }
     cpath.parent.mkdir(parents=True, exist_ok=True)
     cpath.write_text(json.dumps(result, ensure_ascii=False))

@@ -21,6 +21,7 @@ htmlcov/
 # Personal Claude Code settings and local hooks
 .claude/settings.local.json
 .claude/hooks/
+.claude/worktrees/
 
 # Editors and OS
 .vscode/

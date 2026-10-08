@@ -1,5 +1,8 @@
 {
   "started_at": "2026-10-08T05:53:25+00:00",
   "deepinfra_baseline_usd": 0.06475238899951999,
-  "deepinfra_usage_api": "ok"
+  "deepinfra_usage_api": "ok",
+  "openrouter_baseline_usd": 0.0,
+  "openrouter_baseline_at": "2026-10-08T17:51:06+00:00",
+  "openrouter_key_limit_usd": 5
 }

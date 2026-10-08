@@ -8,6 +8,8 @@
 #
 # - Local (ollama, RTX 3060 Laptop, 6 GB): `qwen3:4b` and `gemma3:4b`.
 # - Groq: `openai/gpt-oss-120b`, `openai/gpt-oss-20b` (strict json_schema, reasoning effort low).
+# - OpenRouter (the deliverable's gateway, added 2026-10-08): the same two gpt-oss models, pinned to
+#   the DeepInfra bf16 endpoint with no fallbacks (`budget.OPENROUTER_PIN`).
 # - DeepInfra: the same two gpt-oss models, plus `Qwen/Qwen3.5-9B`, `google/gemma-3-12b-it`
 #   (strict json_schema) and `ibm-granite/granite-4.2-8b` (json_object: json_schema is rejected).
 #
@@ -52,6 +54,8 @@ RUNS = [
     ("deepinfra", "Qwen/Qwen3.5-9B", "strict"),
     ("deepinfra", "google/gemma-3-12b-it", "strict"),
     ("deepinfra", "ibm-granite/granite-4.2-8b", "json_object"),
+    ("openrouter", "openai/gpt-oss-120b", "strict"),
+    ("openrouter", "openai/gpt-oss-20b", "strict"),
 ]
 for provider, model, mode in RUNS:
     run_trial.main(provider, model, mode)  # no-op when every item is already predicted
@@ -309,6 +313,8 @@ def paired(a: str, b: str) -> dict:
 
 
 pairs = [
+    ("openrouter:openai/gpt-oss-120b", "deepinfra:openai/gpt-oss-120b"),
+    ("openrouter:openai/gpt-oss-20b", "deepinfra:openai/gpt-oss-20b"),
     ("groq:openai/gpt-oss-120b", "deepinfra:openai/gpt-oss-120b"),
     ("groq:openai/gpt-oss-20b", "deepinfra:openai/gpt-oss-20b"),
     ("groq:openai/gpt-oss-120b", "groq:openai/gpt-oss-20b"),
@@ -404,3 +410,26 @@ mdd = next(
 print(
     f"N={len(GOLD)}, baseline accuracy {base:.3f}: minimum detectable difference (unpaired, alpha 0.05, power 0.8) = {mdd:.3f}"
 )
+
+
+# %% [markdown]
+# ## Repeatability through OpenRouter (experiment E11)
+#
+# The same prompt re-asked twice more for the first 20 items with gpt-oss-120b through OpenRouter
+# (pinned endpoint, temperature 0), each compared with the original trial call
+# (`determinism_check.py`). The policy engine consumes only the category, but the confidence feeds
+# the EXC-03 threshold. If the raw content is not byte-identical, the per-item cache is what makes
+# the pipeline's output reproducible (project rule 2).
+
+# %%
+det = pd.DataFrame(
+    [json.loads(line) for line in (EXP / "determinism_openrouter.jsonl").read_text().splitlines()]
+)
+summary = det.groupby("model").agg(
+    repeats=("repeat", "count"),
+    items=("item_id", "nunique"),
+    identical_content=("same_content", "sum"),
+    same_category=("same_category", "sum"),
+)
+print("served by:", det["served_by"].value_counts().to_dict())
+summary

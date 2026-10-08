@@ -113,5 +113,51 @@
     "status": "PRELIMINARY: DRAFT labels",
     "cost_est_usd": 0.00258,
     "calls_logged": 109
+  },
+  "openrouter:openai/gpt-oss-120b": {
+    "n": 109,
+    "correct": 105,
+    "accuracy": 0.963302752293578,
+    "accuracy_wilson95": [
+      0.9094227992822939,
+      0.9856382984343681
+    ],
+    "restricted_f1": 0.9900990099009901,
+    "restricted_tp_fp_fn": [
+      50,
+      1,
+      0
+    ],
+    "macro_f1": 0.9553631553631554,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 1.736,
+    "latency_s_p95": 3.1945999999999994,
+    "status": "PRELIMINARY: DRAFT labels",
+    "cost_est_usd": 0.0047870000000000005,
+    "calls_logged": 149
+  },
+  "openrouter:openai/gpt-oss-20b": {
+    "n": 109,
+    "correct": 105,
+    "accuracy": 0.963302752293578,
+    "accuracy_wilson95": [
+      0.9094227992822939,
+      0.9856382984343681
+    ],
+    "restricted_f1": 1.0,
+    "restricted_tp_fp_fn": [
+      50,
+      0,
+      0
+    ],
+    "macro_f1": 0.9585927300213013,
+    "errors": 0,
+    "schema_valid_rate": 1.0,
+    "latency_s_median": 0.732,
+    "latency_s_p95": 1.5449999999999997,
+    "status": "PRELIMINARY: DRAFT labels",
+    "cost_est_usd": 0.002593,
+    "calls_logged": 109
   }
 }

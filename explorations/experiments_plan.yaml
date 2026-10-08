@@ -42,7 +42,10 @@ experiments:
     held_fixed: gpt-oss-120b, prompt cls-v1
     question: Do providers serving the same weights agree item by item, and is either better?
     decision_rule: Report agreement and McNemar; pin the cheaper provider unless rule (1)-(3) favours the other.
-    status: preliminary result exists (agreement 97.2 % for 120b, 96.3 % for 20b).
+    status: >-
+      Preliminary results. Groq vs DeepInfra agree on 97.2 % (120b) and 96.3 % (20b) of items;
+      OpenRouter pinned to DeepInfra bf16 vs DeepInfra direct agree on 98.2 % (120b) and 99.1 %
+      (20b): even the same endpoint is not identical, which E11 explains.
 
   - id: E3
     factor: reasoning effort
@@ -110,6 +113,11 @@ experiments:
     factor: determinism and repeatability
     variants: [same model, same input, three runs with the cache disabled]
     question: Is the output byte-identical at temperature 0 on each provider? Feeds the reproducibility rule.
+    status: >-
+      First result (2026-10-08, OpenRouter pinned to DeepInfra, gpt-oss-120b, 20 items x 2
+      repeats): category identical 40/40, raw content byte-identical 36/40. Output is not
+      byte-deterministic at temperature 0, so the per-item cache is what makes the pipeline
+      reproducible; the confidence feeding EXC-03 must come from the cached response.
 
   - id: E12
     factor: self-consistency

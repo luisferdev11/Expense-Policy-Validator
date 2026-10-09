@@ -57,7 +57,16 @@ strips `labels`, `line_items[].labels` and `notes`, and is never pasted into a p
 - Two of the six OpenRouter live-check ids were still 404 at the last check. Re-run
   `explorations/scripts/openrouter_verify.py` later; it overwrites `explorations/results/openrouter_verification.jsonl`.
 
+## Checked by hand
+
+- **The 8 policy ambiguities.** Luis decided each one (ADR 0001, A1 to A8). He added A9 during
+  `/speckit-clarify`.
+- **The 8 debatable dev-set labels.** Luis confirmed them blind to the model outputs
+  (`explorations/dev_set/label_reviews.jsonl`).
+- **The 13 synthetic engine cases.** Luis reviewed and approved them on 2026-10-09, including
+  the recipient value added in conversion (`tests/engine_cases/fixtures/REVIEW.md`).
+
 ## Checked by hand (pending)
 
-- The DRAFT dev-set labels, starting with the eight marked *debatable*.
-- The 13 engine edge cases and the 8 policy ambiguities.
+- **The other 101 DRAFT dev-set labels.** This review is the first step of iteration 2, before
+  any model or threshold is chosen.

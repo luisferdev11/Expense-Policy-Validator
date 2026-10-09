@@ -4,7 +4,8 @@ Source: `explorations/dev_set/engine_cases_draft.jsonl` (13 cases, written befor
 A6 and A9). Task T045 split each receipt into input fields and a per-line classification,
 and added `subtype`, `recipient_kind` and `recipient_name`. The default is `none`/`none`/null
 for every line; the values below are the only non-default additions. Expected outputs are
-unchanged. Luis reviews these before "MVP done" (SC-010, task T092).
+unchanged. Luis reviewed and approved all 13 cases on 2026-10-09 (SC-010, task T092):
+see REVIEW.md.
 
 Regenerate with:
 

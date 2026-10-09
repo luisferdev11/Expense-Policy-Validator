@@ -364,7 +364,7 @@ safety and the trace shape.
 
 - [X] T090 Run the full cold classification once, with `uv run epv run`, Langfuse up and the `.env` key. Then run `uv run epv run --classifier keyword` and `uv run epv eval`. Commit `outputs/` with an `exp:` commit stating the model, endpoint, prompt version, billed USD from the stderr summary, and the cache hit count [SC-001, SC-008]
 - [X] T091 Re-run `uv run epv run --offline` and `uv run epv eval`. Confirm `git diff --exit-code outputs/` is clean (SC-003, SC-004) [SC-003, SC-004]
-- [ ] T092 Ask Luis to review the 13 converted engine cases and `tests/engine_cases/fixtures/CONVERSION_NOTES.md` against the policy text. Record the outcome per case in `tests/engine_cases/fixtures/REVIEW.md` (who, date, changes and reasons), and flip `status` to `REVIEWED` (SC-010). Add the checked items to the "Checked by hand" section of `AI_NOTES.md` [SC-010]
+- [X] T092 Ask Luis to review the 13 converted engine cases and `tests/engine_cases/fixtures/CONVERSION_NOTES.md` against the policy text. Record the outcome per case in `tests/engine_cases/fixtures/REVIEW.md` (who, date, changes and reasons), and flip `status` to `REVIEWED` (SC-010). Add the checked items to the "Checked by hand" section of `AI_NOTES.md` [SC-010]
 - [ ] T093 **MVP done.** Run every scenario in `specs/001-mvp-end-to-end/quickstart.md` on a clean checkout, and tick each roadmap iteration 1 exit criterion in `docs/roadmap.md`. Record in the PR description a scenario-by-scenario pass list, with the spend against the USD 1.00 cap (SC-008)
 
 **Checkpoint**: the MVP is done. Iteration 1 is shippable.

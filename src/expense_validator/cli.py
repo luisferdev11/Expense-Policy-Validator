@@ -15,6 +15,7 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from expense_validator.classification.cache import ClassificationCache
+from expense_validator.classification.keyword import KeywordClassifier
 from expense_validator.classification.openrouter import OpenRouterClassifier
 from expense_validator.classification.port import ItemClassifier
 from expense_validator.classification.prompt_sync import sync_prompt
@@ -81,6 +82,8 @@ def run_command(
     if classifier == "openrouter":
         prompt_link = None if offline else sync_prompt(tracer)
         clf = OpenRouterClassifier(cache, tracer, offline=offline, prompt_link=prompt_link)
+    elif classifier == "keyword":
+        clf = KeywordClassifier()
     else:
         raise SystemExit(f"unknown classifier: {classifier}")
     results = run_pipeline(receipts, clf, tracer, settings, run_label)
@@ -134,7 +137,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(prog="epv", description="Expense Policy Validator")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="validate every receipt and write the results")
-    run.add_argument("--classifier", choices=["openrouter"], default="openrouter")
+    run.add_argument("--classifier", choices=["openrouter", "keyword"], default="openrouter")
     run.add_argument("--offline", action="store_true", help="never call a model")
     run.add_argument("--no-trace", action="store_true", help="force the no-op tracer")
     run.add_argument("--only", nargs="+", metavar="RECEIPT_ID", help="development only")

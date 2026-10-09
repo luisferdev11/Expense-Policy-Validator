@@ -1,0 +1,330 @@
+{
+  "$defs": {
+    "ExceptionFinding": {
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "policy_doc": {
+          "title": "Policy Doc",
+          "type": "string"
+        },
+        "severity": {
+          "enum": [
+            "critical",
+            "high",
+            "medium",
+            "low"
+          ],
+          "title": "Severity",
+          "type": "string"
+        },
+        "line_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Line Ids",
+          "type": "array"
+        },
+        "evidence": {
+          "title": "Evidence",
+          "type": "string"
+        },
+        "explanation": {
+          "title": "Explanation",
+          "type": "string"
+        },
+        "decisions": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Decisions",
+          "type": "array"
+        },
+        "computed": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "title": "Computed",
+          "type": "object"
+        }
+      },
+      "required": [
+        "rule_id",
+        "policy_doc",
+        "severity",
+        "line_ids",
+        "evidence",
+        "explanation",
+        "decisions",
+        "computed"
+      ],
+      "title": "ExceptionFinding",
+      "type": "object"
+    },
+    "OutputLineItem": {
+      "additionalProperties": false,
+      "properties": {
+        "line_id": {
+          "title": "Line Id",
+          "type": "string"
+        },
+        "description_raw": {
+          "title": "Description Raw",
+          "type": "string"
+        },
+        "category": {
+          "anyOf": [
+            {
+              "enum": [
+                "alcohol",
+                "tobacco",
+                "personal_electronics",
+                "gift",
+                "gift_card",
+                "household_goods",
+                "personal_care",
+                "clothing",
+                "gambling",
+                "jewelry",
+                "food_beverage",
+                "computer_accessory",
+                "office_supplies",
+                "lodging",
+                "ground_transport",
+                "airfare",
+                "laundry_service",
+                "health_otc",
+                "software_subscription",
+                "service_fee",
+                "other"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Category"
+        },
+        "restricted": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Restricted"
+        },
+        "confidence": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Confidence"
+        },
+        "subtype": {
+          "enum": [
+            "event_ticket",
+            "mobile_handset",
+            "prescription_medication",
+            "none"
+          ],
+          "title": "Subtype",
+          "type": "string"
+        },
+        "recipient_kind": {
+          "enum": [
+            "none",
+            "client_or_prospect",
+            "employee",
+            "government_official"
+          ],
+          "title": "Recipient Kind",
+          "type": "string"
+        },
+        "recipient_name": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Recipient Name"
+        },
+        "status": {
+          "enum": [
+            "classified",
+            "unclassified"
+          ],
+          "title": "Status",
+          "type": "string"
+        },
+        "unclassified_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Unclassified Reason"
+        }
+      },
+      "required": [
+        "line_id",
+        "description_raw",
+        "category",
+        "restricted",
+        "confidence",
+        "subtype",
+        "recipient_kind",
+        "recipient_name",
+        "status",
+        "unclassified_reason"
+      ],
+      "title": "OutputLineItem",
+      "type": "object"
+    },
+    "ReviewSignal": {
+      "additionalProperties": false,
+      "properties": {
+        "rule_id": {
+          "title": "Rule Id",
+          "type": "string"
+        },
+        "policy_doc": {
+          "title": "Policy Doc",
+          "type": "string"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "line_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Line Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "rule_id",
+        "policy_doc",
+        "reason"
+      ],
+      "title": "ReviewSignal",
+      "type": "object"
+    },
+    "RunMetadata": {
+      "additionalProperties": false,
+      "properties": {
+        "classifier": {
+          "title": "Classifier",
+          "type": "string"
+        },
+        "model_id": {
+          "title": "Model Id",
+          "type": "string"
+        },
+        "provider_endpoint": {
+          "title": "Provider Endpoint",
+          "type": "string"
+        },
+        "prompt_version": {
+          "title": "Prompt Version",
+          "type": "string"
+        },
+        "rules_version": {
+          "title": "Rules Version",
+          "type": "string"
+        },
+        "exc03_threshold": {
+          "title": "Exc03 Threshold",
+          "type": "number"
+        },
+        "exc03_threshold_status": {
+          "enum": [
+            "provisional",
+            "chosen_on_dev"
+          ],
+          "title": "Exc03 Threshold Status",
+          "type": "string"
+        }
+      },
+      "required": [
+        "classifier",
+        "model_id",
+        "provider_endpoint",
+        "prompt_version",
+        "rules_version",
+        "exc03_threshold",
+        "exc03_threshold_status"
+      ],
+      "title": "RunMetadata",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "receipt_id": {
+      "title": "Receipt Id",
+      "type": "string"
+    },
+    "disposition": {
+      "enum": [
+        "flag",
+        "review",
+        "pass"
+      ],
+      "title": "Disposition",
+      "type": "string"
+    },
+    "line_items": {
+      "items": {
+        "$ref": "#/$defs/OutputLineItem"
+      },
+      "title": "Line Items",
+      "type": "array"
+    },
+    "exceptions": {
+      "items": {
+        "$ref": "#/$defs/ExceptionFinding"
+      },
+      "title": "Exceptions",
+      "type": "array"
+    },
+    "review_signals": {
+      "items": {
+        "$ref": "#/$defs/ReviewSignal"
+      },
+      "title": "Review Signals",
+      "type": "array"
+    },
+    "run": {
+      "$ref": "#/$defs/RunMetadata"
+    }
+  },
+  "required": [
+    "receipt_id",
+    "disposition",
+    "line_items",
+    "exceptions",
+    "review_signals",
+    "run"
+  ],
+  "title": "ReceiptResult",
+  "type": "object"
+}

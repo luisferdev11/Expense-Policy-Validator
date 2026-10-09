@@ -294,17 +294,17 @@ safety and the trace shape.
 
 **Independent test**: quickstart scenarios 2–6.
 
-- [ ] T071 [P] [US1] Write `tests/unit/test_keyword_classifier.py`:
+- [X] T071 [P] [US1] Write `tests/unit/test_keyword_classifier.py`:
   - it implements `ItemClassifier`;
   - lowercase keyword lists for the six languages are written from the taxonomy's examples;
   - unmatched items are `food_beverage` at MCC 5812, 5813 or 7011, and `other` otherwise;
   - confidence is 1.0;
   - a contamination guard checks that no keyword entry equals any real `description_raw`, loaded through the loader.
-- [ ] T072 [US1] Implement `src/expense_validator/classification/keyword.py`, and route `epv run --classifier keyword` to `outputs/baselines/keyword_classifier/results.jsonl` [FR-032]
-- [ ] T073 [P] [US1] Write `tests/contract/test_result_schema.py`. The `ReceiptResult` JSON Schema export must equal the committed `specs/001-mvp-end-to-end/contracts/receipt-result.schema.json`. Every invariant in `contracts/receipt-result.md` must hold on `outputs/results.jsonl` [FR-018, FR-019, FR-023, SC-005]
-- [ ] T074 [US1] Export and commit `specs/001-mvp-end-to-end/contracts/receipt-result.schema.json` from `ReceiptResult`
-- [ ] T075 [P] [US1] Write `tests/integration/test_offline_fallback.py`. Running with an empty cache and `--offline` makes every line `unclassified/offline_cache_miss` and no receipt `pass` (SC-006) [FR-009, SC-006]
-- [ ] T076 [US1] Verify the trace shape against a running local Langfuse, following quickstart scenario 6 and `docs/ai/langfuse-guide.md`. Re-classify one item on a cold cache in a scratch copy, then confirm the `classify-item` generation fields and the prompt link `classify-item-chat`/`cls-v2`. Push prompt `cls-v2` to Langfuse Prompt Management. Update `docs/ai/langfuse-guide.md` with the pipeline trace shape [FR-026, SC-007]
+- [X] T072 [US1] Implement `src/expense_validator/classification/keyword.py`, and route `epv run --classifier keyword` to `outputs/baselines/keyword_classifier/results.jsonl` [FR-032]
+- [X] T073 [P] [US1] Write `tests/contract/test_result_schema.py`. The `ReceiptResult` JSON Schema export must equal the committed `specs/001-mvp-end-to-end/contracts/receipt-result.schema.json`. Every invariant in `contracts/receipt-result.md` must hold on `outputs/results.jsonl` [FR-018, FR-019, FR-023, SC-005]
+- [X] T074 [US1] Export and commit `specs/001-mvp-end-to-end/contracts/receipt-result.schema.json` from `ReceiptResult`
+- [X] T075 [P] [US1] Write `tests/integration/test_offline_fallback.py`. Running with an empty cache and `--offline` makes every line `unclassified/offline_cache_miss` and no receipt `pass` (SC-006) [FR-009, SC-006]
+- [X] T076 [US1] Verify the trace shape against a running local Langfuse, following quickstart scenario 6 and `docs/ai/langfuse-guide.md`. Re-classify one item on a cold cache in a scratch copy, then confirm the `classify-item` generation fields and the prompt link `classify-item-chat`/`cls-v2`. Push prompt `cls-v2` to Langfuse Prompt Management. Update `docs/ai/langfuse-guide.md` with the pipeline trace shape [FR-026, SC-007]
 
 **Checkpoint**: US1 is complete except for the full cold run (Phase 8).
 

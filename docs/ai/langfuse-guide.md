@@ -23,6 +23,37 @@ whether it was right.
 | Generation | `classify-item` | One per item and model. It holds the model id, the input messages or decision payload, the output (with the model's reasoning when it returned one), token usage, the cost OpenRouter billed and the linked prompt version. Its metadata keeps the OpenRouter request id, the provider that served it, and the original latency and timestamp |
 | Scores | `category_correct`, `restricted_correct`, `confidence` | Per item: did the model match the expected category and the restricted flag, and how confident was it |
 
+## The pipeline's traces (`epv run`)
+
+From iteration 1 on, the pipeline itself traces every receipt in the **`default`** environment.
+The contract is `specs/001-mvp-end-to-end/contracts/tracing.md`.
+
+- **One trace per receipt.** Its trace ID is derived from the run label and the receipt ID. The
+  run label of the latest run is in the gitignored `.cache/last_run.json`.
+- **Two top-level spans per trace.**
+  - **`validate-receipt`** holds `normalise-receipt` and `classify-receipt`. Under
+    `classify-receipt` there is one `classify-item` generation per billed model call.
+  - **`decide-receipt`** holds `retrieve-rules`, `apply-rules` and `report-exceptions`.
+
+  Deciding needs every receipt classified first, because the cross-receipt context spans
+  receipts. That is why the two halves are separate.
+
+  Both top-level spans show a parent ID that is not in the trace. The SDK sets one when only a
+  trace ID is supplied. Langfuse treats them as the trace's roots.
+- **What a `classify-item` generation records:**
+  - the model `openai/gpt-oss-120b` and its endpoint;
+  - the exact system and user messages;
+  - the output, plus the reasoning in metadata;
+  - token usage and billed cost;
+  - the OpenRouter request id;
+  - a link to the prompt `classify-item-chat` at label `cls-v2`.
+
+  `epv run` syncs that prompt before its first billed call.
+- **Cache hits.** A cache hit is not a model call, so it creates no generation. The
+  `classify-receipt` span lists each line with `cache_hit` and the request id that produced it.
+- **Verified on 2026-10-09** with the thin-path run (task T039): three generations, all linked to
+  the prompt at version 3, with usage and cost, each under its `classify-receipt` span.
+
 ## Walkthroughs
 
 **1. Compare models on the same items**

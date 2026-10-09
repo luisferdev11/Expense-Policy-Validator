@@ -1,7 +1,7 @@
 """Package 5 live check: strict-JSON-schema calls on a few synthetic dev items.
 
 Usage: uv run --no-project --with openai --with python-dotenv --with requests \
-           python explorations/live_check.py groq|deepinfra
+           python explorations/scripts/live_check.py groq|deepinfra
 
 Groq: each gpt-oss model on four dev items. DeepInfra: each gpt-oss model on one item.
 Rows go to 05_live_check.jsonl (one per call). Calls use the same cache key as package 6, so the
@@ -12,8 +12,8 @@ import json
 import sys
 from pathlib import Path
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import classifier_prompt as cp
 
@@ -25,14 +25,14 @@ ITEM_IDS = [
 ]  # cooking wine, beer-battered fish, laundry detergent, pt silver bracelet
 items = {
     i["item_id"]: i
-    for i in map(json.loads, (EXP / "dev_items_draft.jsonl").read_text().splitlines())
+    for i in map(json.loads, (EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines())
 }
 provider = sys.argv[1]
 plan = {
     "groq": [(m, ITEM_IDS) for m in ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]],
     "deepinfra": [(m, ITEM_IDS[:1]) for m in ["openai/gpt-oss-120b", "openai/gpt-oss-20b"]],
 }[provider]
-out = EXP / "05_live_check.jsonl"
+out = EXP / "results" / "05_live_check.jsonl"
 done = (
     {
         (r["provider"], r["model"], r["item_id"])

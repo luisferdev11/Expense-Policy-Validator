@@ -23,7 +23,7 @@ import numpy as np
 import pandas as pd
 from scipy import stats
 
-REPO = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+REPO = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data" / "policy-docs").is_dir())
 EXP = REPO / "explorations"
 rng = np.random.default_rng(20261007)
 RESULTS: dict = {}
@@ -450,5 +450,5 @@ sel.round(3)
 # of variants tried. That is the whole argument for "decide on dev, report on test".
 
 # %%
-(EXP / "04_results.json").write_text(json.dumps(RESULTS, indent=2))
+(EXP / "results" / "04_results.json").write_text(json.dumps(RESULTS, indent=2))
 print(json.dumps(RESULTS, indent=2))

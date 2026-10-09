@@ -1,7 +1,7 @@
 """E11: is the classifier output repeatable at temperature 0 through OpenRouter?
 
 Usage: uv run --no-project --with openai --with python-dotenv --with requests \
-           python explorations/determinism_check.py [model] [n_items] [repeats]
+           python explorations/scripts/determinism_check.py [model] [n_items] [repeats]
 
 Re-asks the same prompt for the first n dev items `repeats` extra times. The prompt is identical;
 only the cache key gets a repeat tag, so each repeat is a fresh, billed call. Each repeat is
@@ -13,8 +13,8 @@ import json
 import sys
 from pathlib import Path
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import classifier_prompt as cp
 
@@ -22,10 +22,11 @@ model = sys.argv[1] if len(sys.argv) > 1 else "openai/gpt-oss-120b"
 n_items = int(sys.argv[2]) if len(sys.argv) > 2 else 20
 repeats = int(sys.argv[3]) if len(sys.argv) > 3 else 2
 
-items = [json.loads(line) for line in (EXP / "dev_items_draft.jsonl").read_text().splitlines()][
-    :n_items
-]
-out = EXP / "determinism_openrouter.jsonl"
+items = [
+    json.loads(line)
+    for line in (EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines()
+][:n_items]
+out = EXP / "results" / "determinism_openrouter.jsonl"
 rows = []
 for item in items:
     base = budget.call(

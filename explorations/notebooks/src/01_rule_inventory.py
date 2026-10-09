@@ -24,7 +24,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
-REPO = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+REPO = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data" / "policy-docs").is_dir())
 EXP = REPO / "explorations"
 DOCS = {p.name: p.read_text() for p in sorted((REPO / "data" / "policy-docs").glob("*.md"))}
 
@@ -746,7 +746,7 @@ for rid in ORDER:
             "status": "DRAFT",
         }
     )
-(EXP / "rules_draft.yaml").write_text(
+(EXP / "policy" / "rules_draft.yaml").write_text(
     yaml.safe_dump(rules, sort_keys=False, allow_unicode=True, width=100)
 )
 summary = pd.DataFrame(
@@ -894,7 +894,7 @@ for a in AMBIGUITIES:
     assert set(a["rule_ids"]) <= set(RULE_DOC)
 for a in AMBIGUITIES:
     a["status"] = "DRAFT"
-(EXP / "policy_ambiguities.yaml").write_text(
+(EXP / "policy" / "policy_ambiguities.yaml").write_text(
     yaml.safe_dump(AMBIGUITIES, sort_keys=False, allow_unicode=True, width=100)
 )
 print(len(AMBIGUITIES), "ambiguities written, every quote verbatim")

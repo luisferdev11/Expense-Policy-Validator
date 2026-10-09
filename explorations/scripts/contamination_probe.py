@@ -8,11 +8,11 @@ import difflib
 import sys
 from pathlib import Path
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 from receipts_safe import load_inputs
 
-src = (EXP / "notebooks_src" / "03_synthetic_dev_set.py").read_text()
+src = (EXP / "notebooks" / "src" / "03_synthetic_dev_set.py").read_text()
 block = src[src.index("ITEMS = [") : src.index('print(len(ITEMS), "items")')]
 ns: dict = {}
 exec(block, ns)

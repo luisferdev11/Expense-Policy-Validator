@@ -1,7 +1,7 @@
 """Live check through OpenRouter, the deliverable's gateway, verified with /api/v1/generation.
 
 Usage: uv run --no-project --with openai --with python-dotenv --with requests \
-           python explorations/openrouter_check.py
+           python explorations/scripts/openrouter_check.py
 
 Each gpt-oss model classifies three dev items with the strict schema, pinned to the DeepInfra
 bf16 endpoint (budget.OPENROUTER_PIN). Each request id is then looked up with
@@ -18,8 +18,8 @@ from pathlib import Path
 
 import requests
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import classifier_prompt as cp
 
@@ -47,9 +47,9 @@ def generation(request_id: str) -> dict:
 
 items = {
     i["item_id"]: i
-    for i in map(json.loads, (EXP / "dev_items_draft.jsonl").read_text().splitlines())
+    for i in map(json.loads, (EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines())
 }
-out = EXP / "05_live_check.jsonl"
+out = EXP / "results" / "05_live_check.jsonl"
 done = {
     (r["provider"], r["model"], r["item_id"]) for r in map(json.loads, out.read_text().splitlines())
 }
@@ -86,7 +86,7 @@ for model in MODELS:
         gen_row = {k: gen.get(k) for k in keep} | (
             {"error": gen["error"]} if "error" in gen else {}
         )
-        with (EXP / "openrouter_generations.jsonl").open("a") as fh:
+        with (EXP / "results" / "openrouter_generations.jsonl").open("a") as fh:
             fh.write(json.dumps(gen_row) + "\n")
         row = {
             "provider": "openrouter",

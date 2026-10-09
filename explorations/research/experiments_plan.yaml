@@ -10,8 +10,8 @@
 #   Otherwise keep the cheaper variant (cost per 1,000 items, then median latency).
 # Report every comparison with its N, Wilson intervals and the McNemar b/c counts.
 #
-# Status: planned unless stated. Runner: explorations/run_trial.py (one model per call);
-# classifiers: explorations/decision_adapters.py.
+# Status: planned unless stated. Runner: explorations/lib/run_trial.py (one model per call);
+# classifiers: explorations/lib/decision_adapters.py.
 
 prerequisites:
   - id: P0

@@ -28,8 +28,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import classifier_prompt as cp
 
@@ -304,7 +304,7 @@ def make_classifier(provider: str, model: str, mode: str = "strict") -> ItemClas
 
 def dry_run() -> None:
     """Build every decision payload for one dev item without any network call."""
-    item = json.loads((EXP / "dev_items_draft.jsonl").read_text().splitlines()[0])
+    item = json.loads((EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines()[0])
     for key, ep in DECISION_ENDPOINTS.items():
         try:
             payload = ep.build_payload(item)

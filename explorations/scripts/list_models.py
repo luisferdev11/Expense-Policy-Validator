@@ -1,14 +1,14 @@
 """List the live model ids on Groq and DeepInfra and save them with the fetch time.
 
-Output: explorations/05_models_live.json. Model listing is free and makes no inference call.
+Output: explorations/research/05_models_live.json. Model listing is free and makes no inference call.
 """
 
 import json
 import sys
 from pathlib import Path
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 from budget import _client, now
 
 out = {}
@@ -18,7 +18,7 @@ for provider in ["groq", "deepinfra"]:
         out[provider] = {"fetched_at": now(), "count": len(ids), "ids": ids}
     except Exception as exc:
         out[provider] = {"fetched_at": now(), "error": f"{type(exc).__name__}: {str(exc)[:300]}"}
-(EXP / "05_models_live.json").write_text(json.dumps(out, indent=1))
+(EXP / "research" / "05_models_live.json").write_text(json.dumps(out, indent=1))
 for provider, v in out.items():
     print(provider, v.get("count"), v.get("error", ""))
 wanted = [

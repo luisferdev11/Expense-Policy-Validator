@@ -1,7 +1,7 @@
 # Exploration code is throwaway research, held to a looser standard than src/: long data rows,
 # imports after sys.path setup, and non-ASCII text in multilingual examples are expected here.
 extend = "../pyproject.toml"
-# Executed notebooks are generated from notebooks_src/; lint the sources, not the outputs.
+# Executed notebooks are generated from notebooks/src/; lint the sources, not the outputs.
 extend-exclude = ["*.ipynb"]
 
 [lint]

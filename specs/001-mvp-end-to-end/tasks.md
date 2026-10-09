@@ -316,27 +316,27 @@ safety and the trace shape.
 
 **Independent test**: quickstart scenarios 7–8.
 
-- [ ] T077 [P] [US3] Write `tests/unit/test_eval_metrics.py` with hand-computed toy data built in the test: [FR-030]
+- [X] T077 [P] [US3] Write `tests/unit/test_eval_metrics.py` with hand-computed toy data built in the test: [FR-030]
   - macro F1 over the categories present in the answers, where a never-predicted category counts as zero precision;
   - restricted F1 with true as the positive class;
   - false positives out of 9 and missed violations out of 16;
   - Wilson 95 % intervals;
   - every metric returns `{value, n, interval?}`.
-- [ ] T078 [US3] Implement `eval/metrics.py`
-- [ ] T079 [P] [US3] Write `tests/unit/test_eval_compare.py`: [FR-031]
+- [X] T078 [US3] Implement `eval/metrics.py`
+- [X] T079 [P] [US3] Write `tests/unit/test_eval_compare.py`: [FR-031]
   - an exception matches on (receipt, `rule_id`);
   - `evidence_exact` means the `line_ids` are equal, and both are empty for whole-receipt rules;
   - signals match on (receipt, `rule_id`);
   - per-rule recall is 0 for a rule never raised, with precision n/a;
   - EXC-03 signals are counted as unmatched, along with the dispositions they changed;
   - the count of REG-04 exceptions coming only from an absent `vat_number` is reported (A2).
-- [ ] T080 [US3] Complete `eval/compare.py` and the per-rule and evidence sections of `eval/report.py`
-- [ ] T081 [P] [US3] Write `tests/unit/test_keyword_flagger.py`. Any restricted keyword on a line gives `flag`, otherwise `pass`. It reuses the keyword lists from `classification/keyword.py`. Macro F1 is reported as `n/a`
-- [ ] T082 [US3] Implement `eval/baselines.py` (`keyword-flagger`, writing `outputs/baselines/keyword_flagger/results.jsonl`), and make `epv eval` score all three systems [FR-032]
-- [ ] T083 [P] [US3] Write `tests/unit/test_base_rate.py`. From the measured false-positive and missed-violation rates, it computes true and false flags per 10,000 receipts at 1 %, 3 % and 5 % prevalence. It checks the result against hand arithmetic, and passes the Ns through
-- [ ] T084 [US3] Implement `eval/base_rate.py`. Add to `eval/report.py` the base-rate table and two marked slots, `Failure case 1` and `Failure case 2`, each with "stage: TBD in iteration 3" [FR-033]
-- [ ] T085 [US3] Implement `eval/scores.py`. When Langfuse is reachable, it posts `disposition_correct`, `category_correct_rate`, `exceptions_matched` and `exceptions_extra` on the deterministic trace IDs. Otherwise it warns and skips. Add a test that it is a no-op without keys [FR-027]
-- [ ] T086 [US3] Write `tests/integration/test_eval_reproducible.py`. `epv eval` run twice gives byte-identical `outputs/eval/*`, makes no model call, and needs no key [FR-029, SC-004]
+- [X] T080 [US3] Complete `eval/compare.py` and the per-rule and evidence sections of `eval/report.py`
+- [X] T081 [P] [US3] Write `tests/unit/test_keyword_flagger.py`. Any restricted keyword on a line gives `flag`, otherwise `pass`. It reuses the keyword lists from `classification/keyword.py`. Macro F1 is reported as `n/a`
+- [X] T082 [US3] Implement `eval/baselines.py` (`keyword-flagger`, writing `outputs/baselines/keyword_flagger/results.jsonl`), and make `epv eval` score all three systems [FR-032]
+- [X] T083 [P] [US3] Write `tests/unit/test_base_rate.py`. From the measured false-positive and missed-violation rates, it computes true and false flags per 10,000 receipts at 1 %, 3 % and 5 % prevalence. It checks the result against hand arithmetic, and passes the Ns through
+- [X] T084 [US3] Implement `eval/base_rate.py`. Add to `eval/report.py` the base-rate table and two marked slots, `Failure case 1` and `Failure case 2`, each with "stage: TBD in iteration 3" [FR-033]
+- [X] T085 [US3] Implement `eval/scores.py`. When Langfuse is reachable, it posts `disposition_correct`, `category_correct_rate`, `exceptions_matched` and `exceptions_extra` on the deterministic trace IDs. Otherwise it warns and skips. Add a test that it is a no-op without keys [FR-027]
+- [X] T086 [US3] Write `tests/integration/test_eval_reproducible.py`. `epv eval` run twice gives byte-identical `outputs/eval/*`, makes no model call, and needs no key [FR-029, SC-004]
 
 **Checkpoint**: the evaluation report is complete and reproducible.
 

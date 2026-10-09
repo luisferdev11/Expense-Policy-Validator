@@ -74,7 +74,7 @@ KEYWORDS: dict[str, tuple[str, ...]] = {
 _CJK = re.compile(r"[぀-ヿ一-鿿]")
 
 
-def _matches(word: str, text: str) -> bool:
+def matches(word: str, text: str) -> bool:
     if _CJK.search(word):
         return word in text
     return re.search(rf"(?<![\w]){re.escape(word)}(?![\w])", text) is not None
@@ -83,7 +83,7 @@ def _matches(word: str, text: str) -> bool:
 def keyword_category(text: str, mcc: int) -> str:
     folded = text.casefold()
     for category, words in KEYWORDS.items():
-        if any(_matches(w, folded) for w in words):
+        if any(matches(w, folded) for w in words):
             return category
     return "food_beverage" if mcc in ON_PREMISES_MCC else "other"
 

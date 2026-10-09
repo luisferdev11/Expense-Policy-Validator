@@ -122,9 +122,16 @@ def _cmd_run(args: argparse.Namespace) -> int:
 
 def _cmd_eval(args: argparse.Namespace) -> int:
     from eval.report import run_eval
+    from eval.scores import post_scores
 
-    run_eval(results_path=RESULTS_FILE, out_dir=EVAL_DIR)
-    print(f"epv eval: wrote {EVAL_DIR}", file=sys.stderr)
+    load_env()
+    metrics = run_eval(results_path=RESULTS_FILE, out_dir=EVAL_DIR)
+    posted = 0
+    if LAST_RUN_FILE.exists():
+        last = json.loads(LAST_RUN_FILE.read_text(encoding="utf-8"))
+        if Path(last["results_path"]) == RESULTS_FILE:
+            posted = post_scores(metrics["rows"], run_label=last["run_label"])
+    print(f"epv eval: wrote {EVAL_DIR}; {posted} Langfuse scores posted", file=sys.stderr)
     return 0
 
 

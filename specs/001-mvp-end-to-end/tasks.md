@@ -63,44 +63,44 @@ viewer. Every test task comes before the implementation task it covers, and must
 **Purpose**: the typed interfaces, the firewall, the rule registry and the tracer port.
 Everything after this depends on them. Each test task comes first and fails first.
 
-- [ ] T006 [P] Write `tests/unit/test_models.py`. It asserts that:
+- [X] T006 [P] Write `tests/unit/test_models.py`. It asserts that:
   - `ReceiptInput` and `LineItemInput` reject unknown keys (`extra="forbid"`), and a `labels` or `notes` key in particular;
   - money fields are `Decimal`;
   - `Classification` enforces `subtype == "none"` unless `category == "other"`;
   - `Classification` allows a null `category` only when `status == "unclassified"`;
   - `ExceptionFinding.severity` accepts only `critical`, `high`, `medium` and `low`.
-- [ ] T007 Implement every model in `data-model.md` in `src/expense_validator/models.py`, frozen and in Pydantic v2: `LineItemInput`, `ReceiptInput` (with `vat_number: str | None = None`, A2), `NormalisedItem`, `ClassifierRequest` (only `description_clean`, `merchant_name` and `mcc`), `Classification`, `ClassificationSource`, `CacheEntry`, `ClassifiedReceipt`, `CrossReceiptContext`, `RuleSet`, `ExceptionFinding`, `ReviewSignal`, `EngineFindings`, `OutputLineItem`, `RunMetadata` and `ReceiptResult` [FR-003, FR-005]
-- [ ] T008 [P] Write `tests/unit/test_loader.py`. It asserts that: [FR-001, FR-002]
+- [X] T007 Implement every model in `data-model.md` in `src/expense_validator/models.py`, frozen and in Pydantic v2: `LineItemInput`, `ReceiptInput` (with `vat_number: str | None = None`, A2), `NormalisedItem`, `ClassifierRequest` (only `description_clean`, `merchant_name` and `mcc`), `Classification`, `ClassificationSource`, `CacheEntry`, `ClassifiedReceipt`, `CrossReceiptContext`, `RuleSet`, `ExceptionFinding`, `ReviewSignal`, `EngineFindings`, `OutputLineItem`, `RunMetadata` and `ReceiptResult` [FR-003, FR-005]
+- [X] T008 [P] Write `tests/unit/test_loader.py`. It asserts that: [FR-001, FR-002]
   - loading `data/receipts.jsonl` returns 32 `ReceiptInput` objects and 79 line items;
   - no `labels` key survives at any level, and no `notes` key either;
   - amounts parse as `Decimal`;
   - a hand-written JSONL with an extra answer key, in `tests/fixtures/`, raises a validation error.
 
   The test must never print or assert any answer value.
-- [ ] T009 Implement `src/expense_validator/loader.py`, ported from `explorations/lib/receipts_safe.py`. It strips `labels` and `notes` at the receipt level and `labels` at the line level immediately after `json.loads(..., parse_float=Decimal)`, then validates into `ReceiptInput`. It is the only module that opens `receipts.jsonl` [FR-001]
-- [ ] T010 [P] Write `tests/architecture/test_boundaries.py`, using `ast` (FR-002, constitution I and II), to fail when:
+- [X] T009 Implement `src/expense_validator/loader.py`, ported from `explorations/lib/receipts_safe.py`. It strips `labels` and `notes` at the receipt level and `labels` at the line level immediately after `json.loads(..., parse_float=Decimal)`, then validates into `ReceiptInput`. It is the only module that opens `receipts.jsonl` [FR-001]
+- [X] T010 [P] Write `tests/architecture/test_boundaries.py`, using `ast` (FR-002, constitution I and II), to fail when:
   - `models`, `normaliser`, `retriever`, `engine/*` or `reporter` import `openai`, `langfuse`, `httpx`, `requests`, `expense_validator.classification.openrouter` or `expense_validator.tracing`;
   - any module in `src/expense_validator/` or `viewer/` imports `eval`. There is one allowed exception: a lazy import inside the `eval` subcommand function of `src/expense_validator/cli.py`, and the test asserts it stays inside that function (analysis I2);
   - any module in `src/expense_validator/` or `viewer/` other than `loader.py` contains the string `receipts.jsonl`;
   - any module in `src/expense_validator/` or `viewer/` other than `loader.py` contains the string literals `"labels"` or `"notes"`. `loader.py` is exempt because it must name those keys to strip them (analysis I1).
 
   The scan covers `src/expense_validator/` and `viewer/` only. `tests/` and `eval/` are out of its scope.
-- [ ] T011 [P] Write `tests/unit/test_taxonomy.py`. It asserts that the parsed taxonomy has exactly 21 categories, with the restricted flags of `data/category-taxonomy.md`, and that `restricted_for(category)` is derived from the taxonomy, never from model output
-- [ ] T012 Implement `src/expense_validator/classification/taxonomy.py`, parsing `data/category-taxonomy.md` as `explorations/lib/classifier_prompt.py` does, and exposing a `Category` enum and `restricted_for()`
-- [ ] T013 [P] Write `tests/unit/test_settings.py`. It asserts that `engine/settings.py` reads these values from `docs/decisions/policy_decisions.yaml`: [FR-017]
+- [X] T011 [P] Write `tests/unit/test_taxonomy.py`. It asserts that the parsed taxonomy has exactly 21 categories, with the restricted flags of `data/category-taxonomy.md`, and that `restricted_for(category)` is derived from the taxonomy, never from model output
+- [X] T012 Implement `src/expense_validator/classification/taxonomy.py`, parsing `data/category-taxonomy.md` as `explorations/lib/classifier_prompt.py` does, and exposing a `Category` enum and `restricted_for()`
+- [X] T013 [P] Write `tests/unit/test_settings.py`. It asserts that `engine/settings.py` reads these values from `docs/decisions/policy_decisions.yaml`: [FR-017]
   - `fx.date_basis == "transaction"`, `fx.rate_kind == "recorded"` and `fx.missing_rate_disposition == "review"`;
   - `exc03.threshold == Decimal("0.5")`;
   - `reference_prefixes == {"PA-": "pre_approval"}`;
   - decisions A1–A9 all present.
-- [ ] T014 Implement `src/expense_validator/engine/settings.py`, and add `config/iso4217_country_currency.csv` and `config/eur_rates.csv`. Each file has a header comment line with its source and fetch date, and the euro table may have no rows
-- [ ] T015 [P] Write `tests/architecture/test_evidence_verbatim.py`. For every `RuleSpec` in the registry, `evidence` must be an exact substring of `data/policy-docs/<policy_doc>` after whitespace is collapsed and `**` markers are removed. The registry must contain exactly the 37 in-scope rule IDs and no TIME rule [FR-018, SC-005]
-- [ ] T016 Implement `src/expense_validator/engine/registry.py` with all 37 `RuleSpec` entries, taken from the spec's Rule Catalogue: `rule_id`, `policy_doc`, severity or effect, scope, the decision A-IDs, and one verbatim evidence sentence. Add `rules_version()`, a 12-hex SHA-256 over the engine package source, `policy_decisions.yaml` and the policy docs in sorted order (research R8) [FR-012, FR-018, FR-024]
-- [ ] T017 [P] Write `tests/contract/test_tracer.py`. It asserts that: [FR-026, FR-028]
+- [X] T014 Implement `src/expense_validator/engine/settings.py`, and add `config/iso4217_country_currency.csv` and `config/eur_rates.csv`. Each file has a header comment line with its source and fetch date, and the euro table may have no rows
+- [X] T015 [P] Write `tests/architecture/test_evidence_verbatim.py`. For every `RuleSpec` in the registry, `evidence` must be an exact substring of `data/policy-docs/<policy_doc>` after whitespace is collapsed and `**` markers are removed. The registry must contain exactly the 37 in-scope rule IDs and no TIME rule [FR-018, SC-005]
+- [X] T016 Implement `src/expense_validator/engine/registry.py` with all 37 `RuleSpec` entries, taken from the spec's Rule Catalogue: `rule_id`, `policy_doc`, severity or effect, scope, the decision A-IDs, and one verbatim evidence sentence. Add `rules_version()`, a 12-hex SHA-256 over the engine package source, `policy_decisions.yaml` and the policy docs in sorted order (research R8) [FR-012, FR-018, FR-024]
+- [X] T017 [P] Write `tests/contract/test_tracer.py`. It asserts that: [FR-026, FR-028]
   - `NoopTracer` satisfies the `Tracer` protocol;
   - `make_tracer()` returns `NoopTracer` with one warning when the keys are missing;
   - a tracer whose methods raise is swapped for `NoopTracer` mid-run, with one warning;
   - `flush` returns within its timeout even when the exporter blocks, using a fake blocking exporter.
-- [ ] T018 Implement `src/expense_validator/tracing.py` as research R6 and `contracts/tracing.md` describe: [FR-026, FR-028]
+- [X] T018 Implement `src/expense_validator/tracing.py` as research R6 and `contracts/tracing.md` describe: [FR-026, FR-028]
   - the `Tracer` protocol: `receipt_trace`, `span`, `generation` and `flush`;
   - `NoopTracer`;
   - `LangfuseTracer`, with `create_trace_id(seed=f"{run_label}:{receipt_id}")` applied through `trace_context`, `auth_check()` with a short timeout, and swap-to-noop on error;

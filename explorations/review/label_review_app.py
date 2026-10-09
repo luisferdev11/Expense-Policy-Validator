@@ -71,6 +71,8 @@ st.markdown(
 )
 st.markdown(f"**Draft label:** `{item['proposed_category']}`")
 st.caption(f"Draft rationale: {item.get('rationale') or '—'}")
+if item.get("a6_a9_rationale") and item.get("a6_a9_rationale") != item.get("rationale"):
+    st.caption(f"Subtype and recipient rationale: {item['a6_a9_rationale']}")
 if item.get("trap"):
     st.caption(f"Trap: {item['trap']}")
 
@@ -89,6 +91,12 @@ with st.form(key=f"form-{item['item_id']}"):
             RECIPIENTS,
             index=RECIPIENTS.index(item["proposed_recipient_kind"]),
         )
+    recipient_name = None
+    if "proposed_recipient_kind" in item:
+        recipient_name = st.text_input(
+            "Recipient name (A9: a proper name only; leave empty if the line names no one)",
+            value=item.get("proposed_recipient_name") or "",
+        ).strip()
     note = st.text_input("Note (optional; required when you change something)")
     saved = st.form_submit_button("Save and next", type="primary")
 
@@ -96,6 +104,9 @@ if saved:
     changed = label != item["proposed_category"]
     changed |= subtype is not None and subtype != item.get("proposed_subtype")
     changed |= recipient_kind is not None and recipient_kind != item.get("proposed_recipient_kind")
+    changed |= recipient_name is not None and (recipient_name or None) != item.get(
+        "proposed_recipient_name"
+    )
     if changed and not note.strip():
         st.error("Add a note saying why the label changes.")
     else:
@@ -115,6 +126,8 @@ if saved:
             review |= {
                 "draft_recipient_kind": item["proposed_recipient_kind"],
                 "reviewed_recipient_kind": recipient_kind,
+                "draft_recipient_name": item.get("proposed_recipient_name"),
+                "reviewed_recipient_name": recipient_name or None,
             }
         _append(review)
         st.rerun()

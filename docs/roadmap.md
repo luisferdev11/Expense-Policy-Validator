@@ -61,6 +61,7 @@ each against a decision rule registered before its run (principle V).
   | E14 | The classifier model, with a 2-point paired-bootstrap non-inferiority margin |
   | E7 | The EXC-03 confidence source and threshold (A3) |
   | E5 | Whether to translate before classifying |
+  | E15 | Whether the parser reads `"subtype": null` as `"none"`. The iteration 1 run saw it on 2 of 79 lines, and it caused the run's only disposition error. Luis decided on 2026-10-09 to keep the parser strict until the dev set decides |
 
 - Make these comparisons:
   - retriever variants (trigger map against passing every rule);

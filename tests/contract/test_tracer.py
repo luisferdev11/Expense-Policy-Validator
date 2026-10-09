@@ -10,14 +10,13 @@ from typing import Any
 
 import pytest
 
-from expense_validator.tracing import (
+from expense_validator.adapters.tracing import (
     GuardedTracer,
     NoopTracer,
-    Observation,
-    Tracer,
     TracingWarning,
     make_tracer,
 )
+from expense_validator.ports.tracer import Observation, Tracer
 
 
 def test_noop_tracer_satisfies_the_protocol() -> None:

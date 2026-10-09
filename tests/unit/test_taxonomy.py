@@ -1,9 +1,9 @@
-"""The taxonomy is parsed from data/category-taxonomy.md and used as given (T011)."""
+"""The static taxonomy table equals data/category-taxonomy.md, used as given (T011, ADR 0003)."""
 
 import re
 from typing import get_args
 
-from expense_validator.classification import taxonomy
+from expense_validator.domain import taxonomy
 from expense_validator.paths import TAXONOMY_FILE
 
 
@@ -26,4 +26,6 @@ def test_static_literal_matches_the_file() -> None:
 
 
 def test_examples_are_available_for_the_prompt() -> None:
-    assert all(taxonomy.EXAMPLES[c] for c in taxonomy.CATEGORIES)
+    from expense_validator.adapters.openrouter.prompt import EXAMPLES
+
+    assert all(EXAMPLES[c] for c in taxonomy.CATEGORIES)

@@ -1,8 +1,10 @@
-"""Static boundaries of the architecture (T010, FR-002, constitution I and II, ADR 0002).
+"""Layer boundaries of the architecture (ADR 0002, ADR 0003, FR-002, constitution I and II).
 
-The scan covers `src/expense_validator/` and `viewer/` only. Two explicit exceptions:
-- `loader.py` may name the answer keys and the receipts file, because it strips them (I1);
-- `cli.py` may import `eval` lazily inside its eval subcommand function (I2).
+Layers: domain (pure), ports, adapters, app. The scan covers `src/expense_validator/` and
+`viewer/`. Two explicit exceptions carry over from iteration 1:
+- `adapters/receipts_file.py` may name the answer keys and the receipts file, because it strips
+  them (analysis I1);
+- `app/cli.py` may import `eval` lazily inside its eval subcommand function (analysis I2).
 """
 
 from __future__ import annotations
@@ -14,24 +16,34 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[2]
 PACKAGE = ROOT / "src" / "expense_validator"
 SCANNED = [*PACKAGE.rglob("*.py"), *(ROOT / "viewer").rglob("*.py")]
-PURE_CORE = [
-    PACKAGE / "models.py",
-    PACKAGE / "normaliser.py",
-    PACKAGE / "retriever.py",
-    PACKAGE / "reporter.py",
-    *(PACKAGE / "engine").rglob("*.py"),
-]
-NETWORK_OR_ADAPTER = (
+DOMAIN = sorted((PACKAGE / "domain").rglob("*.py"))
+PORTS = sorted((PACKAGE / "ports").rglob("*.py"))
+ADAPTERS = sorted((PACKAGE / "adapters").rglob("*.py"))
+LOADER = PACKAGE / "adapters" / "receipts_file.py"
+CLI = PACKAGE / "app" / "cli.py"
+EVAL_SUBCOMMAND = "_cmd_eval"
+
+DOMAIN_BANNED = (
+    "expense_validator.ports",
+    "expense_validator.adapters",
+    "expense_validator.app",
+    "expense_validator.paths",
+    "os",
+    "io",
+    "pathlib",
+    "csv",
+    "yaml",
+    "subprocess",
+    "socket",
+    "shutil",
     "openai",
     "langfuse",
     "httpx",
     "requests",
-    "expense_validator.classification.openrouter",
-    "expense_validator.tracing",
+    "streamlit",
 )
-LOADER = PACKAGE / "loader.py"
-CLI = PACKAGE / "cli.py"
-EVAL_SUBCOMMAND = "_cmd_eval"
+PORTS_BANNED = ("expense_validator.adapters", "expense_validator.app")
+ADAPTERS_BANNED = ("expense_validator.app",)
 
 
 def _imports(tree: ast.AST) -> Iterator[tuple[ast.AST, str]]:
@@ -73,19 +85,40 @@ def _enclosing_functions(tree: ast.Module) -> dict[int, str]:
     return owner
 
 
-def test_scan_finds_the_package() -> None:
-    assert LOADER in SCANNED
-
-
-def test_pure_core_imports_no_network_sdk_or_adapter() -> None:
-    offenders = [
+def _violations(files: list[Path], banned: tuple[str, ...]) -> list[str]:
+    return [
         f"{path.relative_to(ROOT)} imports {name}"
-        for path in PURE_CORE
-        if path.exists()
+        for path in files
         for _, name in _imports(_parse(path))
-        if any(name == banned or name.startswith(banned + ".") for banned in NETWORK_OR_ADAPTER)
+        if any(name == b or name.startswith(b + ".") for b in banned)
+    ]
+
+
+def test_every_layer_exists_and_the_scan_finds_it() -> None:
+    assert DOMAIN and PORTS and ADAPTERS
+    assert LOADER in SCANNED and CLI in SCANNED
+
+
+def test_domain_imports_no_outer_layer_and_no_io_or_network_module() -> None:
+    assert _violations(DOMAIN, DOMAIN_BANNED) == []
+
+
+def test_domain_never_calls_open() -> None:
+    offenders = [
+        str(path.relative_to(ROOT))
+        for path in DOMAIN
+        for node in ast.walk(_parse(path))
+        if isinstance(node, ast.Call) and isinstance(node.func, ast.Name) and node.func.id == "open"
     ]
     assert offenders == []
+
+
+def test_ports_import_only_the_domain() -> None:
+    assert _violations(PORTS, PORTS_BANNED) == []
+
+
+def test_adapters_never_import_the_app_layer() -> None:
+    assert _violations(ADAPTERS, ADAPTERS_BANNED) == []
 
 
 def test_only_the_cli_eval_subcommand_imports_eval() -> None:

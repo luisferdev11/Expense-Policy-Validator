@@ -14,7 +14,7 @@ dependencies = [
 ]
 
 [project.scripts]
-epv = "expense_validator.cli:main"
+epv = "expense_validator.app.cli:main"
 
 [build-system]
 requires = ["hatchling"]

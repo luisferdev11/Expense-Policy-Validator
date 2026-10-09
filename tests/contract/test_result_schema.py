@@ -3,10 +3,10 @@
 import json
 from pathlib import Path
 
-from expense_validator.engine.registry import REGISTRY
-from expense_validator.models import ReceiptResult
+from expense_validator.adapters.results_files import load_results
+from expense_validator.domain.engine.registry import REGISTRY
+from expense_validator.domain.models import ReceiptResult
 from expense_validator.paths import POLICY_DIR, RESULTS_FILE
-from expense_validator.results import load_results
 
 SCHEMA_FILE = (
     Path(__file__).resolve().parents[2]

@@ -4,7 +4,7 @@ import itertools
 
 import pytest
 
-from expense_validator.engine.disposition import disposition
+from expense_validator.domain.engine.disposition import disposition
 
 
 @pytest.mark.parametrize("severity", ["critical", "high", "medium"])

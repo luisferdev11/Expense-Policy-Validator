@@ -25,7 +25,8 @@ retriever, policy engine and exception reporter.
 7. **Reproducibility.** Temperature 0, pinned model ID and provider, versioned prompts. Every
    result records the model ID and prompt version.
 8. **Separation of components.** Each component lives in its own module behind a typed
-   interface. The classifier never sees the declared expense type or the attendee count.
+   interface. The package is layered (ADR 0003): `domain/` is pure and does no I/O, `ports/`
+   holds the interfaces, `adapters/` touches the outside world, `app/` composes them. The classifier never sees the declared expense type or the attendee count.
 9. **Secrets stay out.** The OpenRouter key lives in `.env`, which is gitignored. Never write a
    key into code, logs, outputs, commits or chat. A pre-commit hook blocks key patterns.
 10. **English everywhere.** Every artifact is in English: code, identifiers, comments,

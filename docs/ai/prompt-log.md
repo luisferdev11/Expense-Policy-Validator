@@ -269,6 +269,31 @@ Two follow-ups during the run:
 - AI_NOTES entries 27 to 34.
 - Waiting for Luis: his review of the 13 DRAFT engine cases (T092), then "MVP done" (T093).
 
+## 2026-10-09: "How do I test it, and I'm not convinced by the architecture"
+
+> This iteration doesn't have Streamlit, or how can I test this MVP? Also, I'm not sure the
+> architecture convinces me: I see .py files in expense_validator, but I don't see a structure
+> that tells me it follows a specific architecture. Maybe it's just me and I haven't reviewed it
+> in depth. So how do I test the application? Describe better what I need to do to move to the
+> next iteration, and tell me which iterations we expect before we finish and what each
+> includes.
+
+**Outcome.**
+- The viewer was confirmed to start (`uv run epv view`), with a step-by-step test guide.
+- The assistant agreed with the architecture critique. Ports and adapters existed only as
+  dependency rules, and two file-I/O leaks sat inside the core (AI_NOTES 35). Luis chose to
+  refactor now:
+  - ADR 0003 records the decision;
+  - the package is layered as `domain/`, `ports/`, `adapters/` and `app/`;
+  - the architecture test is stricter;
+  - behaviour is unchanged, and the outputs differ only in `rules_version`.
+- The assistant found a gap: the dev set labels only categories, not the A6 and A9 fields that
+  cls-v2 returns.
+- A blind label-review page was built so Luis could review the 101 DRAFT labels while the
+  refactor ran in a separate worktree.
+- The remaining plan is iteration 1.1 (the refactor), iteration 2 (decide on dev), iteration 3
+  (delivery package), and Sunday for rehearsal only.
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

@@ -8,14 +8,14 @@ from __future__ import annotations
 from decimal import Decimal
 from typing import Any
 
-from expense_validator.classification.taxonomy import restricted_for
-from expense_validator.models import (
+from expense_validator.domain.models import (
     Classification,
     ClassificationSource,
     ClassifiedReceipt,
     LineItemInput,
     ReceiptInput,
 )
+from expense_validator.domain.taxonomy import restricted_for
 
 D = Decimal
 

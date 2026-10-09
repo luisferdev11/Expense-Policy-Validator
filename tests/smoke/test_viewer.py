@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 from streamlit.testing.v1 import AppTest
 
+from expense_validator.adapters.results_files import load_results
 from expense_validator.paths import EVAL_DIR, RESULTS_FILE
-from expense_validator.results import load_results
 
 APP = Path(__file__).resolve().parents[2] / "viewer" / "app.py"
 

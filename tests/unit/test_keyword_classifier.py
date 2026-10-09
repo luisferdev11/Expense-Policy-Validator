@@ -1,11 +1,11 @@
 """keyword-classifier baseline (T071, FR-032, research R11)."""
 
-from expense_validator.classification.keyword import KEYWORDS, KeywordClassifier
-from expense_validator.classification.port import ItemClassifier
-from expense_validator.classification.taxonomy import CATEGORIES
-from expense_validator.loader import load_receipts
-from expense_validator.models import ClassifierRequest
+from expense_validator.adapters.keyword_classifier import KEYWORDS, KeywordClassifier
+from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.domain.models import ClassifierRequest
+from expense_validator.domain.taxonomy import CATEGORIES
 from expense_validator.paths import TAXONOMY_FILE
+from expense_validator.ports.classifier import ItemClassifier
 
 
 def classify(text: str, mcc: int = 5999) -> str | None:

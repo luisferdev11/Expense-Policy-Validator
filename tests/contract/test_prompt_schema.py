@@ -6,7 +6,7 @@ from typing import Any
 
 import pytest
 
-from expense_validator.classification.prompt import (
+from expense_validator.adapters.openrouter.prompt import (
     PROMPT_VERSION,
     RESPONSE_FORMAT_STRICT,
     SCHEMA,

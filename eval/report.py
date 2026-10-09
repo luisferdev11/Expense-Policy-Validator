@@ -16,8 +16,8 @@ from eval.baselines import run_flagger
 from eval.compare import compare
 from eval.metrics import system_metrics
 from eval.scope import OUT_OF_SCOPE
+from expense_validator.adapters.results_files import load_results
 from expense_validator.paths import BASELINES_DIR
-from expense_validator.results import load_results
 
 KEYWORD_CLASSIFIER = BASELINES_DIR / "keyword_classifier" / "results.jsonl"
 KEYWORD_FLAGGER = BASELINES_DIR / "keyword_flagger" / "results.jsonl"

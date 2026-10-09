@@ -8,8 +8,8 @@ import json
 import warnings
 from pathlib import Path
 
-from expense_validator.cli import run_command
-from expense_validator.loader import load_receipts
+from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.app.cli import run_command
 
 
 def test_empty_cache_offline_never_passes_an_itemized_receipt(tmp_path: Path) -> None:

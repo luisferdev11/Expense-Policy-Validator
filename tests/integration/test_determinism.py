@@ -9,13 +9,15 @@ from pathlib import Path
 from typing import Any
 
 from eval.answers import load_answers
-from expense_validator.classification.cache import ClassificationCache
-from expense_validator.classification.openrouter import OpenRouterClassifier
-from expense_validator.engine.settings import load_settings
-from expense_validator.loader import load_receipts
+from expense_validator.adapters.classification_cache import ClassificationCache
+from expense_validator.adapters.config_files import load_settings
+from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
+from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.adapters.results_files import write_results
+from expense_validator.adapters.tracing import NoopTracer
+from expense_validator.app.pipeline import run_pipeline
 from expense_validator.paths import CLASSIFICATIONS_FILE
-from expense_validator.pipeline import run_pipeline, write_results
-from expense_validator.tracing import NoopTracer, Tracer
+from expense_validator.ports.tracer import Tracer
 from tests.fakes import RecordingTracer
 
 

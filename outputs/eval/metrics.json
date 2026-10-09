@@ -36,7 +36,7 @@
     "model_id": "openai/gpt-oss-120b",
     "prompt_version": "cls-v2",
     "provider_endpoint": "deepinfra/bf16",
-    "rules_version": "dcdb249087fe"
+    "rules_version": "951312dbdc78"
   },
   "systems": {
     "keyword-classifier": {

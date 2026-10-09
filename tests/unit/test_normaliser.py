@@ -1,6 +1,6 @@
 """Deterministic cleanup, no translation (T019, FR-004)."""
 
-from expense_validator.normaliser import clean, normalise
+from expense_validator.domain.normaliser import clean, normalise
 from tests.factories import item, receipt
 
 

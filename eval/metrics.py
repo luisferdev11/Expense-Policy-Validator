@@ -11,7 +11,7 @@ import math
 from collections.abc import Sequence
 from typing import Any
 
-from expense_validator.engine.disposition import disposition
+from expense_validator.domain.engine.disposition import disposition
 
 DISPOSITIONS = ["flag", "review", "pass"]
 Rows = Sequence[dict[str, Any]]

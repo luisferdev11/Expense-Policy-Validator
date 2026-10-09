@@ -7,7 +7,7 @@ from eval.answers import Answer
 from eval.compare import compare
 from eval.metrics import confusion_matrix
 from eval.scope import OUT_OF_SCOPE
-from expense_validator.models import ReceiptResult, RunMetadata
+from expense_validator.domain.models import ReceiptResult, RunMetadata
 
 RUN = RunMetadata(
     classifier="hand",

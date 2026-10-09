@@ -1,6 +1,7 @@
 """Streamlit viewer v1: receipt list, receipt detail and metrics (brief Part 5, FR-034).
 
-Reads committed outputs only, through `expense_validator.results`; the correct answers come from
+Reads committed outputs only, through `expense_validator.adapters.results_files`; the
+correct answers come from
 the evaluation's comparison output, never from the receipts file. No model call, no key.
 Launch with `uv run epv view`.
 """
@@ -12,8 +13,8 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from expense_validator.adapters.results_files import load_comparison, load_metrics, load_results
 from expense_validator.paths import EVAL_DIR
-from expense_validator.results import load_comparison, load_metrics, load_results
 
 st.set_page_config(page_title="Expense Policy Validator", layout="wide")
 st.title("Expense Policy Validator")

@@ -3,8 +3,8 @@
 import random
 from decimal import Decimal as D
 
-from expense_validator.engine.context import build_context, day_key
-from expense_validator.engine.settings import load_settings
+from expense_validator.adapters.config_files import load_settings
+from expense_validator.domain.engine.context import build_context, day_key
 from tests.factories import classified, cls, item, receipt
 
 S = load_settings()

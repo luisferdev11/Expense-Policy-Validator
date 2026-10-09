@@ -12,9 +12,9 @@ from typing import Any
 
 import pytest
 
-from expense_validator.engine.context import build_context
-from expense_validator.engine.evaluate import RULES
-from expense_validator.models import ClassifiedReceipt, ReceiptInput
+from expense_validator.domain.engine.context import build_context
+from expense_validator.domain.engine.evaluate import RULES
+from expense_validator.domain.models import ClassifiedReceipt, ReceiptInput
 from tests.engine_cases.helpers import run, settings
 from tests.factories import cls
 

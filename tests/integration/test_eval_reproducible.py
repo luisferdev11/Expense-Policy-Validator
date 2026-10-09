@@ -6,7 +6,7 @@ from pathlib import Path
 
 from eval.report import run_eval
 from eval.scores import post_scores
-from expense_validator.cli import run_command
+from expense_validator.app.cli import run_command
 
 
 def test_eval_twice_is_byte_identical(tmp_path: Path) -> None:

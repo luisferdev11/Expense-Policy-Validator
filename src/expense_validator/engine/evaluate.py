@@ -8,13 +8,22 @@ Explanations and signal reasons are left empty here; the reporter writes them.
 from __future__ import annotations
 
 from collections.abc import Iterable
-from decimal import Decimal
 
-from expense_validator.engine.base import SEVERITY_ORDER, Hit, Line, Rule, RuleInput
+from expense_validator.engine import fx
+from expense_validator.engine.base import SEVERITY_ORDER, Hit, Rule, RuleInput
 from expense_validator.engine.disposition import disposition
 from expense_validator.engine.registry import REGISTRY
-from expense_validator.engine.rules import merchant, technology
+from expense_validator.engine.rules import (
+    documentation,
+    gifts,
+    meals,
+    merchant,
+    non_reimbursable,
+    regional,
+    technology,
+)
 from expense_validator.engine.settings import Settings
+from expense_validator.engine.uncertainty import exc_03, split_lines
 from expense_validator.models import (
     ClassifiedReceipt,
     CrossReceiptContext,
@@ -25,41 +34,23 @@ from expense_validator.models import (
     Severity,
 )
 
-RULES: dict[str, Rule] = {**technology.RULES, **merchant.RULES}
-
-
-def _rate(classified: ClassifiedReceipt) -> Decimal:
-    receipt = classified.receipt
-    if receipt.fx_rate_to_usd is not None:
-        return receipt.fx_rate_to_usd
-    return Decimal("1")
+RULES: dict[str, Rule] = {
+    **meals.RULES,
+    **technology.RULES,
+    **gifts.RULES,
+    **non_reimbursable.RULES,
+    **merchant.RULES,
+    **documentation.RULES,
+    **regional.RULES,
+    "EXC-03": exc_03,
+}
 
 
 def rule_input(
     classified: ClassifiedReceipt, context: CrossReceiptContext, settings: Settings
 ) -> RuleInput:
-    rate = _rate(classified)
-    lines: list[Line] = []
-    uncertain: list[str] = []
-    for position, (item, c) in enumerate(
-        zip(classified.receipt.line_items, classified.classifications, strict=True)
-    ):
-        if c.status != "classified" or c.category is None:
-            uncertain.append(item.line_id)
-            continue
-        lines.append(
-            Line(
-                line_id=item.line_id,
-                category=c.category,
-                subtype=c.subtype,
-                recipient_kind=c.recipient_kind,
-                recipient_name=c.recipient_name,
-                amount_usd=item.amount * rate,
-                unit_price_usd=item.unit_price * rate,
-                position=position,
-            )
-        )
-    return RuleInput(classified.receipt, tuple(lines), tuple(uncertain), context, settings)
+    lines, uncertain = split_lines(classified, settings)
+    return RuleInput(classified.receipt, lines, uncertain, context, settings)
 
 
 def _merge(hits: Iterable[Hit], order: dict[str, int]) -> list[Hit]:
@@ -80,7 +71,14 @@ def _merge(hits: Iterable[Hit], order: dict[str, int]) -> list[Hit]:
         for h in group:
             computed.update(h.computed)
         merged.append(
-            Hit(rule_id, tuple(line_ids), dict(sorted(computed.items())), top.severity, top.variant)
+            Hit(
+                rule_id,
+                tuple(line_ids),
+                dict(sorted(computed.items())),
+                top.severity,
+                top.variant,
+                as_signal=any(h.as_signal for h in group),
+            )
         )
     return merged
 
@@ -91,6 +89,7 @@ def evaluate(
     ruleset: RuleSet,
     settings: Settings,
 ) -> EngineFindings:
+    fx.check_supported(settings)
     inp = rule_input(classified, context, settings)
     order = {item.line_id: i for i, item in enumerate(classified.receipt.line_items)}
     hits = [hit for rule_id in ruleset.rule_ids if rule_id in RULES for hit in RULES[rule_id](inp)]
@@ -98,7 +97,7 @@ def evaluate(
     signals: list[ReviewSignal] = []
     for hit in _merge(hits, order):
         spec = REGISTRY[hit.rule_id]
-        if spec.kind == "exception":
+        if spec.kind == "exception" and not hit.as_signal:
             severity = hit.severity or spec.severity
             assert severity is not None
             exceptions.append(
@@ -113,7 +112,7 @@ def evaluate(
                     computed=hit.computed,
                 )
             )
-        elif spec.kind == "review_signal":
+        elif spec.kind == "review_signal" or hit.as_signal:
             signals.append(
                 ReviewSignal(
                     rule_id=spec.rule_id,

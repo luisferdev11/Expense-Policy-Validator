@@ -46,7 +46,8 @@ def item(
 def receipt(items: list[dict[str, Any]] | None = None, **overrides: Any) -> ReceiptInput:
     items = items if items is not None else [item()]
     rid = overrides.get("receipt_id", "SYN-1")
-    fx = D(str(overrides.get("fx_rate_to_usd", "1")))
+    fx_override = overrides.get("fx_rate_to_usd", "1")
+    fx = D(str(fx_override)) if fx_override is not None else D("1")
     total = sum((D(str(i["amount"])) for i in items), D("0"))
     base: dict[str, Any] = {
         "receipt_id": rid,

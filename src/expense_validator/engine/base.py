@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterable
 from dataclasses import dataclass, field
 from decimal import ROUND_HALF_UP, Decimal
 
@@ -17,6 +17,10 @@ from expense_validator.models import (
 
 CENT = Decimal("0.01")
 SEVERITY_ORDER: dict[str, int] = {"low": 1, "medium": 2, "high": 3, "critical": 4}
+
+
+def line_ids(lines: Iterable[Line]) -> tuple[str, ...]:
+    return tuple(line.line_id for line in lines)
 
 
 def money(value: Decimal) -> str:
@@ -69,6 +73,9 @@ class Hit:
     computed: dict[str, str] = field(default_factory=dict)
     severity: Severity | None = None
     variant: str = "default"
+    # True when the rule could not be evaluated (a euro rate missing, A1): the receipt gets a
+    # review signal under this rule ID instead of an exception, so it never passes.
+    as_signal: bool = False
 
 
 Rule = Callable[[RuleInput], list[Hit]]

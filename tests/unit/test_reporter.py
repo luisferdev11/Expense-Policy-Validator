@@ -63,6 +63,38 @@ def test_mcc_02_signal_gets_a_reason() -> None:
     assert "not an exception" in result.review_signals[0].reason
 
 
+def test_every_exception_rule_has_its_own_template() -> None:
+    from expense_validator.reporter import EXCEPTION_TEMPLATES, SIGNAL_TEMPLATES
+
+    exception_rules = {s.rule_id for s in REGISTRY.values() if s.kind == "exception"}
+    assert exception_rules <= set(EXCEPTION_TEMPLATES)
+    assert {"MCC-02", "EXC-03", "REG-03", "REG-04"} <= set(SIGNAL_TEMPLATES)
+
+
+def test_templates_on_real_engine_findings_name_rule_and_lines() -> None:
+    from tests.unit.rule_helpers import one
+
+    findings = one(
+        ["alcohol", "gambling", "household_goods", "laundry_service"],
+        mcc=5411,
+        submitted_expense_type="Meals - Individual",
+    )
+    r = classified(
+        receipt([item(n) for n in range(1, 5)]),
+        "office_supplies",
+        "office_supplies",
+        "office_supplies",
+        "office_supplies",
+    )
+    result = report(r, findings, RUN)
+    for exc in result.exceptions:
+        assert exc.explanation.startswith(exc.rule_id + ":"), exc.explanation
+        for line_id in exc.line_ids:
+            assert line_id in exc.explanation
+    for signal in result.review_signals:
+        assert signal.reason
+
+
 def test_result_carries_lines_and_run_metadata() -> None:
     r = classified(receipt([item(1, description="Notebook")]), "office_supplies")
     result = report(r, EngineFindings(exceptions=(), review_signals=(), disposition="pass"), RUN)

@@ -42,23 +42,13 @@ def _classified(entry: dict[str, Any]) -> ClassifiedReceipt:
     )
 
 
-def _params() -> list[Any]:
-    params = []
-    for case in CASES:
-        expected = case["expected"]
-        needed = {e["rule_id"] for e in expected["exceptions"]}
-        needed |= {s["rule_id"] for s in expected["review_signals"]}
-        missing = needed - set(RULES)
-        marks = (
-            [pytest.mark.xfail(strict=True, reason=f"rules not implemented yet: {sorted(missing)}")]
-            if missing
-            else []
-        )
-        params.append(pytest.param(case, id=case["case_id"], marks=marks))
-    return params
+def test_every_expected_rule_exists() -> None:
+    needed = {e["rule_id"] for c in CASES for e in c["expected"]["exceptions"]}
+    needed |= {s["rule_id"] for c in CASES for s in c["expected"]["review_signals"]}
+    assert needed <= set(RULES)
 
 
-@pytest.mark.parametrize("case", _params())
+@pytest.mark.parametrize("case", CASES, ids=[c["case_id"] for c in CASES])
 def test_case(case: dict[str, Any]) -> None:
     batch = [_classified(entry) for entry in case["receipts"]]
     findings = run(batch[0], context=build_context(batch, settings()))

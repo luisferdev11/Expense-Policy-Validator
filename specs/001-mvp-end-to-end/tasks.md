@@ -191,38 +191,38 @@ network.
   - add `subtype: "none"`, `recipient_kind` and `recipient_name` to every item, derived from the case's own line text and `why`;
   - list every added value in `tests/engine_cases/fixtures/CONVERSION_NOTES.md`, for Luis's review (SC-010);
   - add a loader and a parametrised runner in `tests/engine_cases/test_synthetic_cases.py`. Cases whose rules are not implemented yet are marked `xfail(strict=True)` with the reason.
-- [ ] T046 [P] [US2] Write `tests/unit/test_fx.py`: [FR-013]
+- [X] T046 [P] [US2] Write `tests/unit/test_fx.py`: [FR-013]
   - USD amounts are unchanged;
   - foreign amounts × `fx_rate_to_usd` give USD in `Decimal`;
   - the EUR 70 and EUR 50 thresholds use the receipt's own rate for a EUR receipt;
   - a non-EUR receipt with no table rate returns a `MissingRate` outcome, and the engine then sends the receipt to review (A1);
   - `date_basis` and `rate_kind` default to `transaction` and `recorded`.
-- [ ] T047 [US2] Implement `src/expense_validator/engine/fx.py`
-- [ ] T048 [P] [US2] Write `tests/unit/test_documentation_rules.py`: [FR-012]
+- [X] T047 [US2] Implement `src/expense_validator/engine/fx.py`
+- [X] T048 [P] [US2] Write `tests/unit/test_documentation_rules.py`: [FR-012]
   - DOC-01: non-itemized above $75 gives medium;
   - DOC-02: a missing merchant, date or total gives medium;
   - DOC-03: no line in the categories covered by the declared type gives medium, with service fee, gratuity and `other` ignored, and no exception when no lines remain;
   - DOC-04: a non-USD receipt missing its currency or rate gives medium.
 
   All of them cite empty `line_ids`.
-- [ ] T049 [US2] Implement `src/expense_validator/engine/rules/documentation.py` with the DOC-03 table from `receipt-documentation-requirements.md`
-- [ ] T050 [P] [US2] Write `tests/unit/test_merchant_rules.py`. MCC-01 is high, with empty `line_ids`, for 5921, 5993, 7995, 7297 and 5944. MCC-02 is always its own signal, even alongside an exception. An MCC not in the table is low tier. MCC-03 treats 5813 as on-premises [FR-020]
-- [ ] T051 [US2] Complete `src/expense_validator/engine/rules/merchant.py` (MCC-01, MCC-02 and MCC-03, with the tier table)
-- [ ] T052 [P] [US2] Write `tests/unit/test_technology_rules.py`: [FR-013, FR-014]
+- [X] T049 [US2] Implement `src/expense_validator/engine/rules/documentation.py` with the DOC-03 table from `receipt-documentation-requirements.md`
+- [X] T050 [P] [US2] Write `tests/unit/test_merchant_rules.py`. MCC-01 is high, with empty `line_ids`, for 5921, 5993, 7995, 7297 and 5944. MCC-02 is always its own signal, even alongside an exception. An MCC not in the table is low tier. MCC-03 treats 5813 as on-premises [FR-020]
+- [X] T051 [US2] Complete `src/expense_validator/engine/rules/merchant.py` (MCC-01, MCC-02 and MCC-03, with the tier table)
+- [X] T052 [P] [US2] Write `tests/unit/test_technology_rules.py`: [FR-013, FR-014]
   - TECH-01: personal electronics give high;
   - TECH-02: a unit price above $200 without a `PA-` reference gives medium, and $200.00 exactly does not;
   - TECH-03: `other` with `subtype=mobile_handset` gives high;
   - TECH-04: a software subscription gives low, and a `PA-` reference does not satisfy it (A5).
-- [ ] T053 [US2] Complete `src/expense_validator/engine/rules/technology.py`
-- [ ] T054 [P] [US2] Write `tests/unit/test_non_reimbursable_rules.py`: [FR-014]
+- [X] T053 [US2] Complete `src/expense_validator/engine/rules/technology.py`
+- [X] T054 [P] [US2] Write `tests/unit/test_non_reimbursable_rules.py`: [FR-014]
   - PERS-01 and PERS-02 give medium, and the baggage carve-out never applies with a `PA-` reference (A5);
   - PERS-03 gives high;
   - HOUSE-01 gives medium;
   - LAUNDRY-01 gives low for fewer than 4 nights or no trip, and nothing at 4 nights or more;
   - HEALTH-01 gives low for OTC with no trip, medium for `subtype=prescription_medication`;
   - A4: when a trip's OTC total across receipts is above $25, HEALTH-01 is raised as low on **every** receipt of that trip with OTC lines, each citing only its own medication lines. A trip total of exactly $25.00 raises nothing (analysis G2).
-- [ ] T055 [US2] Implement `src/expense_validator/engine/rules/non_reimbursable.py` (the HEALTH-01 trip total is read from the context; see T057)
-- [ ] T056 [P] [US2] Write `tests/unit/test_context.py`: [FR-021]
+- [X] T055 [US2] Implement `src/expense_validator/engine/rules/non_reimbursable.py` (the HEALTH-01 trip total is read from the context; see T057)
+- [X] T056 [P] [US2] Write `tests/unit/test_context.py`: [FR-021]
   - meal spend uses `food_beverage`, `alcohol` and `service_fee` lines, or the total when non-itemized;
   - per person divides by the attendee count, or by 1 when it is null;
   - one employee's meal receipts on the same calendar date are added up;
@@ -231,8 +231,8 @@ network.
   - the trip OTC total adds `health_otc` lines over the trip;
   - uncertain items are excluded;
   - a shuffled input gives an identical context.
-- [ ] T057 [US2] Implement `src/expense_validator/engine/context.py` with `build_context(classified_receipts) -> CrossReceiptContext`
-- [ ] T058 [P] [US2] Write `tests/unit/test_meals_rules.py`: [FR-014]
+- [X] T057 [US2] Implement `src/expense_validator/engine/context.py` with `build_context(classified_receipts) -> CrossReceiptContext`
+- [X] T058 [P] [US2] Write `tests/unit/test_meals_rules.py`: [FR-014]
   - MEAL-01 gives medium on every contributing receipt of a breached day, at $75 domestic and $100 international, with empty `line_ids`;
   - MEAL-02 gives low when the meal receipt total is above $150 and the attendee count is null;
   - ALC-01 gives high unless the receipt is Client Entertainment with 2 or more attendees, at MCC 5812, 5813 or 7011;
@@ -242,37 +242,37 @@ network.
   - ENT-02 gives high.
 
   Gratuity lines are never in `line_ids`.
-- [ ] T059 [US2] Implement `src/expense_validator/engine/rules/meals.py`
-- [ ] T060 [P] [US2] Write `tests/unit/test_gifts_rules.py`: [FR-006]
+- [X] T059 [US2] Implement `src/expense_validator/engine/rules/meals.py`
+- [X] T060 [P] [US2] Write `tests/unit/test_gifts_rules.py`: [FR-006]
   - GIFT-01 applies only when the receipt is declared Client Gifts or `recipient_name` is set (A7). It caps $50 per `recipient_name` per receipt, requires a name for any gift of $10 or more, and raises one exception citing every line;
   - GIFT-02 gives high for `gift_card`, and those lines are not tested under GIFT-01;
   - GIFT-03 gives medium for `recipient_kind=employee`;
   - GIFT-04 gives critical for `recipient_kind=government_official`. It covers meal lines but not gratuities, and replaces GIFT-01 for those lines, while the meal cap still applies.
-- [ ] T061 [US2] Implement `src/expense_validator/engine/rules/gifts.py`
-- [ ] T062 [P] [US2] Write `tests/unit/test_regional_rules.py`: [FR-015]
+- [X] T061 [US2] Implement `src/expense_validator/engine/rules/gifts.py`
+- [X] T062 [P] [US2] Write `tests/unit/test_regional_rules.py`: [FR-015]
   - REG-01: APAC alcohol gives high and replaces ALC-01, ALC-02 and ALC-03, while MCC-01 still applies;
   - REG-02: the APAC $60 per person per day cap gives medium and replaces MEAL-01;
   - REG-03: the EMEA EUR 70 cap, converted at the transaction-date euro rate, gives medium and replaces MEAL-01;
   - REG-04: an EMEA receipt above EUR 50 with `vat_number` None gives low (A2);
   - REG-05 raises nothing.
-- [ ] T063 [US2] Implement `src/expense_validator/engine/rules/regional.py`, with the overrides applied in `evaluate.py`
-- [ ] T064 [P] [US2] Write `tests/unit/test_uncertainty.py`: [FR-017, SC-006]
+- [X] T063 [US2] Implement `src/expense_validator/engine/rules/regional.py`, with the overrides applied in `evaluate.py`
+- [X] T064 [P] [US2] Write `tests/unit/test_uncertainty.py`: [FR-017, SC-006]
   - confidence below 0.5 gives one EXC-03 signal citing the line;
   - an `unclassified` item gives EXC-03 with its reason;
   - an uncertain item is excluded from every rule's input, meal spend, DOC-03 and the gift caps;
   - a non-itemized `other` raises no EXC-03;
   - a receipt with EXC-03 is never `pass`.
-- [ ] T065 [US2] Implement `src/expense_validator/engine/uncertainty.py` and wire it into `evaluate.py`, before the rules run
-- [ ] T066 [P] [US2] Write `tests/engine_cases/test_brief_cases.py` with all five brief cases. Their classifications are written by hand from the descriptions, never from labels. The expected behaviour comes from the brief text only: [SC-002]
+- [X] T065 [US2] Implement `src/expense_validator/engine/uncertainty.py` and wire it into `evaluate.py`, before the rules run
+- [X] T066 [P] [US2] Write `tests/engine_cases/test_brief_cases.py` with all five brief cases. Their classifications are written by hand from the descriptions, never from labels. The expected behaviour comes from the brief text only: [SC-002]
   - RCP-027 raises PERS-02;
   - RCP-016 raises REG-01 and no ALC rule;
   - RCP-006 and RCP-026 behave as in T031;
   - RCP-031: a single low exception gives `review`;
   - RCP-028: an MCC-02 signal alone gives `review`.
-- [ ] T067 [US2] Complete the retriever's trigger map in `src/expense_validator/retriever.py` for all 37 rules (research R10). Add `tests/unit/test_retriever_superset.py`: on every engine fixture, `set(raised rule_ids)` must be a subset of the retrieved set [FR-010, FR-011]
-- [ ] T068 [US2] Extend the reporter templates in `src/expense_validator/reporter.py` to every exception and signal rule. Each one states the lines and the `computed` arithmetic: per-person against the cap, unit price against $200, the EUR conversion. Extend `tests/unit/test_reporter.py` to cover one template per rule [FR-022]
-- [ ] T069 [US2] Remove every `xfail` from `tests/engine_cases/test_synthetic_cases.py`. A remaining failure is resolved against the policy text and recorded in `CONVERSION_NOTES.md`, never by editing the expected value to match the code [SC-002]
-- [ ] T070 [US2] Write `tests/integration/test_determinism.py`: [SC-003]
+- [X] T067 [US2] Complete the retriever's trigger map in `src/expense_validator/retriever.py` for all 37 rules (research R10). Add `tests/unit/test_retriever_superset.py`: on every engine fixture, `set(raised rule_ids)` must be a subset of the retrieved set [FR-010, FR-011]
+- [X] T068 [US2] Extend the reporter templates in `src/expense_validator/reporter.py` to every exception and signal rule. Each one states the lines and the `computed` arithmetic: per-person against the cap, unit price against $200, the EUR conversion. Extend `tests/unit/test_reporter.py` to cover one template per rule [FR-022]
+- [X] T069 [US2] Remove every `xfail` from `tests/engine_cases/test_synthetic_cases.py`. A remaining failure is resolved against the policy text and recorded in `CONVERSION_NOTES.md`, never by editing the expected value to match the code [SC-002]
+- [X] T070 [US2] Write `tests/integration/test_determinism.py`: [SC-003]
   - the pipeline runs twice from the committed cache with `NoopTracer` and gives byte-identical output;
   - the receipts are shuffled and the output is identical;
   - a fake recording tracer gives output identical to `NoopTracer` (FR-028);

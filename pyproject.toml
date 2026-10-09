@@ -46,7 +46,7 @@ files = ["src", "eval", "viewer"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["streamlit.*", "langfuse.*"]
+module = ["streamlit.*", "langfuse.*", "pandas.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

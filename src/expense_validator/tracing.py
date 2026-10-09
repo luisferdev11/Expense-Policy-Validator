@@ -25,10 +25,11 @@ class Observation(Protocol):
 
 @runtime_checkable
 class Tracer(Protocol):
-    enabled: bool
+    @property
+    def enabled(self) -> bool: ...
 
     def receipt_trace(
-        self, receipt_id: str, run_label: str, input: Any
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
     ) -> AbstractContextManager[Observation]: ...
 
     def span(self, name: str, input: Any = None) -> AbstractContextManager[Observation]: ...
@@ -52,7 +53,7 @@ class NoopTracer:
     enabled = False
 
     def receipt_trace(
-        self, receipt_id: str, run_label: str, input: Any
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
     ) -> AbstractContextManager[Observation]:
         return nullcontext(_NOOP_OBSERVATION)
 
@@ -85,11 +86,11 @@ class LangfuseTracer:
         self.client = client
 
     def receipt_trace(
-        self, receipt_id: str, run_label: str, input: Any
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
     ) -> AbstractContextManager[Observation]:
         cm: AbstractContextManager[Observation] = self.client.start_as_current_observation(
             trace_context={"trace_id": trace_id_for(run_label, receipt_id)},
-            name="validate-receipt",
+            name=name,
             as_type="span",
             input=input,
             metadata={"receipt_id": receipt_id, "run_label": run_label},
@@ -179,9 +180,9 @@ class GuardedTracer:
                 self.fail(exc)
 
     def receipt_trace(
-        self, receipt_id: str, run_label: str, input: Any
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
     ) -> AbstractContextManager[Observation]:
-        return self._guard(lambda: self._inner.receipt_trace(receipt_id, run_label, input))
+        return self._guard(lambda: self._inner.receipt_trace(receipt_id, run_label, input, name))
 
     def span(self, name: str, input: Any = None) -> AbstractContextManager[Observation]:
         return self._guard(lambda: self._inner.span(name, input))

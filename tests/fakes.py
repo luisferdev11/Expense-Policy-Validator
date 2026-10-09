@@ -35,8 +35,10 @@ class RecordingTracer:
         self.observations.append(obs)
         yield obs
 
-    def receipt_trace(self, receipt_id: str, run_label: str, input: Any) -> Any:
-        return self._record("trace", "validate-receipt", receipt_id=receipt_id, input=input)
+    def receipt_trace(
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
+    ) -> Any:
+        return self._record("trace", name, receipt_id=receipt_id, input=input)
 
     def span(self, name: str, input: Any = None) -> Any:
         return self._record("span", name, input=input)

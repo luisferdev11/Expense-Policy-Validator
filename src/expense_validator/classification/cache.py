@@ -52,6 +52,11 @@ class ClassificationCache:
     def total_cost_usd(self) -> float:
         return sum(e.cost_usd or 0.0 for e in self._rows.values())
 
+    @property
+    def dirty(self) -> bool:
+        """True when entries were added since the file was read or last saved."""
+        return self._dirty
+
     def __len__(self) -> int:
         return len(self._rows)
 

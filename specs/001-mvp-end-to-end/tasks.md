@@ -161,19 +161,19 @@ RCP-026) pass as engine tests.
 - [X] T034 [US1] Implement `src/expense_validator/retriever.py` with the trigger-map structure (research R10), holding only these two triggers for now
 - [X] T035 [P] [US1] Write `tests/unit/test_reporter.py`. A TECH-02 finding gets an explanation naming the rule, the line and `unit_price_usd` against `cap_usd`. The reporter adds no claim missing from `computed` [FR-022]
 - [X] T036 [US1] Implement `src/expense_validator/reporter.py`: pure templates keyed by `rule_id`, filling `explanation` and building `ReceiptResult` with `RunMetadata`, where `exc03_threshold_status` is `"provisional"` [FR-022, FR-024]
-- [ ] T037 [US1] Implement `src/expense_validator/pipeline.py`: load, normalise, classify (cache first), `build_context` (an empty stub for now), then retrieve, evaluate and report for each receipt in `receipt_id` order, then write canonical `outputs/results.jsonl` (research R9). Wrap every stage in the tracer spans named in `contracts/tracing.md` [FR-023, FR-026]
-- [ ] T038 [US1] Implement `src/expense_validator/results.py` (read-only `load_results(path)` and `load_comparison(path)`) and `src/expense_validator/cli.py` (FR-035), as `contracts/cli.md` describes:
+- [X] T037 [US1] Implement `src/expense_validator/pipeline.py`: load, normalise, classify (cache first), `build_context` (an empty stub for now), then retrieve, evaluate and report for each receipt in `receipt_id` order, then write canonical `outputs/results.jsonl` (research R9). Wrap every stage in the tracer spans named in `contracts/tracing.md` [FR-023, FR-026]
+- [X] T038 [US1] Implement `src/expense_validator/results.py` (read-only `load_results(path)` and `load_comparison(path)`) and `src/expense_validator/cli.py` (FR-035), as `contracts/cli.md` describes:
   - `epv run [--classifier] [--offline] [--no-trace] [--only RECEIPT_ID ...]`;
   - `epv eval`, which imports `eval` lazily inside its subcommand function only (analysis I2);
   - `epv view`.
 
   `--only` is a development option. With it, `epv run` writes to `outputs/dev/results.jsonl`, never to `outputs/results.jsonl`, and still writes cache rows. The stderr summary shows receipts, calls, cache hits, billed USD and tracer state
 - [ ] T039 [US1] Thin-path cold run, with Langfuse up: `uv run epv run --only RCP-006 RCP-026` (the development option in `contracts/cli.md`, analysis U1). First confirm that `sync_prompt` pushed `classify-item-chat`/`cls-v2`. Then confirm that every `classify-item` generation of this run links that prompt (constitution X, analysis C1). Commit the resulting cache rows. Record the spend in the commit message
-- [ ] T040 [P] [US3] Write `tests/unit/test_eval_compare_thin.py` with synthetic predictions and answers built in the test, never read from the data. It checks the 3×3 disposition matrix and the exclusion of the four out-of-scope receipts listed in `eval/scope.py`
-- [ ] T041 [US3] Implement `eval/answers.py` (the only reader of answer fields), `eval/scope.py`, `eval/compare.py` (disposition only for now), and `eval/report.py`, which writes `outputs/eval/comparison.jsonl`, `outputs/eval/metrics.json` (`{value, n}`) and `outputs/eval/report.md` [FR-029]
-- [ ] T042 [US4] Implement the list view of `viewer/app.py`: each receipt's predicted against answer disposition, with mismatches highlighted. It reads through `expense_validator.results` only [FR-034]
-- [ ] T043 [P] [US4] Write `tests/smoke/test_viewer.py` with Streamlit's `AppTest`: the app loads offline from the committed outputs without errors
-- [ ] T044 [US1] Write `tests/integration/test_thin_path.py`. It runs `epv run --offline`, then `epv eval`, on the committed cache, checks that the output exists and that a second run is byte-identical, and confirms the tracer falls back to no-op without keys [SC-003, SC-007]
+- [X] T040 [P] [US3] Write `tests/unit/test_eval_compare_thin.py` with synthetic predictions and answers built in the test, never read from the data. It checks the 3×3 disposition matrix and the exclusion of the four out-of-scope receipts listed in `eval/scope.py`
+- [X] T041 [US3] Implement `eval/answers.py` (the only reader of answer fields), `eval/scope.py`, `eval/compare.py` (disposition only for now), and `eval/report.py`, which writes `outputs/eval/comparison.jsonl`, `outputs/eval/metrics.json` (`{value, n}`) and `outputs/eval/report.md` [FR-029]
+- [X] T042 [US4] Implement the list view of `viewer/app.py`: each receipt's predicted against answer disposition, with mismatches highlighted. It reads through `expense_validator.results` only [FR-034]
+- [X] T043 [P] [US4] Write `tests/smoke/test_viewer.py` with Streamlit's `AppTest`: the app loads offline from the committed outputs without errors
+- [X] T044 [US1] Write `tests/integration/test_thin_path.py`. It runs `epv run --offline`, then `epv eval`, on the committed cache, checks that the output exists and that a second run is byte-identical, and confirms the tracer falls back to no-op without keys [SC-003, SC-007]
 
 **Checkpoint (thin path)**: run, eval and view work end to end. Commit and push. The pipeline
 now has its full shape; every phase after this only widens it.

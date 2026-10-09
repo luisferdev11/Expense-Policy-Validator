@@ -48,7 +48,9 @@ class _Exploding:
     enabled = True
 
     @contextmanager
-    def receipt_trace(self, receipt_id: str, run_label: str, input: Any) -> Iterator[Observation]:
+    def receipt_trace(
+        self, receipt_id: str, run_label: str, input: Any, name: str = "validate-receipt"
+    ) -> Iterator[Observation]:
         raise RuntimeError("server gone")
         yield  # pragma: no cover
 

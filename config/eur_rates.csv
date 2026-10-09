@@ -1,0 +1,2 @@
+# source: none yet; candidate ECB euro reference rates (daily mid), not verified for this project (decision A1). Rows: the USD value of one euro on a date. A missing date sends the receipt to review, never pass.
+date,eur_to_usd

@@ -1,22 +1,24 @@
-"""Budget guard, router, cache and raw-response store for every API model call in this run.
+"""Spend guard, cache, call log and raw-response store for every model call (OpenRouter only).
 
-Rules it enforces (the exploration budget rules):
+The case provides one OpenRouter key with a firm USD 5 budget, and the brief asks for model calls
+through it. Every exploration call goes through this module:
 
-- Hard cap $0.50 across the direct providers (Groq, DeepInfra, Gemini, decision APIs); refuses a
-  call once their total spend is $0.45 or more, or once they have made 900 billable calls (the
-  overnight exploration budget).
-- OpenRouter has its own cap, because its key is the case's model budget ($5, firm): exploration
-  may spend at most $1.00 of it (measured from GET /api/v1/key against a baseline, and from the
-  cost each response reports), leaving the rest for the deliverable's runs. Every OpenRouter call
-  is pinned to one provider endpoint with no fallbacks (OPENROUTER_PIN) and records which
-  provider served it.
-- DeepInfra spend is measured from its usage API (baseline at start, delta later). Groq and
-  Gemini spend is estimated from logged tokens times published prices, rounded up per call.
-  The refusal check uses the larger of measured and estimated spend for DeepInfra.
-- Every call appends to budget_log.jsonl and saves the raw response body under
-  raw/<provider>/<request_id>.json. Responses are cached on disk keyed by provider, model,
-  prompt version and normalized input; a cached result keeps the request_id that produced it.
-- Keys are loaded with python-dotenv and never printed, logged or written anywhere.
+- **Cap.** Exploration may spend at most USD 1.00 of the key. Spend is the larger of the cost
+  each response reports (`usage.cost`) and the key's measured usage (GET /api/v1/key) against a
+  baseline taken before the first call. A call is refused at the cap or after 3,000 calls.
+- **Reproducibility.** Temperature 0. Chat models are pinned to one provider endpoint with no
+  fallbacks (`research/openrouter_pins.json`, chosen by `scripts/pin_models.py`); an unpinned
+  chat model is refused. Prices come from a dated snapshot of the OpenRouter catalogue
+  (`research/openrouter_models.json`).
+- **Cache.** Responses are cached on disk keyed by model, prompt version and normalised input;
+  a cached result keeps the request id that produced it, so re-running costs nothing.
+- **Evidence.** Every billed call appends a row to `results/budget_log.jsonl` and saves its raw
+  body under `raw/openrouter/<request_id>.json`. Keys come from `.env` and are never printed.
+
+Two kinds of call:
+- `call`: chat completions with a strict JSON schema (generative models).
+- `call_decision`: POST /api/alpha/decisions (decision models that return a choice and a
+  probability distribution instead of text).
 """
 
 from __future__ import annotations
@@ -43,71 +45,41 @@ load_dotenv(REPO / ".env")
 LOG = EXP / "results" / "budget_log.jsonl"
 ERRORS = EXP / "results" / "budget_errors.jsonl"
 STATE = EXP / "results" / "budget_state.json"
+MODELS_SNAPSHOT = EXP / "research" / "openrouter_models.json"
+PINS = EXP / "research" / "openrouter_pins.json"
 RAW = EXP / "raw"
 CACHE = EXP / "cache"
 
-SPEND_REFUSE_USD = 0.45
-MAX_CALLS = 900
-MAX_RATE_LIMIT_RETRIES_TOTAL = 400
-USER_AGENT = "expense-policy-validator-exploration/0.1"
+BASE_URL = "https://openrouter.ai/api/v1"
+DECISIONS_URL = "https://openrouter.ai/api/alpha/decisions"
+KEY_ENV = "OPENROUTER_API_KEY"
+PROVIDER = "openrouter"
+REFUSE_USD = 1.00
+MAX_CALLS = 3000
+MAX_RETRIES = 8
+USER_AGENT = "expense-policy-validator-exploration/0.2"
 
-PROVIDERS: dict[str, dict[str, str]] = {
-    "groq": {"base_url": "https://api.groq.com/openai/v1", "key": "GROQ_API_KEY"},
-    "deepinfra": {"base_url": "https://api.deepinfra.com/v1/openai", "key": "DEEPINFRA_API_KEY"},
-    "gemini": {
-        "base_url": "https://generativelanguage.googleapis.com/v1beta/openai/",
-        "key": "GEMINI_API_KEY",
-    },
-    "openrouter": {"base_url": "https://openrouter.ai/api/v1", "key": "OPENROUTER_API_KEY"},
-}
-
-OPENROUTER_REFUSE_USD = 1.00
-OPENROUTER_MAX_CALLS = 3000
-# Pin one endpoint: DeepInfra bf16, the cheapest gpt-oss host with structured outputs
-# (https://openrouter.ai/api/v1/models/openai/gpt-oss-120b/endpoints, fetched 2026-10-08).
-# No fallbacks, only endpoints that honour every parameter, no providers that store data.
-OPENROUTER_PIN: dict[str, Any] = {
-    "order": ["deepinfra/bf16"],
+# Pins every chat call to one endpoint: no fallbacks, only endpoints that honour every parameter,
+# no providers that may store data. The endpoint tag per model is in research/openrouter_pins.json.
+PIN_DEFAULTS: dict[str, Any] = {
     "allow_fallbacks": False,
     "require_parameters": True,
     "data_collection": "deny",
 }
-
-# USD per million tokens (input, output). Groq figures checked by Luis on 2026-10-07 and
-# re-verified in package 5; the rest are filled from package 5 research before any call.
-# A model missing here cannot be called.
-PRICES: dict[tuple[str, str], tuple[float, float]] = {
-    ("groq", "openai/gpt-oss-120b"): (0.15, 0.60),
-    ("groq", "openai/gpt-oss-20b"): (0.075, 0.30),
-    # DeepInfra model pages and https://deepinfra.com/pricing, fetched 2026-10-07 (research/notes/providers.md).
-    ("deepinfra", "openai/gpt-oss-120b"): (0.037, 0.17),
-    ("deepinfra", "openai/gpt-oss-20b"): (0.03, 0.14),
-    ("deepinfra", "ibm-granite/granite-4.2-8b"): (0.06, 0.25),
-    ("deepinfra", "Qwen/Qwen3.5-9B"): (0.10, 0.15),
-    ("deepinfra", "google/gemma-3-12b-it"): (0.05, 0.15),
-    # jev launch post, https://typesafe.ai/blog/introducing-system-one-models-and-jev (fetched
-    # 2026-10-07): "$0.042 / MTok" input, output "FREE". Usage reporting not yet verified.
-    ("typesafe", "jev-latest"): (0.042, 0.0),
-    # OpenRouter, endpoint deepinfra/bf16, from the endpoints API fetched 2026-10-08:
-    # 120b prompt 0.000000037 / completion 0.00000017 per token; 20b 0.00000003 / 0.00000014.
-    ("openrouter", "openai/gpt-oss-120b"): (0.037, 0.17),
-    ("openrouter", "openai/gpt-oss-20b"): (0.03, 0.14),
-    # No price is recorded for OpenAI Decisions or OpenRouter decisions yet, so budget.py refuses
-    # those calls until one is added from an official page.
-}
+# The gpt-oss pin used since 2026-10-08 (DeepInfra bf16), kept so earlier cached runs stay valid.
+LEGACY_PINS = {"openai/gpt-oss-120b": "deepinfra/bf16", "openai/gpt-oss-20b": "deepinfra/bf16"}
 
 
-def _keys() -> list[str]:
-    return [v for v in (os.getenv(p["key"]) for p in PROVIDERS.values()) if v] + [
-        v for v in [os.getenv("OPENROUTER_API_KEY")] if v
-    ]
+def _key() -> str:
+    return os.environ[KEY_ENV]
 
 
 def scrub(text: str) -> str:
-    """Remove any key value from a string before it is logged or printed."""
-    for k in _keys():
+    """Remove the key from a string before it is logged or printed."""
+    k = os.getenv(KEY_ENV)
+    if k:
         text = text.replace(k, "***")
-    return re.sub(r"\b(sk|gsk)-[A-Za-z0-9_\-]{20,}", "***", text)
+    return re.sub(r"\bsk-or-[A-Za-z0-9_\-]{20,}", "***", text)
 
 
 def now() -> str:
@@ -133,35 +105,41 @@ def _append(path: Path, row: dict[str, Any]) -> None:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
-# ------------------------------------------------------------------ DeepInfra measured spend
+# ------------------------------------------------------------------ prices and pins
 
 
-def deepinfra_usage_usd() -> float:
-    """Total DeepInfra spend this month in USD, from GET /payment/usage (rate is in cents)."""
-    key = os.environ["DEEPINFRA_API_KEY"]
+def prices() -> dict[str, tuple[float, float]]:
+    """USD per million tokens (input, output) from the catalogue snapshot."""
+    if not MODELS_SNAPSHOT.exists():
+        return {"openai/gpt-oss-120b": (0.037, 0.17), "openai/gpt-oss-20b": (0.03, 0.14)}
+    snap = json.loads(MODELS_SNAPSHOT.read_text())
+    return {
+        m: (float(v["prompt_usd_per_m"]), float(v["completion_usd_per_m"]))
+        for m, v in snap["models"].items()
+    }
+
+
+def pin_for(model: str) -> str | None:
+    pins = json.loads(PINS.read_text()) if PINS.exists() else {}
+    if model in pins:
+        return str(pins[model]["endpoint"])
+    return LEGACY_PINS.get(model)
+
+
+def estimated_cost(model: str, prompt_tokens: int, completion_tokens: int) -> float:
+    pin, pout = prices().get(model, (0.0, 0.0))
+    raw = (prompt_tokens * pin + completion_tokens * pout) / 1_000_000
+    return math.ceil(raw * 1e6) / 1e6  # round up to the micro-dollar
+
+
+# ------------------------------------------------------------------ spend
+
+
+def key_info() -> dict[str, Any]:
+    """Usage and limit of the key (GET /api/v1/key); account identifiers are dropped."""
     resp = requests.get(
-        "https://api.deepinfra.com/payment/usage",
-        params={"from": "2026.10"},
-        headers={"Authorization": f"Bearer {key}", "User-Agent": USER_AGENT},
-        timeout=30,
-    )
-    resp.raise_for_status()
-    data = resp.json()
-    cents = 0.0
-    for month in data.get("months", []):
-        for item in month.get("items", []):
-            cents += float(item.get("units", 0)) * float(item.get("rate", 0))
-    return cents / 100
-
-
-def openrouter_key_info() -> dict[str, Any]:
-    """Usage and limit of the OpenRouter key (GET /api/v1/key); account ids are dropped."""
-    resp = requests.get(
-        "https://openrouter.ai/api/v1/key",
-        headers={
-            "Authorization": f"Bearer {os.environ['OPENROUTER_API_KEY']}",
-            "User-Agent": USER_AGENT,
-        },
+        f"{BASE_URL}/key",
+        headers={"Authorization": f"Bearer {_key()}", "User-Agent": USER_AGENT},
         timeout=30,
     )
     resp.raise_for_status()
@@ -169,11 +147,15 @@ def openrouter_key_info() -> dict[str, Any]:
     return {k: d.get(k) for k in ("limit", "limit_remaining", "usage", "usage_daily", "expires_at")}
 
 
-def openrouter_baseline() -> float:
-    """Record the key's usage once, before the first OpenRouter call of this exploration."""
+def state() -> dict[str, Any]:
+    return json.loads(STATE.read_text()) if STATE.exists() else {}
+
+
+def baseline() -> float:
+    """Record the key's usage once, before the first OpenRouter call of the exploration."""
     st = state()
     if st.get("openrouter_baseline_usd") is None:
-        info = openrouter_key_info()
+        info = key_info()
         st["openrouter_baseline_usd"] = float(info["usage"])
         st["openrouter_baseline_at"] = now()
         st["openrouter_key_limit_usd"] = info["limit"]
@@ -181,99 +163,123 @@ def openrouter_baseline() -> float:
     return float(st["openrouter_baseline_usd"])
 
 
-def state() -> dict[str, Any]:
-    return json.loads(STATE.read_text()) if STATE.exists() else {}
-
-
-def start(force: bool = False) -> dict[str, Any]:
-    """Record the run start and the DeepInfra baseline once."""
-    st = state()
-    if st and not force:
-        return st
-    st = {"started_at": now()}
-    try:
-        st["deepinfra_baseline_usd"] = deepinfra_usage_usd()
-        st["deepinfra_usage_api"] = "ok"
-    except Exception as exc:
-        st["deepinfra_baseline_usd"] = None
-        st["deepinfra_usage_api"] = scrub(f"{type(exc).__name__}: {exc}")[:500]
-    STATE.write_text(json.dumps(st, indent=2))
-    return st
-
-
-def estimated_cost(provider: str, model: str, prompt_tokens: int, completion_tokens: int) -> float:
-    pin, pout = PRICES[(provider, model)]
-    raw = (prompt_tokens * pin + completion_tokens * pout) / 1_000_000
-    return math.ceil(raw * 1e6) / 1e6  # round up to the micro-dollar
-
-
-def spend_report(
-    measure_deepinfra: bool = True, measure_openrouter: bool = False
-) -> dict[str, Any]:
-    rows = [r for r in _read_jsonl(LOG) if not r.get("cached")]
-    or_rows = [r for r in rows if r["provider"] == "openrouter"]
-    rows = [r for r in rows if r["provider"] != "openrouter"]
-    or_reported = sum(
-        float(r.get("cost_usd_reported") or r.get("cost_usd_est") or 0) for r in or_rows
-    )
-    est: dict[str, float] = {}
+def spend_report(measure: bool = False) -> dict[str, Any]:
+    """OpenRouter spend of the exploration. Rows from the earlier multi-provider run (Groq,
+    DeepInfra) stay in the log as history but do not count against this key."""
+    rows = [r for r in _read_jsonl(LOG) if not r.get("cached") and r["provider"] == PROVIDER]
+    reported = sum(float(r.get("cost_usd_reported") or r.get("cost_usd_est") or 0) for r in rows)
     calls: dict[str, int] = {}
     for r in rows:
-        est[r["provider"]] = est.get(r["provider"], 0.0) + float(r.get("cost_usd_est", 0.0))
-        k = f"{r['provider']}:{r['model']}"
-        calls[k] = calls.get(k, 0) + 1
-    out: dict[str, Any] = {
-        "estimated_usd": {k: round(v, 6) for k, v in est.items()},
-        "calls": calls,
-        "total_calls": len(rows),
-    }
-    di_measured = None
+        calls[r["model"]] = calls.get(r["model"], 0) + 1
+    measured = None
     st = state()
-    if measure_deepinfra and st.get("deepinfra_baseline_usd") is not None:
+    if measure and st.get("openrouter_baseline_usd") is not None:
         try:
-            di_measured = deepinfra_usage_usd() - float(st["deepinfra_baseline_usd"])
-        except Exception as exc:
-            out["deepinfra_measure_error"] = scrub(str(exc))[:300]
-    out["deepinfra_measured_usd"] = None if di_measured is None else round(di_measured, 6)
-    di = max(est.get("deepinfra", 0.0), di_measured or 0.0)
-    out["total_for_cap_usd"] = round(sum(v for k, v in est.items() if k != "deepinfra") + di, 6)
-    or_measured = None
-    if measure_openrouter and st.get("openrouter_baseline_usd") is not None:
-        try:
-            or_measured = float(openrouter_key_info()["usage"]) - float(
-                st["openrouter_baseline_usd"]
-            )
-        except Exception as exc:
-            out["openrouter_measure_error"] = scrub(str(exc))[:300]
-    out["openrouter"] = {
-        "calls": len(or_rows),
-        "reported_usd": round(or_reported, 6),
-        "measured_usd": None if or_measured is None else round(or_measured, 6),
-        "for_cap_usd": round(max(or_reported, or_measured or 0.0), 6),
+            measured = float(key_info()["usage"]) - float(st["openrouter_baseline_usd"])
+        except Exception:
+            measured = None
+    return {
+        "calls": len(rows),
+        "calls_by_model": calls,
+        "reported_usd": round(reported, 6),
+        "measured_usd": None if measured is None else round(measured, 6),
+        "for_cap_usd": round(max(reported, measured or 0.0), 6),
     }
-    return out
 
 
-# ------------------------------------------------------------------ calls
+def _guard() -> None:
+    baseline()
+    rep = spend_report(measure=True)
+    if rep["for_cap_usd"] >= REFUSE_USD:
+        raise RuntimeError(f"budget refused: OpenRouter spend ${rep['for_cap_usd']:.4f}")
+    if rep["calls"] >= MAX_CALLS:
+        raise RuntimeError(f"budget refused: {rep['calls']} OpenRouter calls")
 
 
-def cache_key(provider: str, model: str, prompt_version: str, cache_input: str) -> str:
-    raw = "\x1f".join([provider, model, prompt_version, normalize(cache_input)])
+# ------------------------------------------------------------------ cache
+
+
+def cache_key(model: str, prompt_version: str, cache_input: str) -> str:
+    raw = "\x1f".join([PROVIDER, model, prompt_version, normalize(cache_input)])
     return hashlib.sha256(raw.encode()).hexdigest()
 
 
-def _client(provider: str) -> OpenAI:
-    cfg = PROVIDERS[provider]
-    return OpenAI(
-        base_url=cfg["base_url"],
-        api_key=os.environ[cfg["key"]],
-        max_retries=0,
-        timeout=120,
-        default_headers={"User-Agent": USER_AGENT},
+def _cache_get(key: str) -> dict[str, Any] | None:
+    cpath = CACHE / PROVIDER / f"{key}.json"
+    if cpath.exists():
+        hit = json.loads(cpath.read_text())
+        hit["cached"] = True
+        return hit
+    return None
+
+
+def _cache_put(key: str, result: dict[str, Any]) -> None:
+    cpath = CACHE / PROVIDER / f"{key}.json"
+    cpath.parent.mkdir(parents=True, exist_ok=True)
+    cpath.write_text(json.dumps(result, ensure_ascii=False))
+
+
+def _record(
+    request_id: str,
+    model: str,
+    body_text: str,
+    pt: int,
+    ct: int,
+    latency: float,
+    prompt_version: str,
+    purpose: str,
+    served_by: str | None,
+    cost_reported: float | None,
+    kind: str,
+) -> str:
+    (RAW / PROVIDER).mkdir(parents=True, exist_ok=True)
+    (RAW / PROVIDER / f"{safe_id(request_id)}.json").write_text(scrub(body_text))
+    ts = now()
+    _append(
+        LOG,
+        {
+            "request_id": request_id,
+            "provider": PROVIDER,
+            "model": model,
+            "kind": kind,
+            "prompt_tokens": pt,
+            "completion_tokens": ct,
+            "latency_s": round(latency, 3),
+            "timestamp": ts,
+            "cost_usd_est": estimated_cost(model, pt, ct),
+            "cost_usd_reported": cost_reported,
+            "served_by": served_by,
+            "prompt_version": prompt_version,
+            "purpose": purpose,
+            "cached": False,
+        },
+    )
+    return ts
+
+
+def _error(model: str, status: int | None, body: str, attempt: int, purpose: str) -> None:
+    _append(
+        ERRORS,
+        {
+            "timestamp": now(),
+            "provider": PROVIDER,
+            "model": model,
+            "status": status,
+            "attempt": attempt,
+            "purpose": purpose,
+            "body": scrub(body)[:800],
+        },
     )
 
 
-_retries_used = 0
+def _wait(attempt: int, retry_after: str | None) -> None:
+    wait = (
+        float(retry_after) if retry_after and re.fullmatch(r"[\d.]+", retry_after) else 2.0**attempt
+    )
+    time.sleep(min(max(wait, 1.0), 120.0))
+
+
+# ------------------------------------------------------------------ chat models
 
 
 def call(
@@ -284,60 +290,46 @@ def call(
     prompt_version: str,
     cache_input: str,
     response_format: dict[str, Any] | None = None,
-    max_tokens: int = 600,
+    max_tokens: int = 1024,
     reasoning_effort: str | None = "low",
     extra_body: dict[str, Any] | None = None,
     purpose: str = "",
 ) -> dict[str, Any]:
-    """Make (or reuse from cache) one chat completion. Returns a dict with request_id, content,
-    usage, latency_s and cached. Raises RuntimeError when the budget refuses the call."""
-    global _retries_used
-    if (provider, model) not in PRICES:
-        raise RuntimeError(f"no price recorded for {provider}:{model}; refusing")
-    key = cache_key(provider, model, prompt_version, cache_input)
-    cpath = CACHE / provider / f"{key}.json"
-    if cpath.exists():
-        hit = json.loads(cpath.read_text())
-        hit["cached"] = True
+    """One chat completion through OpenRouter, pinned to the model's endpoint (or the cache).
+    `provider` must be "openrouter"; it is kept in the signature for the earlier scripts."""
+    if provider != PROVIDER:
+        raise RuntimeError(f"only OpenRouter is used now, not {provider!r}")
+    key = cache_key(model, prompt_version, cache_input)
+    hit = _cache_get(key)
+    if hit:
         return hit
-
-    if provider == "openrouter":
-        openrouter_baseline()
-        rep = spend_report(measure_deepinfra=False, measure_openrouter=True)["openrouter"]
-        if rep["for_cap_usd"] >= OPENROUTER_REFUSE_USD:
-            raise RuntimeError(f"budget refused: OpenRouter spend ${rep['for_cap_usd']:.4f}")
-        if rep["calls"] >= OPENROUTER_MAX_CALLS:
-            raise RuntimeError(f"budget refused: {rep['calls']} OpenRouter calls")
-        extra_body = {**(extra_body or {}), "provider": OPENROUTER_PIN}
-        if reasoning_effort is not None:
-            extra_body["reasoning"] = {"effort": reasoning_effort}
-            reasoning_effort = None
-    else:
-        rep = spend_report(measure_deepinfra=(provider == "deepinfra"))
-        if rep["total_for_cap_usd"] >= SPEND_REFUSE_USD:
-            raise RuntimeError(
-                f"budget refused: spend ${rep['total_for_cap_usd']:.4f} >= ${SPEND_REFUSE_USD}"
-            )
-        if rep["total_calls"] >= MAX_CALLS:
-            raise RuntimeError(f"budget refused: {rep['total_calls']} calls >= {MAX_CALLS}")
-
+    endpoint = pin_for(model)
+    if endpoint is None:
+        raise RuntimeError(f"{model} has no pinned endpoint; run scripts/pin_models.py first")
+    _guard()
+    body: dict[str, Any] = {
+        **(extra_body or {}),
+        "provider": {**PIN_DEFAULTS, "order": [endpoint]},
+    }
+    if reasoning_effort is not None:
+        body["reasoning"] = {"effort": reasoning_effort}
     kwargs: dict[str, Any] = {
         "model": model,
         "messages": messages,
         "temperature": 0,
         "max_tokens": max_tokens,
+        "extra_body": body,
     }
     if response_format is not None:
         kwargs["response_format"] = response_format
-    if reasoning_effort is not None:
-        kwargs["reasoning_effort"] = reasoning_effort
-    if extra_body:
-        kwargs["extra_body"] = extra_body
-
-    client = _client(provider)
-    attempt = 0
-    while True:
-        attempt += 1
+    client = OpenAI(
+        base_url=BASE_URL,
+        api_key=_key(),
+        max_retries=0,
+        timeout=120,
+        default_headers={"User-Agent": USER_AGENT},
+    )
+    for attempt in range(1, MAX_RETRIES + 1):
         t0 = time.monotonic()
         try:
             raw = client.chat.completions.with_raw_response.create(**kwargs)
@@ -346,182 +338,123 @@ def call(
             completion = raw.parse()
             break
         except APIStatusError as exc:
-            latency = time.monotonic() - t0
-            status = exc.status_code
-            err = {
-                "timestamp": now(),
-                "provider": provider,
-                "model": model,
-                "status": status,
-                "attempt": attempt,
-                "purpose": purpose,
-                "body": scrub(str(exc.body))[:800],
-            }
-            _append(ERRORS, err)
-            if (
-                status in (429, 503)
-                and _retries_used < MAX_RATE_LIMIT_RETRIES_TOTAL
-                and attempt <= 8
-            ):
-                _retries_used += 1
-                retry_after = exc.response.headers.get("retry-after")
-                wait = (
-                    float(retry_after)
-                    if retry_after and re.fullmatch(r"[\d.]+", retry_after)
-                    else 2.0**attempt
-                )
-                time.sleep(min(max(wait, 1.0), 900.0))
+            _error(model, exc.status_code, str(exc.body), attempt, purpose)
+            if exc.status_code in (429, 502, 503) and attempt < MAX_RETRIES:
+                _wait(attempt, exc.response.headers.get("retry-after"))
                 continue
             raise RuntimeError(
-                scrub(f"{provider}:{model} HTTP {status}: {str(exc.body)[:300]}")
+                scrub(f"{model} HTTP {exc.status_code}: {str(exc.body)[:300]}")
             ) from None
-
     request_id = completion.id or f"noid-{key[:16]}"
     usage = completion.usage
     pt = int(getattr(usage, "prompt_tokens", 0) or 0)
     ct = int(getattr(usage, "completion_tokens", 0) or 0)
-    (RAW / provider).mkdir(parents=True, exist_ok=True)
-    (RAW / provider / f"{safe_id(request_id)}.json").write_text(scrub(body_text))
-    content = completion.choices[0].message.content if completion.choices else None
     try:
         body_json = json.loads(body_text)
     except json.JSONDecodeError:
         body_json = {}
-    served_by = body_json.get("provider")  # OpenRouter names the provider that served the call
-    cost_reported = (body_json.get("usage") or {}).get("cost")
-    row = {
-        "request_id": request_id,
-        "provider": provider,
-        "model": model,
-        "prompt_tokens": pt,
-        "completion_tokens": ct,
-        "latency_s": round(latency, 3),
-        "timestamp": now(),
-        "cost_usd_est": estimated_cost(provider, model, pt, ct),
-        "prompt_version": prompt_version,
-        "purpose": purpose,
-        "cached": False,
-        "ratelimit_remaining_requests": raw.http_response.headers.get(
-            "x-ratelimit-remaining-requests"
-        ),
-        "ratelimit_remaining_tokens": raw.http_response.headers.get("x-ratelimit-remaining-tokens"),
-        "served_by": served_by,
-        "cost_usd_reported": cost_reported,
-    }
-    _append(LOG, row)
+    served_by = body_json.get("provider")
+    cost = (body_json.get("usage") or {}).get("cost")
+    ts = _record(
+        request_id,
+        model,
+        body_text,
+        pt,
+        ct,
+        latency,
+        prompt_version,
+        purpose,
+        served_by,
+        cost,
+        "chat",
+    )
     result = {
         "request_id": request_id,
-        "provider": provider,
+        "provider": PROVIDER,
         "model": model,
-        "content": content,
+        "content": completion.choices[0].message.content if completion.choices else None,
         "finish_reason": completion.choices[0].finish_reason if completion.choices else None,
         "prompt_tokens": pt,
         "completion_tokens": ct,
         "latency_s": round(latency, 3),
         "prompt_version": prompt_version,
-        "timestamp": row["timestamp"],
+        "timestamp": ts,
         "served_by": served_by,
+        "cost_usd": cost,
     }
-    cpath.parent.mkdir(parents=True, exist_ok=True)
-    cpath.write_text(json.dumps(result, ensure_ascii=False))
-    result["cached"] = False
-    return result
+    _cache_put(key, result)
+    return {**result, "cached": False}
 
 
-def call_http(
-    provider: str,
+# ------------------------------------------------------------------ decision models
+
+
+def call_decision(
     model: str,
-    url: str,
     payload: dict[str, Any],
     *,
-    key_env: str,
     prompt_version: str,
     cache_input: str,
     purpose: str = "",
-    timeout_s: float = 120.0,
 ) -> dict[str, Any]:
-    """Like `call`, for non-chat JSON APIs (decision models such as jev). Same guard, cache, raw
-    body store and log. Returns the parsed response body under `body`. Token counts are read from
-    `body.usage` when present (prompt/input and completion/output keys); unknown counts are 0, so
-    register a price in PRICES only when the provider documents how usage is reported."""
-    if (provider, model) not in PRICES:
-        raise RuntimeError(f"no price recorded for {provider}:{model}; refusing")
-    key = cache_key(provider, model, prompt_version, cache_input)
-    cpath = CACHE / provider / f"{key}.json"
-    if cpath.exists():
-        hit = json.loads(cpath.read_text())
-        hit["cached"] = True
+    """One request to POST /api/alpha/decisions (or the cache). Returns the parsed body under
+    `body`. Decision models are billed on input tokens; `usage.cost` is recorded."""
+    key = cache_key(model, prompt_version, cache_input)
+    hit = _cache_get(key)
+    if hit:
         return hit
-    rep = spend_report(measure_deepinfra=False)
-    if rep["total_for_cap_usd"] >= SPEND_REFUSE_USD or rep["total_calls"] >= MAX_CALLS:
-        raise RuntimeError(
-            f"budget refused: {rep['total_for_cap_usd']:.4f} USD, {rep['total_calls']} calls"
+    _guard()
+    for attempt in range(1, MAX_RETRIES + 1):
+        t0 = time.monotonic()
+        resp = requests.post(
+            DECISIONS_URL,
+            json={"model": model, **payload},
+            headers={"Authorization": f"Bearer {_key()}", "User-Agent": USER_AGENT},
+            timeout=120,
         )
-    api_key = os.environ.get(key_env)
-    if not api_key:
-        raise RuntimeError(f"{key_env} is not set; add it to .env to enable {provider}")
-    t0 = time.monotonic()
-    resp = requests.post(
-        url,
-        json=payload,
-        timeout=timeout_s,
-        headers={"Authorization": f"Bearer {api_key}", "User-Agent": USER_AGENT},
-    )
-    latency = time.monotonic() - t0
-    if resp.status_code >= 400:
-        _append(
-            ERRORS,
-            {
-                "timestamp": now(),
-                "provider": provider,
-                "model": model,
-                "status": resp.status_code,
-                "attempt": 1,
-                "purpose": purpose,
-                "body": scrub(resp.text)[:800],
-            },
-        )
-        raise RuntimeError(scrub(f"{provider}:{model} HTTP {resp.status_code}: {resp.text[:300]}"))
+        latency = time.monotonic() - t0
+        if resp.status_code < 400:
+            break
+        _error(model, resp.status_code, resp.text, attempt, purpose)
+        if resp.status_code in (429, 502, 503) and attempt < MAX_RETRIES:
+            _wait(attempt, resp.headers.get("retry-after"))
+            continue
+        raise RuntimeError(scrub(f"{model} HTTP {resp.status_code}: {resp.text[:300]}"))
     body = resp.json()
     request_id = str(body.get("id") or resp.headers.get("x-request-id") or f"noid-{key[:16]}")
     usage = body.get("usage") or {}
-    pt = int(usage.get("prompt_tokens", usage.get("input_tokens", 0)) or 0)
-    ct = int(usage.get("completion_tokens", usage.get("output_tokens", 0)) or 0)
-    (RAW / provider).mkdir(parents=True, exist_ok=True)
-    (RAW / provider / f"{safe_id(request_id)}.json").write_text(scrub(resp.text))
-    _append(
-        LOG,
-        {
-            "request_id": request_id,
-            "provider": provider,
-            "model": model,
-            "prompt_tokens": pt,
-            "completion_tokens": ct,
-            "latency_s": round(latency, 3),
-            "timestamp": now(),
-            "cost_usd_est": estimated_cost(provider, model, pt, ct),
-            "prompt_version": prompt_version,
-            "purpose": purpose,
-            "cached": False,
-        },
+    pt = int(usage.get("input_tokens", usage.get("prompt_tokens", 0)) or 0)
+    ct = int(usage.get("output_tokens", usage.get("completion_tokens", 0)) or 0)
+    ts = _record(
+        request_id,
+        model,
+        resp.text,
+        pt,
+        ct,
+        latency,
+        prompt_version,
+        purpose,
+        body.get("provider"),
+        usage.get("cost"),
+        "decision",
     )
     result = {
         "request_id": request_id,
-        "provider": provider,
+        "provider": PROVIDER,
         "model": model,
+        "served_model": body.get("model"),
         "body": body,
         "prompt_tokens": pt,
         "completion_tokens": ct,
         "latency_s": round(latency, 3),
         "prompt_version": prompt_version,
-        "timestamp": now(),
+        "timestamp": ts,
+        "served_by": body.get("provider"),
+        "cost_usd": usage.get("cost"),
     }
-    cpath.parent.mkdir(parents=True, exist_ok=True)
-    cpath.write_text(json.dumps(result, ensure_ascii=False))
-    result["cached"] = False
-    return result
+    _cache_put(key, result)
+    return {**result, "cached": False}
 
 
 if __name__ == "__main__":
-    print(json.dumps(start(), indent=2))
-    print(json.dumps(spend_report(), indent=2))
+    print(json.dumps(spend_report(measure=True), indent=2))

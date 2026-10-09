@@ -114,6 +114,33 @@ assistant's memory so later sessions keep it.
 - `explorations/` was reorganised by type (`lib/`, `scripts/`, `notebooks/`, `dev_set/`, `policy/`, `results/`, `research/`) with an `INDEX.md`. Files were moved with `git mv`, and every data and results file is byte-identical.
 - The next session holds an architecture discussion before `/speckit-plan`: architecture options, TDD, and the modules and their interfaces. The outcome goes into ADR 0002.
 
+## 2026-10-08: OpenRouter only, decision models, Langfuse, a clearer study
+
+> The re-run command in the notebooks no longer works, so fix every path. I won't use the other
+> providers any more: I have the OpenRouter key and that is what they ask for, so we keep only
+> that. That affects the experimentation: run it again under this rule, try several models and
+> analyse the results, and update Langfuse (it is not running, so start it) so we have the new
+> picture. Remember the approach. I'd also like jev-1.13 and gpt-6-luna-decisions as candidates,
+> and to explore decision models in general (OpenRouter's decisions ranking). The normaliser needs
+> an LLM, but for the use cases where decision models can help, like classification, we should
+> explore them; eventually we will explore many options and must know how to decide. The
+> synthetic set looks good (I haven't finished reviewing it). I didn't understand the evaluation
+> study because you give the results directly. I liked the local model trial's approach, but it
+> is what changes now that we use only OpenRouter.
+
+Follow-up decisions:
+- **Langfuse:** the keys in `.env` belong to this case.
+- **Old runs:** archive them.
+- **Models:** 10 generative models (Haiku included as a normal candidate, despite the team's
+  earlier request not to use Anthropic models) and the top 5 decision models.
+- **Evaluation study:** rewrite it in a pedagogical form.
+
+**Outcome.** Three PRs:
+1. OpenRouter-only refactor, the multi-provider trial archived, and the re-run command fixed
+   (AI_NOTES 15).
+2. The new model trial with Langfuse.
+3. The rewritten evaluation study.
+
 ## Next: starter prompt for the Spec Kit session
 
 The first message of the next session, prepared here so the context carries over:

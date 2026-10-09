@@ -108,6 +108,4 @@ for model in MODELS:
         with out.open("a") as fh:
             fh.write(json.dumps(row) + "\n")
         print(json.dumps(row))
-print(
-    json.dumps(budget.spend_report(measure_deepinfra=False, measure_openrouter=True)["openrouter"])
-)
+print(json.dumps(budget.spend_report(measure=True)))

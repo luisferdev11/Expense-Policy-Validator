@@ -35,9 +35,10 @@ DEPS = [
 
 def rerun_command(name: str) -> str:
     withs = " ".join(f"--with {d}" for d in DEPS)
+    # Runs from any directory inside the repository: it resolves the root with git first.
     return (
-        f"uv run --no-project {withs} jupyter nbconvert --to notebook --execute --inplace "
-        f"explorations/notebooks/{name}.ipynb"
+        f'(cd "$(git rev-parse --show-toplevel)" && uv run --no-project {withs} '
+        f"jupyter nbconvert --to notebook --execute --inplace explorations/notebooks/{name}.ipynb)"
     )
 
 
@@ -45,7 +46,7 @@ def main(name: str) -> None:
     src = EXP / "notebooks" / "src" / f"{name}.py"
     nb = jupytext.read(src)
     header = nbformat.v4.new_markdown_cell(
-        "Re-run this notebook from the repository root with:\n\n"
+        "Re-run this notebook from anywhere inside the repository with:\n\n"
         f"```bash\n{rerun_command(name)}\n```"
     )
     nb.cells.insert(0, header)

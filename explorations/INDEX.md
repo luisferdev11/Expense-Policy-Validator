@@ -20,6 +20,7 @@ used other providers while the case's key was expired; it is frozen in
 | `results/` | Measured outputs: trial runs, metrics, live checks, the determinism check, and the budget log with every billed call |
 | `research/` | Technical spike, the experiments plan, the OpenRouter catalogue snapshot and provider pins, and `notes/` with sourced research |
 | `archive/` | Frozen records that no longer run against `lib/` |
+| `review/` | `label_review_app.py`, the page Luis uses to review dev-set labels one item at a time, blind to model outputs: `uv run streamlit run explorations/review/label_review_app.py` |
 
 The `lib/` modules:
 - `receipts_safe.py`: the label-stripping loader.

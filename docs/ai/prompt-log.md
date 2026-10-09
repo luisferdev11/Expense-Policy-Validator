@@ -242,6 +242,33 @@ The session opened with the starter prompt below, written in English, plus three
 - AI_NOTES entries 23–26.
 - The branch was pushed and merged through a PR, so implementation starts from `main`.
 
+## 2026-10-09: `/speckit-implement` for iteration 1
+
+> (Luis ran `/speckit-implement` with no further instructions, after the planning PR was merged.)
+
+Two follow-ups during the run:
+
+- **Permissions.** The overnight run's deny rules blocked `uv add` and edits to
+  `pyproject.toml` and `uv.lock`. The assistant asked rather than change its own permissions.
+  Luis removed the three rules himself ("listo, ya quité las reglas"). The firewall rule that
+  blocks reading `data/receipts.jsonl` stayed.
+- **Null subtype.** After the full cold run, the only disposition error came from the model
+  returning `"subtype": null`. The assistant asked whether to tolerate it. Luis chose to keep the
+  parser strict and decide on the dev set in iteration 2 (E15).
+
+**Outcome.**
+- Tasks T001 to T091 done, test-first for the deterministic core, ending with 233 tests.
+- A thin end-to-end path came first: run, eval and view worked on two receipts. Then:
+  - all 37 rules;
+  - both keyword baselines;
+  - the full evaluation with N and intervals;
+  - the three viewer views.
+- One full cold run: 78 billed calls, USD 0.003205 in total.
+- Pipeline results on the 28 in-scope receipts: dispositions 27/28, macro F1 0.995 (N = 65),
+  0 of 16 violations missed. The keyword baselines scored 20/28 and 16/28.
+- AI_NOTES entries 27 to 34.
+- Waiting for Luis: his review of the 13 DRAFT engine cases (T092), then "MVP done" (T093).
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

@@ -8,6 +8,7 @@ and what changed. Entries are added in the same change as the fix, and are never
 | Assistant | Used for |
 |---|---|
 | Claude Code (Claude Opus 5.5) | Exploration notebooks, the synthetic dev set draft, provider research, model trials, the decision-model scaffolding, the design system, commits and PRs (as co-author) |
+| Claude Code with GitHub Spec Kit (Claude Opus 5.5) | Iteration 1: Spec Kit setup, the constitution, roadmap, spec, ADR 0002 options, plan and tasks (Luis took every decision), then the implementation, test-first, the cold run and the evaluation |
 
 The assistant never sees the answers: `data/receipts.jsonl` is only read through a loader that
 strips `labels`, `line_items[].labels` and `notes`, and is never pasted into a prompt or a chat.

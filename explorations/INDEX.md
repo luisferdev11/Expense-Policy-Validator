@@ -28,6 +28,16 @@ The `lib/` modules:
 - `decision_adapters.py`: one `ItemClassifier` interface over generative models (chat with JSON) and decision models (`/api/alpha/decisions`).
 - `run_trial.py`: classifies the dev set with one model.
 
+**Ported into `src/`, not imported (iteration 1).** The pipeline re-implements these modules,
+with tests, and `explorations/` stays frozen research:
+- `receipts_safe.py` became `expense_validator/loader.py`;
+- `classifier_prompt.py` (cls-v1) became `classification/prompt.py` (cls-v2);
+- the pinning, cap and cost reading of `budget.py` became `classification/openrouter.py`;
+- the `ItemClassifier` idea from `decision_adapters.py` became `classification/port.py`;
+- the prompt sync in `scripts/langfuse_log_e13.py` became `classification/prompt_sync.py`.
+
+The 13 engine cases were converted into `tests/engine_cases/fixtures/`.
+
 `raw/` (raw response bodies) and `cache/` (cached responses) stay local and are gitignored. With
 the cache in place, re-running anything here makes no paid call.
 

@@ -85,3 +85,12 @@ open_questions:
     question: >-
       Will production expense records carry a VAT number field, in what format, and should its
       validity be checked or only its presence?
+  - id: Q3
+    for: review session, and production design
+    question: >-
+      Does "for a client" with no proper name count as naming who a gift is for (A7)? Recipient
+      text is employee-written and can be gamed (Luis, 2026-10-09): a personal item under $50 on
+      a receipt declared Client Gifts with a made-up name passes. Candidate strategies (none
+      built): stricter A7 reading, recipient verification against a CRM, a review signal for
+      restricted items justified only by recipient text, per-employee patterns over time, and
+      sampling of approved gifts. Until decided, the engine keeps the literal A7 reading.

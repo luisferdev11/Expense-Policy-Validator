@@ -152,3 +152,40 @@ built so that each answer only flips a setting.
   - Which rate source is authoritative, and is there an approved API?
 - **Q2. VAT data in production.** Will the expense record carry a VAT number field? If yes, in
   what format, and should its validity be checked or only its presence?
+- **Q3. A recipient named only by kind, and abuse of recipient text** (raised 2026-10-09 while
+  labelling the dev set).
+  - **The question.** Does "for a client", with no proper name, count as the line naming "who it
+    is for" (A7)?
+    - If yes, the item is a gift, and since it has no name, GIFT-01 flags it as an unnamed gift
+      of $10 or more.
+    - If no, which is the literal reading the engine applies now, it is not a gift unless the
+      receipt is declared Client Gifts. DOC-03 still catches a mismatch with the declared type.
+  - **Luis's concern.** Recipient text is written by the employee, so it can be gamed. Someone
+    could buy personal items and write "for a client" to get past the controls. This must not
+    be forgotten.
+  - **What the text cannot bypass today.** Category rules fire whatever the line says:
+    - ALC-03 for retail alcohol;
+    - TECH-01 for personal electronics;
+    - PERS-01, PERS-02 and PERS-03;
+    - HOUSE-01;
+    - GIFT-02 for gift cards;
+    - MCC-01 for high-risk merchants.
+
+    The recipient fields only add exceptions (GIFT-03, GIFT-04) or make an item a gift under the
+    $50 cap.
+  - **What it can bypass.** A personal item under $50 on a receipt declared Client Gifts, with a
+    made-up name, passes as a legitimate client gift. Text alone cannot detect a lie.
+  - **Candidate strategies, for the panel and for production. None is built.**
+    1. **Stricter reading.** "For a client" counts as naming a recipient, so an unnamed gift is
+       flagged. This forces a name, but not a true one.
+    2. **Recipient verification.** Check the named recipient against the CRM or client list.
+       This needs a data source the dataset does not have.
+    3. **Risk signal.** A review signal, not an exception, when a restricted category is
+       justified only by recipient text with no attendees or reference. This sends it to a
+       human without accusing anyone.
+    4. **Patterns over time.** Track how often each employee claims client gifts and to whom,
+       in the same family as the TIME rules. This is out of scope for iteration 1.
+    5. **Sampling.** Audit a share of the approved client gifts, as the AWS "before production"
+       list proposes.
+  - **Until decided,** the engine keeps the literal A7 reading. No decision is taken on the
+    scored receipts.

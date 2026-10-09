@@ -94,7 +94,8 @@ each against a decision rule registered before its run (principle V).
 **Scope.**
 - The README, at most 2 pages, with the brief's sections.
 - The AWS one-page design, with the monthly cost worked out by hand at 50,000 receipts a day.
-  It also answers candidates L1 to L7 for production.
+  It also answers candidates L1 to L8 for production. Its "before production" list must include
+  the recipient-abuse risk (Q3, L8).
 - The two failure cases, each with its stage.
 - The base-rate paragraph with the real numbers.
 - `AI_NOTES.md` closed out.
@@ -117,6 +118,7 @@ explains how each would be handled in production.
 | L5 | Versioned policies: a new policy is a deployment with tests | The first policy change | Every result already records `rules_version` | S |
 | L6 | Timing rules TIME-01 to TIME-04, and receipts RCP-020, RCP-021, RCP-029 and RCP-030 (a stretch goal in the brief) | Time left, or the panel asks | The same cross-receipt context as L1 | M |
 | L7 | Observability of the parts that call no model (engine, retriever, viewer, infrastructure), the ADR that CLAUDE.md rule 11 defers | Running as a service | Each component already has its own span in the receipt's trace | S |
+| L8 | Recipient abuse controls (ADR 0001, Q3): verify named recipients against a CRM, add a review signal for restricted items justified only by recipient text, track per-employee gift patterns, sample approved gifts | The panel's answer to Q3, or real employees' receipts | The recipient fields are closed classifier outputs (A9). The engine reads them in one place per rule (`domain/engine/rules/gifts.py`) | M |
 
 **Why they wait.** None of them is needed for the brief's tests or for the evaluation, and the
 calendar leaves about two working days. Building them early would mean speculative abstractions

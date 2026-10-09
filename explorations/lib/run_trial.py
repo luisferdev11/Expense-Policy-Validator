@@ -25,6 +25,10 @@ import budget
 from decision_adapters import ChatJSONClassifier, DecisionClassifier, ItemClassifier
 
 RUNS = EXP / "results" / "trial_runs"
+# Models whose reasoning, even at effort "low", exhausts the 1,024-token budget and leaves an
+# empty answer. They run with reasoning disabled, as in the earlier direct-provider trial
+# (E13 deviation 3), under their own cache tag.
+REASONING_OFF = {"qwen/qwen3.5-9b"}
 
 
 def dev_items() -> list[dict[str, Any]]:
@@ -46,6 +50,10 @@ def supports(model: str, parameter: str) -> bool:
 def classifier(kind: str, model: str) -> ItemClassifier:
     if kind == "decision":
         return DecisionClassifier(model)
+    if kind == "chat" and model in REASONING_OFF:
+        return ChatJSONClassifier(
+            model, None, {"reasoning": {"enabled": False}}, "cls-v1+reasoning-off"
+        )
     if kind == "chat":
         return ChatJSONClassifier(model, "low" if supports(model, "reasoning") else None)
     raise ValueError(f"unknown kind {kind!r}")
@@ -54,11 +62,15 @@ def classifier(kind: str, model: str) -> ItemClassifier:
 def main(kind: str, model: str) -> None:
     RUNS.mkdir(parents=True, exist_ok=True)
     out = run_file(model)
-    done = (
-        {json.loads(line)["item_id"] for line in out.read_text().splitlines()}
-        if out.exists()
-        else set()
-    )
+    rows = [json.loads(line) for line in out.read_text().splitlines()] if out.exists() else []
+    # Transient provider errors (rate limits, 5xx) are not the model's answer: drop and retry them.
+    transient = [
+        r for r in rows if r.get("error") and ("HTTP 429" in r["error"] or "HTTP 5" in r["error"])
+    ]
+    if transient:
+        rows = [r for r in rows if r not in transient]
+        out.write_text("".join(json.dumps(r, ensure_ascii=False) + "\n" for r in rows))
+    done = {r["item_id"] for r in rows}
     clf = classifier(kind, model)
     for item in dev_items():
         if item["item_id"] in done:
@@ -84,7 +96,7 @@ def main(kind: str, model: str) -> None:
                     "finish_reason": p.finish_reason,
                     "served_by": p.served_by,
                     "cached": p.cached,
-                    "prompt_version": "dec-v1" if kind == "decision" else "cls-v1",
+                    "prompt_version": getattr(clf, "prompt_tag", "dec-v1"),
                 }
             )
             if p.error:

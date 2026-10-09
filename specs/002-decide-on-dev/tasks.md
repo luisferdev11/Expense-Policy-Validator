@@ -96,7 +96,7 @@ piece. Adapters get contract tests with fake transports.
   - E7 picks the lower Brier score and its threshold by R8;
   - the output matches the data model "Experiment outcome".
 - [X] T019 [US2] Implement `eval/experiments/decide.py` (R12), which writes `outputs/eval/experiments.json` deterministically
-- [ ] T020 [P] [US2] Implement `eval/experiments/retriever_check.py` (R9). Its result feeds `decide.py`
+- [x] T020 [P] [US2] Implement `eval/experiments/retriever_check.py` (R9). Its result feeds `decide.py`
 - [ ] T021 [US2] Run `decide.py`. Commit `outputs/eval/experiments.json` with an `exp:` commit that summarises each winner and margin
 
 ## Phase 5: User Story 3, Know where errors come from (P2)

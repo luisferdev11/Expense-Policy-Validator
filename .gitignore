@@ -18,6 +18,10 @@ dist/
 .coverage
 htmlcov/
 
+# Pipeline: raw model response bodies, and development runs (`epv run --only`)
+.cache/
+outputs/dev/
+
 # Personal Claude Code settings and local hooks
 .claude/settings.local.json
 .claude/hooks/

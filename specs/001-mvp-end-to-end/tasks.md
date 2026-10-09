@@ -46,15 +46,15 @@ viewer. Every test task comes before the implementation task it covers, and must
 
 **Purpose**: dependencies, packages and the entry point.
 
-- [ ] T001 Add the runtime dependencies `pydantic>=2`, `openai`, `langfuse`, `python-dotenv`, `pyyaml` and `streamlit`, and the dev dependency `types-PyYAML`, with `uv add`. Commit `pyproject.toml` and `uv.lock`
-- [ ] T002 Configure the build in `pyproject.toml`:
+- [X] T001 Add the runtime dependencies `pydantic>=2`, `openai`, `langfuse`, `python-dotenv`, `pyyaml` and `streamlit`, and the dev dependency `types-PyYAML`, with `uv add`. Commit `pyproject.toml` and `uv.lock`
+- [X] T002 Configure the build in `pyproject.toml`:
   - build `src/expense_validator`, `eval` and `viewer` as packages;
   - add `[project.scripts] epv = "expense_validator.cli:main"`;
   - set mypy `files = ["src", "eval", "viewer"]` with the pydantic plugin;
   - set pytest `testpaths = ["tests"]`.
-- [ ] T003 [P] Create the package skeletons, each with a docstring stating its role and firewall status: `src/expense_validator/__init__.py`, `eval/__init__.py`, `viewer/__init__.py`, and the empty `tests/` subfolders with `__init__.py`
-- [ ] T004 [P] Add `.cache/` (raw response bodies) and `outputs/dev/` (`--only` runs) to `.gitignore`. Create `outputs/.gitkeep` and `config/.gitkeep`
-- [ ] T005 Run `uv sync` and `uv run pre-commit run -a`, and confirm ruff, mypy and pytest pass with zero tests collected
+- [X] T003 [P] Create the package skeletons, each with a docstring stating its role and firewall status: `src/expense_validator/__init__.py`, `eval/__init__.py`, `viewer/__init__.py`, and the empty `tests/` subfolders with `__init__.py`
+- [X] T004 [P] Add `.cache/` (raw response bodies) and `outputs/dev/` (`--only` runs) to `.gitignore`. Create `outputs/.gitkeep` and `config/.gitkeep`
+- [X] T005 Run `uv sync` and `uv run pre-commit run -a`, and confirm ruff, mypy and pytest pass with zero tests collected
 
 ---
 

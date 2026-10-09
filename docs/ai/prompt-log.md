@@ -169,6 +169,23 @@ Follow-up decisions:
   (`explorations/dev_set/label_reviews.jsonl`).
 - **AI_NOTES.** Entries 20 and 21.
 
+## 2026-10-09: observability as a system rule
+
+> In the system rules make it clear that everything must run on Langfuse so we have observability
+> of everything, and that generated code must rely on it. In general we must have observability of
+> everything. Langfuse is for the generative models; in other sessions we will explore other
+> things for the rest of the solution.
+
+**Outcome.**
+- CLAUDE.md gains rule 11, "Observability of everything":
+  - every model call (pipeline, eval, explorations) is traced in Langfuse;
+  - code is instrumented with the Langfuse SDK from the start;
+  - each trace has a defined shape;
+  - the labels firewall applies to traces;
+  - Langfuse never gates a run, so the panel can re-run everything without it;
+  - observability for the rest of the solution is left to a later ADR.
+- The starter prompt adds observability to the constitution and to the architecture discussion.
+
 ## Next: starter prompt for the Spec Kit session
 
 The first message of the next session, prepared here so the context carries over:
@@ -186,8 +203,9 @@ Today we set up the spec-driven flow and decide the architecture before any code
 2. After the restart: /speckit-constitution, from the strategy draft (deterministic engine, labels
    evaluation-only, policy text as source of truth, evidence or nothing, decide on dev / report on
    test, honest measurement, reproducibility, separation of components, secrets out, English
-   artifacts with Spanish conversation, decisions recorded before implementation). Add whether we
-   work test-first only after we discuss it in step 4.
+   artifacts with Spanish conversation, decisions recorded before implementation, observability of
+   every model call in Langfuse per CLAUDE.md rule 11). Add whether we work test-first only after
+   we discuss it in step 4.
 3. /speckit-specify for the whole system (normaliser, classifier, retriever, engine, reporter,
    eval, viewer v1 in Streamlit), using docs/decisions/. Labels firewall: never read labels,
    line_items[].labels or notes outside eval/. Then /speckit-clarify.
@@ -195,7 +213,9 @@ Today we set up the spec-driven flow and decide the architecture before any code
    (for example: a plain Python package with a batch CLI; ports-and-adapters around a pure engine;
    a pipeline of typed stages with a cache layer). Cover: module boundaries and typed interfaces
    for the five components plus eval and viewer; where the cache, the FX component and the
-   decision IDs live; how the LLM is isolated so the engine stays pure; the test strategy (TDD for
+   decision IDs live; how the LLM is isolated so the engine stays pure; how every model call is
+   traced in Langfuse (one trace per receipt, one span per component, one generation per call)
+   without Langfuse ever gating a run; the test strategy (TDD for
    the engine and loader, fixtures from the 13 synthetic engine cases and the five brief tests,
    a determinism test, contract tests for the classifier). I decide; record it in
    docs/decisions/0002-architecture.md.

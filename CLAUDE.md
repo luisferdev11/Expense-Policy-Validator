@@ -32,6 +32,25 @@ retriever, policy engine and exception reporter.
     docstrings, commits, PRs, docs, ADRs, and every Spec Kit artifact (constitution, specs,
     plans, checklists, tasks). The conversation with Luis is in Spanish; anything written to the
     repo is translated, including quoted prompts in `docs/ai/prompt-log.md`.
+11. **Observability of everything.** No model call is invisible.
+    - **Model calls.** Every call to a generative or decision model, in the pipeline, in eval
+      and in explorations, is traced in Langfuse (self-hosted; see `docs/ai/langfuse-guide.md`).
+      All code that calls a model is instrumented with the Langfuse SDK from the start, never
+      as an afterthought.
+    - **What each trace records.** A receipt or dev item is one trace, with one span per
+      component and one `generation` per model call. The generation records the model, the
+      exact input (system prompt and messages, or decision payload), the output and any
+      reasoning, token usage, billed cost, the linked versioned prompt, and the OpenRouter
+      request id. Observation names are stable and verb-first (for example `classify-item`),
+      never model names.
+    - **Data stays clean.** The labels firewall applies to traces: labels, `notes` and
+      per-receipt answers never reach a trace outside `eval/`; eval writes its results as
+      scores.
+    - **Langfuse never gates a run.** Langfuse is the lab notebook, not the source of truth. If
+      it is down, the pipeline still runs and writes its committed outputs; the panel must be
+      able to re-run everything without it.
+    - **Scope.** Langfuse covers the model calls. How to observe the rest of the solution
+      (engine, retriever, viewer, infrastructure) is decided in a later ADR.
 
 ## Code standards
 

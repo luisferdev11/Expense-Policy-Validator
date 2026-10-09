@@ -11,9 +11,15 @@ has two implementations: `LangfuseTracer` and `NoopTracer` (research R6).
 | `normalise-receipt` | span | root | Cleaned items |
 | `classify-receipt` | span | root | Per item: `cache_hit` and `cache_key`. On a hit, the original `request_id` |
 | `classify-item` | generation | `classify-receipt` | One per **billed model call** only. It records: the model and endpoint; the exact messages (system and user); the response content and the reasoning; usage (prompt and completion tokens); the billed cost from `usage.cost`; the linked Langfuse prompt `classify-item-chat` (`cls-v2`); the OpenRouter request id; latency |
-| `retrieve-rules` | span | root | The selected rule IDs |
-| `apply-rules` | span | root | The findings and the cross-receipt context entries used |
-| `report-exceptions` | span | root | The final explanations |
+| `decide-receipt` | second top-level span, same trace ID | — | Output: the `ReceiptResult`. It exists because deciding needs every receipt classified first: the cross-receipt context is built between the two passes (ADR 0002, flow step 4) |
+| `retrieve-rules` | span | `decide-receipt` | The selected rule IDs |
+| `apply-rules` | span | `decide-receipt` | The findings |
+| `report-exceptions` | span | `decide-receipt` | The final explanations |
+
+**Two passes per run.** Each receipt's trace therefore has two top-level spans:
+`validate-receipt` (normalise, classify) and `decide-receipt` (retrieve, apply, report). Both use
+the trace ID derived from the same seed. The run label is unique per run and is recorded in the
+gitignored `.cache/runs.json` (one entry per results file), so `epv eval` can score the latest run's traces.
 
 **Names.** Every name is stable and verb-first. No name contains a model name.
 

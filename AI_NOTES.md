@@ -8,6 +8,7 @@ and what changed. Entries are added in the same change as the fix, and are never
 | Assistant | Used for |
 |---|---|
 | Claude Code (Claude Opus 5.5) | Exploration notebooks, the synthetic dev set draft, provider research, model trials, the decision-model scaffolding, the design system, commits and PRs (as co-author) |
+| Claude Code with GitHub Spec Kit (Claude Opus 5.5) | Iteration 1: Spec Kit setup, the constitution, roadmap, spec, ADR 0002 options, plan and tasks (Luis took every decision), then the implementation, test-first, the cold run and the evaluation |
 
 The assistant never sees the answers: `data/receipts.jsonl` is only read through a loader that
 strips `labels`, `line_items[].labels` and `notes`, and is never pasted into a prompt or a chat.
@@ -42,13 +43,30 @@ strips `labels`, `line_items[].labels` and `notes`, and is never pasted into a p
 | 24 | 2026-10-08 | The assistant's own plan and tasks contradicted each other in three ways. (a) The first billed model call came before the prompt was pushed to Langfuse, so its generations would lack the linked prompt the constitution requires. (b) The architecture test banned the strings `"labels"` and `"notes"` everywhere outside `eval/`, including the loader that has to strip them. (c) It banned imports of `eval` that `epv eval` needs. | `/speckit-analyze`, run at Luis's request with extra checks, found them: one critical and two high (`specs/001-mvp-end-to-end/checklists/analysis.md`). | Luis approved the fixes. A `prompt_sync` step now runs before the first billed call. The loader and a lazy import in the CLI's eval subcommand are explicit, tested exceptions. Four medium or low findings were fixed in the same change. |
 | 25 | 2026-10-08 | While fixing the "no answers in traces" gap, the assistant first wrote a test that rejected the keys `disposition` and `review_signals`. The pipeline's own outputs contain those keys, so the test would always fail. | The assistant re-read the task against the output contract before committing. | The test checks only answer-only keys (`labels`, `notes`, `expected_exceptions`) and answer-only text (`notes`, answer `reason` strings). |
 | 26 | 2026-10-08 | Twice in one session, the assistant inserted new entries in this table before the last existing one, by anchoring the edit on it. Its first one-line `sed` to fix the order processed the target line before the held line existed, which deleted entry 22. | Listing the entry numbers after each edit, and `git diff`. | Entry 22 was restored verbatim from the last commit. New entries are appended after the last row, and the order and diff are checked before committing. |
+| 27 | 2026-10-08 | `docs/decisions/policy_decisions.yaml` was never valid YAML: a root list followed by an `open_questions:` key. It had been like that since its first commit (`d5f5fc0`), although ADR 0001 said "the spec and the engine read that file". Nothing had parsed it until then. | The first test-first settings test (T013) failed to parse it. | The decisions now sit under a `decisions:` key, with their content unchanged. `engine/settings.py` reads that key, and the test keeps the file parsed on every run. |
+| 28 | 2026-10-08 | The assistant wrote `classification/taxonomy.py` together with its test, before seeing the test fail. The constitution (v1.1.0) requires test-first for deterministic components. | The assistant noticed it when it ran the test after the fact, before committing. | From T006 on, each phase's tests were written and run red first: import errors for missing modules, then failures. Only then was code written. |
+| 29 | 2026-10-09 | The assistant tried to commit the engine widening (Phase 4) as three commits split by path. The pieces depended on each other: the rule modules used helpers added to `base.py` in another commit. | The pre-commit mypy hook rejected all three commits, and nothing was committed. | It became one coherent commit. The hook was not bypassed. |
+| 30 | 2026-10-09 | The first cache design stored parsed answers and dropped answers that broke the schema. Two cls-v2 answers with `"subtype": null` were never cached. An offline replay would then have given `offline_cache_miss` instead of `schema_violation`, which is not byte-identical, and any parser change would have needed new paid calls. | Inspecting the unclassified lines right after the full cold run (T090), before committing the outputs. | The cache keeps the literal answer and parses it on every read. It was migrated from the local raw bodies; the two uncached calls were mapped to their cache keys through the Langfuse generation metadata. The 78 rows sum to the billed USD 0.003205. The offline replay is byte-identical. |
+| 31 | 2026-10-09 | `epv run --classifier keyword` overwrote the single last-run record, so `epv eval` could not find the pipeline run and posted no Langfuse scores. | `epv eval` printed "0 Langfuse scores posted". | Runs are recorded per results file (`.cache/runs.json`). The re-run posted 112 scores. |
+| 32 | 2026-10-09 | While writing tests, the assistant produced three weak ones. A retriever "superset" test made only filler assertions. An offline-fallback test had a convoluted assertion that checked nothing. An uncertainty test for DOC-03 would have passed with or without the exclusion it was meant to prove. | Re-reading each test before running it. | All three were rewritten. The superset test now runs receipts that fire at least 28 rules. The offline test states the non-itemized exception precisely. The DOC-03 test uses a declared type that only the uncertain line covers. |
+| 33 | 2026-10-09 | The only disposition error of the iteration 1 run (RCP-007) comes from the model returning `"subtype": null`. Accepting null as `"none"` would make it 28/28, but that choice would have been made by looking at the scored receipts. | The assistant raised it with Luis instead of changing the parser. | Luis kept the parser strict for iteration 1. Null tolerance is experiment E15, to be decided on the dev set in iteration 2 (`docs/roadmap.md`). |
+| 34 | 2026-10-09 | After an untraced offline re-run (`--no-trace`), `epv eval` still posted 112 scores to that run's trace IDs, which do not exist in Langfuse. | The assistant noticed the "112 Langfuse scores posted" line after a run that had tracing off. | Scores are now posted only when the recorded run had tracing on. The 112 orphan scores stay in the local Langfuse, because the MCP offers no score deletion. They are attached to no trace, and the evaluation numbers come from the committed files. |
 
 ## Open issues
 
 - Two of the six OpenRouter live-check ids were still 404 at the last check. Re-run
   `explorations/scripts/openrouter_verify.py` later; it overwrites `explorations/results/openrouter_verification.jsonl`.
 
+## Checked by hand
+
+- **The 8 policy ambiguities.** Luis decided each one (ADR 0001, A1 to A8). He added A9 during
+  `/speckit-clarify`.
+- **The 8 debatable dev-set labels.** Luis confirmed them blind to the model outputs
+  (`explorations/dev_set/label_reviews.jsonl`).
+- **The 13 synthetic engine cases.** Luis reviewed and approved them on 2026-10-09, including
+  the recipient value added in conversion (`tests/engine_cases/fixtures/REVIEW.md`).
+
 ## Checked by hand (pending)
 
-- The DRAFT dev-set labels, starting with the eight marked *debatable*.
-- The 13 engine edge cases and the 8 policy ambiguities.
+- **The other 101 DRAFT dev-set labels.** This review is the first step of iteration 2, before
+  any model or threshold is chosen.

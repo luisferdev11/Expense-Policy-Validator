@@ -91,11 +91,21 @@ The engine treats an `unclassified` item as uncertain:
 `classifier` (`openrouter` or `keyword`), `model_id`, `provider_endpoint`, `prompt_version`,
 `cache_key`, `request_id`, `cost_usd`, `prompt_tokens`, `completion_tokens`, `cache_hit`.
 
-### `CacheEntry` (one row of `outputs/classifications.jsonl`)
+### `CacheEntry` (one row of `outputs/classifications.jsonl`, the literal model answer)
 
-The `cache_key`, the parsed fields of `Classification` (excluding `line_id`), the
-`ClassificationSource` fields, and the `reasoning` text. A key collides only when the cleaned
-text, merchant, MCC, model, endpoint and prompt version are all identical.
+Each row holds:
+- the `cache_key`;
+- the model's literal answer `content`;
+- the `reasoning` text;
+- the model ID, provider endpoint and prompt version;
+- the request id, billed cost and token counts.
+
+The answer is parsed on every read. A parser change therefore never needs a new paid call, and
+a schema violation replays identically offline. This changed during implementation: the first
+version stored parsed fields and dropped failed answers, which broke offline replay (AI_NOTES).
+
+A key collides only when the cleaned text, merchant, MCC, model, endpoint and prompt version are
+all identical.
 
 ### `ClassifiedReceipt`
 

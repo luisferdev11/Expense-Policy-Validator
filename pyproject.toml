@@ -4,7 +4,24 @@ version = "0.1.0"
 description = "Classifies itemized expense receipts, applies written expense policies with a deterministic rule engine, and raises evidence-grounded exceptions."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = []
+dependencies = [
+    "langfuse>=3",
+    "openai>=1.40",
+    "pydantic>=2.7",
+    "python-dotenv>=1.0",
+    "pyyaml>=6.0",
+    "streamlit>=1.38",
+]
+
+[project.scripts]
+epv = "expense_validator.cli:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/expense_validator", "eval", "viewer"]
 
 [dependency-groups]
 dev = [
@@ -12,6 +29,7 @@ dev = [
     "pre-commit>=3.8",
     "pytest>=8.3",
     "ruff>=0.6",
+    "types-pyyaml>=6.0",
 ]
 
 [tool.ruff]
@@ -24,7 +42,13 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src"]
+files = ["src", "eval", "viewer"]
+plugins = ["pydantic.mypy"]
+
+[[tool.mypy.overrides]]
+module = ["streamlit.*", "langfuse.*", "pandas.*"]
+ignore_missing_imports = true
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-p no:cacheprovider"

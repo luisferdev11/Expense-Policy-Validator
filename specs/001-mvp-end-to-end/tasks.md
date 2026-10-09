@@ -187,7 +187,7 @@ now has its full shape; every phase after this only widens it.
 **Independent test**: `uv run pytest tests/unit tests/engine_cases` passes with no key and no
 network.
 
-- [ ] T045 [US2] Convert `explorations/dev_set/engine_cases_draft.jsonl` into `tests/engine_cases/fixtures/engine_cases.jsonl`, marked `status: DRAFT`:
+- [X] T045 [US2] Convert `explorations/dev_set/engine_cases_draft.jsonl` into `tests/engine_cases/fixtures/engine_cases.jsonl`, marked `status: DRAFT`:
   - add `subtype: "none"`, `recipient_kind` and `recipient_name` to every item, derived from the case's own line text and `why`;
   - list every added value in `tests/engine_cases/fixtures/CONVERSION_NOTES.md`, for Luis's review (SC-010);
   - add a loader and a parametrised runner in `tests/engine_cases/test_synthetic_cases.py`. Cases whose rules are not implemented yet are marked `xfail(strict=True)` with the reason.

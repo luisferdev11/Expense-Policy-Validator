@@ -30,7 +30,7 @@
     28-receipt run; report how often it fired and its cost; argue a higher production threshold.
     Applied to the cached response so re-runs decide identically.
   config:
-    exc03.threshold: TBD_ON_DEV
+    exc03.threshold: 0.5  # provisional for iteration 1 (spec clarification); chosen on dev in iteration 2
   status: decided
 - id: A4
   rule_ids: [HEALTH-01]

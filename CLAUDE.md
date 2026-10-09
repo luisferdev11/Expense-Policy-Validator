@@ -55,6 +55,9 @@ retriever, policy engine and exception reporter.
 ## Code standards
 
 - Python 3.12, managed with uv. Type hints on every public function.
+- Test-first for every deterministic component (loader, normaliser, FX, retriever, engine,
+  context, disposition, reporter); contract tests for model adapters; smoke tests for CLI and
+  viewer (ADR 0002, constitution v1.1.0).
 - ruff and mypy clean, pytest green before every commit. The pre-commit hooks enforce what they
   can; do not bypass them with `--no-verify`.
 - Small Conventional Commits (`feat`, `fix`, `test`, `docs`, `refactor`, `chore`, `exp` for

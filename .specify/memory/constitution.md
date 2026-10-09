@@ -143,9 +143,14 @@ shown.
     checklists, tasks).
   - The conversation with Luis is in Spanish. Anything quoted from it into the repo is translated.
   - `/speckit-analyze` checks this before implementation.
-- **Test-first:** TODO(TEST_FIRST): whether, and for which components, work is test-first is
-  decided in the architecture discussion and recorded in `docs/decisions/0002-architecture.md`.
-  This constitution is amended to match.
+- **Test-first** (decided in ADR 0002):
+  - The test is written before the code, and fails first, for every deterministic component: the
+    loader and labels firewall, normaliser, FX, retriever, engine rules, cross-receipt context,
+    disposition and reporter. This is mandatory.
+  - Model adapters get contract tests.
+  - The CLI and the viewer get smoke tests.
+  - A determinism test and an architecture test, which keeps the pure core free of adapters and
+    network code, run on every commit.
 
 ## Development Workflow
 
@@ -176,4 +181,4 @@ shown.
 - Complexity that a principle does not require MUST be justified in the plan's Complexity
   Tracking table.
 
-**Version**: 1.0.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
+**Version**: 1.1.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08

@@ -53,7 +53,7 @@ class Fake:
 def plan(tmp_path: Path, approved: bool, data: str) -> Path:
     path = tmp_path / "plan.yaml"
     entry = {"id": "E14", "approved_by": "Luis" if approved else None, "data": data}
-    path.write_text(yaml.safe_dump({"experiments": [entry]}), encoding="utf-8")
+    path.write_text(yaml.safe_dump({"iteration_2": [entry]}), encoding="utf-8")
     return path
 
 

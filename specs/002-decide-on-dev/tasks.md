@@ -71,7 +71,7 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 3: User Story 1, A trustworthy dev set (P1)
 
-- [ ] T014 [US1] Draft every registration in `explorations/research/experiments_plan.yaml` (R3):
+- [X] T014 [US1] Draft every registration in `explorations/research/experiments_plan.yaml` (R3):
   - **E14 amendment:** cls-v2, 4 pins, all 130 items, the 2-point margin on category accuracy, and secondary minimums on subtype, recipient and restricted F1;
   - **E7:** Brier, then the threshold rule from R8;
   - **E5:** on non-English items, translate wins only if its category accuracy is higher by McNemar p < 0.05 and the bootstrap lower bound is > 0. Otherwise keep the simpler option;

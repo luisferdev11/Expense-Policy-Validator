@@ -204,3 +204,88 @@ experiments:
       roughly 5 % more receipts, the most the review queue can absorb without hiding real
       violations. The margin is chosen before seeing the hardened-set results.
     status: registered, not yet run (waits for the hardened dev set)
+
+# Iteration 2 registrations (specs/002-decide-on-dev). Drafted by the assistant on 2026-10-09,
+# BEFORE any run on the frozen dev set. Each takes effect only once Luis sets approved_by and the
+# frozen set's SHA-256 is written into data. eval/experiments/run_dev.py refuses otherwise.
+iteration_2:
+  - id: E14
+    amends: E14 above, before its first run
+    amendment_reason: >-
+      Prompt cls-v1 became cls-v2 (subtype A6, recipient A9), so decision models (no subtype or
+      recipient) and Anthropic models (team request) leave the candidate set. All 130 frozen items
+      decide, because cls-v2 is frozen for the iteration and no item develops prompts (Luis,
+      2026-10-09 clarification). The decision rule of E14 above is kept unchanged otherwise.
+    factor: item classifier model
+    variants: [gpt-oss-120b, gpt-oss-20b, qwen3.5-9b, gemma-3-12b]
+    reference: gpt-oss-120b
+    held_fixed: prompt cls-v2, deepinfra/bf16 pins, temperature 0, strict parser
+    metrics: >-
+      Category accuracy (primary) with Wilson intervals; restricted F1; subtype and recipient-kind
+      accuracy on the items that exercise A6/A9; McNemar exact b/c; paired bootstrap of the
+      accuracy difference (10,000 resamples, seed 20261009); cost per 1,000 items; median latency.
+    decision_rule: >-
+      As E14 above: superiority if McNemar p < 0.05 in the challenger's favour AND the bootstrap
+      lower bound is > 0; non-inferiority if the lower bound is > -0.02 AND restricted F1 is at
+      least the reference's minus 0.01 AND, added here, the challenger gets at most 2 more of the
+      A6/A9 items wrong (subtype or recipient kind) than the reference. Among the reference and
+      the non-inferior or superior models, choose the cheapest per 1,000 items, then the lowest
+      median latency. A model with schema violations on more than 2 % of items is excluded. If
+      no challenger qualifies, keep the reference.
+    approved_by: null
+    registered_at: null
+    data: null
+  - id: E7
+    factor: EXC-03 confidence source and threshold
+    variants: [self_reported, agreement_120b_20b]
+    held_fixed: the E14 winner's cls-v2 answers on the frozen set; no new calls
+    metrics: Brier score, ECE (10 bins), coverage-accuracy curve, N per bin
+    decision_rule: >-
+      (1) Choose the source with the lower Brier score. If self-reported confidence fills fewer
+      than three bins with at least 10 items each, report that calibration could not be measured
+      for it. (2) Threshold for self-reported confidence: among candidate thresholds (every
+      distinct confidence, plus 0), keep only those that send at most 10 % of the correct items
+      to review; pick the one with the highest accuracy on the items kept; ties go to the lower
+      threshold. A threshold of 0 (EXC-03 only for unusable answers) is a valid outcome. (3) For
+      agreement, EXC-03 fires when the two models disagree; it is adopted only if it wins (1), and
+      its cost of a second call per item is reported.
+    approved_by: null
+    registered_at: null
+    data: null
+  - id: E5
+    factor: translation before classification
+    variants: [original, translate]
+    held_fixed: reference pin gpt-oss-120b, cls-v2, prompt tr-v1 for translation
+    data_scope: the non-English items of the frozen set only (Luis, 2026-10-09 clarification)
+    decision_rule: >-
+      Translate wins only if McNemar exact p < 0.05 in its favour AND the paired bootstrap lower
+      bound of its category-accuracy gain is > 0 on those items. Otherwise keep the original
+      text, which is simpler and needs no second call. Report the minimum detectable difference
+      at that N.
+    approved_by: null
+    registered_at: null
+    data: null
+  - id: E15
+    factor: reading "subtype" null as "none"
+    variants: [strict, null_as_none]
+    held_fixed: the cached literal answers of every E14 run on the frozen set; no new calls
+    decision_rule: >-
+      Adopt null_as_none only if, re-parsing those cached answers, it turns at least one
+      unclassified item into a correctly classified one AND turns no item into a wrong
+      classification. If no null subtype occurs on the dev set, keep strict and report that the
+      case was not observed on dev (the scored receipts are not used to decide).
+    approved_by: null
+    registered_at: null
+    data: null
+  - id: RET
+    factor: policy retriever
+    variants: [trigger_map, all_rules]
+    held_fixed: the engine, the 13 engine fixtures, synthetic unit receipts, and the 32 receipts'
+      committed classifications (inputs and cached outputs only, never answers)
+    decision_rule: >-
+      Keep the trigger map if the engine's findings are identical under both variants on every
+      case; it is cheaper to explain. Any difference is a bug in the trigger map: fix it and
+      re-run, never adopt the difference silently.
+    approved_by: null
+    registered_at: null
+    data: null

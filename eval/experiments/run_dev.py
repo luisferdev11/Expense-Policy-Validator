@@ -43,7 +43,7 @@ class RegistrationError(RuntimeError):
 
 def check_registration(experiment: str, plan_path: Path, digest: str) -> dict[str, Any]:
     plan = yaml.safe_load(plan_path.read_text(encoding="utf-8"))
-    entries = {e.get("id"): e for e in plan.get("experiments", []) if isinstance(e, dict)}
+    entries = {e.get("id"): e for e in plan.get("iteration_2", []) if isinstance(e, dict)}
     entry = entries.get(experiment)
     if entry is None:
         raise RegistrationError(f"{experiment} is not registered in {plan_path.name}")

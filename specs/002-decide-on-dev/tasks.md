@@ -34,18 +34,18 @@ piece. Adapters get contract tests with fake transports.
   - ECE over 10 bins on a hand example;
   - the coverage-accuracy points are monotone in coverage.
 - [X] T003 Implement `eval/stats.py` (R5). Move `wilson` there and re-export it from `eval/metrics.py`
-- [ ] T004 [P] Extend `tests/contract/test_prompt_schema.py`:
+- [X] T004 [P] Extend `tests/contract/test_prompt_schema.py`:
   - `parse` of an answer with `"subtype": null` raises `ParseError` by default;
   - it returns `subtype == "none"` with `null_subtype_as_none=True`;
   - every other violation still raises in both modes.
-- [ ] T005 Implement the `null_subtype_as_none` parameter in `src/expense_validator/adapters/openrouter/prompt.py`, and thread it through `OpenRouterClassifier` (default False) (R7)
-- [ ] T006 [P] Write `tests/contract/test_model_pins.py`, using a fake transport, so that:
+- [X] T005 Implement the `null_subtype_as_none` parameter in `src/expense_validator/adapters/openrouter/prompt.py`, and thread it through `OpenRouterClassifier` (default False) (R7)
+- [X] T006 [P] Write `tests/contract/test_model_pins.py`, using a fake transport, so that:
   - each of the 4 pins sends its model, the order `[deepinfra/bf16]` and temperature 0;
   - Qwen sends `{"reasoning": {"enabled": false}}`;
   - Gemma sends no reasoning field;
   - the gpt-oss pins send effort `low`;
   - cache keys differ per pin and are unchanged for the reference (the 78 committed rows still hit).
-- [ ] T007 Implement `src/expense_validator/adapters/openrouter/models.py` (`ModelPin`, `PINS`, `REFERENCE`) and make `OpenRouterClassifier` take `pin: ModelPin = REFERENCE` (R1)
+- [X] T007 Implement `src/expense_validator/adapters/openrouter/models.py` (`ModelPin`, `PINS`, `REFERENCE`) and make `OpenRouterClassifier` take `pin: ModelPin = REFERENCE` (R1)
 - [ ] T008 [P] Write `tests/contract/test_translator.py` with a fake transport:
   - prompt version `tr-v1`;
   - the output is plain text, stripped;

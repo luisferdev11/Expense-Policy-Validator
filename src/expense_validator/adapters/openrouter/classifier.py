@@ -1,10 +1,10 @@
 """OpenRouter adapter for the ItemClassifier port (research R3, FR-025, FR-026).
 
-Ported from explorations/lib/budget.py: one pinned endpoint with no fallbacks, temperature 0,
-low reasoning effort, the strict cls-v2 schema, billed cost read from `usage.cost`, and a spend
-cap checked before every billed call. Every billed call is one `classify-item` generation; a
-cache hit is not a call and produces none. The key is read from the environment and never
-logged.
+Ported from explorations/lib/budget.py: one pinned endpoint per ModelPin with no fallbacks,
+temperature 0, the pin's reasoning setting, the strict cls-v2 schema, the billed cost from
+`usage.cost`, and a spend cap checked before every billed call. Every billed call is one
+`classify-item` generation; a cache hit is not a call and produces none. The key is read from
+the environment and never logged.
 """
 
 from __future__ import annotations
@@ -17,6 +17,7 @@ from pathlib import Path
 from typing import Any
 
 from expense_validator.adapters.classification_cache import ClassificationCache, cache_key
+from expense_validator.adapters.openrouter.models import REFERENCE, ModelPin
 from expense_validator.adapters.openrouter.prompt import (
     PROMPT_VERSION,
     RESPONSE_FORMAT_STRICT,
@@ -34,19 +35,23 @@ from expense_validator.domain.taxonomy import restricted_for
 from expense_validator.paths import RAW_CACHE_DIR
 from expense_validator.ports.tracer import Tracer
 
-MODEL_ID = "openai/gpt-oss-120b"
-ENDPOINT = "deepinfra/bf16"
+MODEL_ID = REFERENCE.model_id
+ENDPOINT = REFERENCE.endpoint
 BASE_URL = "https://openrouter.ai/api/v1"
 CAP_USD = 1.00
 MAX_TOKENS = 1024
-REASONING_EFFORT = "low"
 KEY_ENV = "OPENROUTER_API_KEY"
-PIN: dict[str, Any] = {
-    "order": [ENDPOINT],
-    "allow_fallbacks": False,
-    "require_parameters": True,
-    "data_collection": "deny",
-}
+
+
+def provider(pin: ModelPin) -> dict[str, Any]:
+    """One endpoint, no fallbacks, only endpoints honouring every parameter, no data storage."""
+    return {
+        "order": [pin.endpoint],
+        "allow_fallbacks": False,
+        "require_parameters": True,
+        "data_collection": "deny",
+    }
+
 
 Transport = Callable[[dict[str, Any]], tuple[dict[str, Any], str]]
 
@@ -77,8 +82,6 @@ def _safe(name: str) -> str:
 
 class OpenRouterClassifier:
     name = "openrouter"
-    model_id = MODEL_ID
-    provider_endpoint = ENDPOINT
     prompt_version = PROMPT_VERSION
 
     def __init__(
@@ -90,7 +93,13 @@ class OpenRouterClassifier:
         cap_usd: float = CAP_USD,
         raw_dir: Path = RAW_CACHE_DIR,
         prompt_link: Any = None,
+        pin: ModelPin = REFERENCE,
+        null_subtype_as_none: bool = False,
     ) -> None:
+        self.pin = pin
+        self.model_id = pin.model_id
+        self.provider_endpoint = pin.endpoint
+        self.null_subtype_as_none = null_subtype_as_none
         self.cache = cache
         self.tracer = tracer
         self.offline = offline
@@ -112,19 +121,19 @@ class OpenRouterClassifier:
 
     def payload(self, request: ClassifierRequest) -> dict[str, Any]:
         return {
-            "model": MODEL_ID,
+            "model": self.pin.model_id,
             "messages": messages(request),
             "max_tokens": MAX_TOKENS,
             "temperature": 0,
             "response_format": RESPONSE_FORMAT_STRICT,
-            "extra_body": {"provider": PIN, "reasoning": {"effort": REASONING_EFFORT}},
+            "extra_body": {"provider": provider(self.pin), **self.pin.extra_reasoning()},
         }
 
     def _source(self, key: str, entry: CacheEntry | None, cache_hit: bool) -> ClassificationSource:
         return ClassificationSource(
             classifier=self.name,
-            model_id=MODEL_ID,
-            provider_endpoint=ENDPOINT,
+            model_id=self.pin.model_id,
+            provider_endpoint=self.pin.endpoint,
             prompt_version=PROMPT_VERSION,
             cache_key=key,
             request_id=entry.request_id if entry else None,
@@ -148,7 +157,7 @@ class OpenRouterClassifier:
     def _from_entry(self, line_id: str, entry: CacheEntry, cache_hit: bool) -> Classification:
         """Parse the cached raw answer; a schema violation stays one on every replay."""
         try:
-            answer = parse(entry.content)
+            answer = parse(entry.content, null_subtype_as_none=self.null_subtype_as_none)
         except ParseError:
             return Classification(
                 line_id=line_id,
@@ -172,7 +181,7 @@ class OpenRouterClassifier:
         )
 
     def classify(self, line_id: str, request: ClassifierRequest) -> Classification:
-        key = cache_key(request, MODEL_ID, ENDPOINT, PROMPT_VERSION)
+        key = cache_key(request, self.pin.model_id, self.pin.endpoint, PROMPT_VERSION)
         hit = self.cache.get(key)
         if hit is not None:
             self.cache_hits += 1
@@ -187,13 +196,13 @@ class OpenRouterClassifier:
         payload = self.payload(request)
         with self.tracer.generation(
             "classify-item",
-            model=MODEL_ID,
+            model=self.pin.model_id,
             input=payload["messages"],
             model_parameters={
                 "temperature": 0,
                 "max_tokens": MAX_TOKENS,
-                "reasoning_effort": REASONING_EFFORT,
-                "provider_endpoint": ENDPOINT,
+                "reasoning": self.pin.reasoning,
+                "provider_endpoint": self.pin.endpoint,
             },
             prompt=self.prompt_link,
             metadata={"prompt_version": PROMPT_VERSION, "cache_key": key},
@@ -235,8 +244,8 @@ class OpenRouterClassifier:
         entry = CacheEntry(
             cache_key=key,
             content=content,
-            model_id=MODEL_ID,
-            provider_endpoint=ENDPOINT,
+            model_id=self.pin.model_id,
+            provider_endpoint=self.pin.endpoint,
             prompt_version=PROMPT_VERSION,
             request_id=request_id,
             cost_usd=cost_usd,

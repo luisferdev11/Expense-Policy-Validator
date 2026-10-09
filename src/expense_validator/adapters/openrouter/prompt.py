@@ -119,8 +119,12 @@ def messages(request: ClassifierRequest) -> list[dict[str, str]]:
     ]
 
 
-def parse(content: str | None) -> ParsedAnswer:
-    """Strict parse: the whole content is one JSON object matching SCHEMA exactly."""
+def parse(content: str | None, null_subtype_as_none: bool = False) -> ParsedAnswer:
+    """Strict parse: the whole content is one JSON object matching SCHEMA exactly.
+
+    `null_subtype_as_none` (experiment E15) reads `"subtype": null` as `"none"`; nothing else
+    changes. Off by default until the dev set decides.
+    """
     try:
         obj = json.loads(content or "")
     except json.JSONDecodeError as exc:
@@ -129,6 +133,8 @@ def parse(content: str | None) -> ParsedAnswer:
         raise ParseError("keys do not match the schema")
     category, confidence = obj["category"], obj["confidence"]
     subtype, kind, name = obj["subtype"], obj["recipient_kind"], obj["recipient_name"]
+    if subtype is None and null_subtype_as_none:
+        subtype = "none"
     if category not in CATEGORIES:
         raise ParseError(f"category not in taxonomy: {category!r}")
     if isinstance(confidence, bool) or not isinstance(confidence, int | float):

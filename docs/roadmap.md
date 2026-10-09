@@ -1,0 +1,105 @@
+# Roadmap
+
+How the Expense Policy Validator is delivered: an end-to-end MVP first, then small iterations.
+Each iteration ends runnable, with passing tests and an updated evaluation report (constitution,
+principle XI). Each one is its own `/speckit-specify` → `/speckit-plan` → `/speckit-tasks` cycle,
+with its own ADR when it changes the architecture.
+
+- **Decided by:** Luis, on 2026-10-08. The assistant proposed the cut.
+- **Calendar:** last change Saturday 2026-10-10, review session Monday 2026-10-12. Three
+  iterations fit before delivery. Everything after them is a candidate, not a commitment.
+
+## Iteration 1: MVP, end to end
+
+**Goal.** The smallest system that runs the brief's whole pipeline on the 28 in-scope receipts,
+passes the brief's tests and produces an honest evaluation report.
+
+**Shape.** A batch CLI over local files. No authentication, no queue, no server.
+
+| Component | In scope | Deferred, and to where |
+|---|---|---|
+| Loader | Splits inputs from labels. A test enforces the firewall (principle I) | — |
+| Normaliser | Deterministic cleanup (Unicode NFKC, whitespace, casing), no translation. The classifier reads the original language: the brief accepts "a multilingual classifier" as the translation step | A translation step, if E5 shows it helps (iteration 2) |
+| Item classifier | `openai/gpt-oss-120b` on OpenRouter with a pinned provider, temperature 0, a per-item cache and Langfuse tracing. Prompt `cls-v2`: `cls-v1` plus the closed `subtype` for `other` (ADR 0001, A6) | The final model choice (E14, iteration 2) |
+| Policy retriever | Deterministic trigger map over items, MCC and metadata | Comparison with alternatives (iteration 2) |
+| Policy engine | **All 37 in-scope rules** (every rule except TIME-01 to TIME-04), decisions A1 to A8, EXC-01 disposition, EXC-03 with a *provisional* threshold. A failed or invalid classification sends the receipt to review, never to pass | The EXC-03 threshold chosen on dev (A3, iteration 2) |
+| Exception reporter | Deterministic template: rule, line ids, literal policy text and the arithmetic behind each threshold | An LLM-drafted explanation judged for faithfulness (iteration 2) |
+| Evaluation | The brief's seven items, each with its N: macro F1 and restricted F1 on 65 items, the 3×3 disposition matrix, false positives out of 9, missed violations out of 16, the keyword baseline, a slot for two failure cases, and the base-rate computation. Also per-rule precision and recall and evidence correctness | The oracle-classifier ablation (iteration 2); writing the failure cases up (iteration 3) |
+| Viewer v1 | Streamlit with three views (receipt list, receipt detail, metrics), read from committed outputs only, no model calls | The Ledgerline front end (candidate L3) |
+| CLI | One command to run the pipeline, one to evaluate, one to launch the viewer | — |
+
+**Order of work.** The tasks open a thin path first: one receipt through all five components, a
+few rules, outputs and evaluation. Only then do they widen it to all 37 rules. The plan has an
+explicit "MVP done" checkpoint.
+
+**Exit criteria.**
+- These tests pass:
+  - the five brief test cases (RCP-027, RCP-016, RCP-006 and RCP-026, RCP-031, RCP-028);
+  - the 13 synthetic engine cases;
+  - the determinism test;
+  - the labels-firewall test.
+- ruff, mypy and pytest are clean.
+- Per-receipt results are committed as JSONL. Every record carries the model ID, the provider,
+  the prompt version and the rules version.
+- `eval` reproduces every number from the committed outputs with no model call.
+- The viewer starts with one command.
+- Every model call has a Langfuse trace, and the run also completes with Langfuse down.
+
+## Iteration 2: decide on the dev set
+
+**Goal.** Replace the MVP's provisional choices with choices measured on the synthetic dev set,
+each against a decision rule registered before its run (principle V).
+
+**Scope.**
+- Harden the dev set first: Luis reviews the 101 labels that are still DRAFT.
+- Run these experiments:
+
+  | Experiment | Decides |
+  |---|---|
+  | E14 | The classifier model, with a 2-point paired-bootstrap non-inferiority margin |
+  | E7 | The EXC-03 confidence source and threshold (A3) |
+  | E5 | Whether to translate before classifying |
+
+- Make these comparisons:
+  - retriever variants (trigger map against passing every rule);
+  - template reporter against an LLM-drafted reporter;
+  - the oracle-classifier ablation, which attributes every error to its stage.
+- Run the 28 receipts once per finalist.
+
+**Exit criteria.**
+- An experiments table with, for each experiment, the registered rule, the winner, the margin
+  and why the others lost.
+- The pipeline runs with the chosen settings, and the report and viewer are updated.
+
+## Iteration 3: delivery package
+
+**Scope.**
+- The README, at most 2 pages, with the brief's sections.
+- The AWS one-page design, with the monthly cost worked out by hand at 50,000 receipts a day.
+  It also answers candidates L1 to L7 for production.
+- The two failure cases, each with its stage.
+- The base-rate paragraph with the real numbers.
+- `AI_NOTES.md` closed out.
+- The viewer shows the experiments table and each exception's arithmetic.
+
+**Exit criteria.** Everything in the brief's "What to submit" list is present and reproducible
+from the repository.
+
+## Candidates after delivery
+
+None of these is built before delivery. The MVP only leaves the seam each one needs. The AWS page
+explains how each would be handled in production.
+
+| # | Candidate | What would justify it | Seam the MVP leaves | Size |
+|---|---|---|---|---|
+| L1 | Asynchronous processing behind a queue (for example SQS with a DLQ) | Real volume (about 50,000 receipts a day), retries when the model is down | Validation is one pure function from a receipt plus an explicit cross-receipt context to a result. The batch CLI only loops over it. MEAL-01 (per employee per day) and HEALTH-01 (per trip) span receipts, so their aggregates are an explicit input, never hidden batch state | M, 1–2 days. The cost is in the cross-receipt rules, not the queue |
+| L2 | Authentication in front of the viewer or API | Leaving localhost, or real employee data | The viewer reads results through a single read-only module. No auth code is written | S–M |
+| L3 | An API and a sturdier UI replacing Streamlit (Ledgerline mockups) | More than one reviewer, or auditors needing to record decisions | The viewer depends only on the output schema (typed models exported as JSON Schema), never on pipeline internals | L, 2–4 days |
+| L4 | Auditor overrides, with a human in the loop | Real reviewers | Needs L2 and L3. Overrides are recorded as a score in Langfuse | M |
+| L5 | Versioned policies: a new policy is a deployment with tests | The first policy change | Every result already records `rules_version` | S |
+| L6 | Timing rules TIME-01 to TIME-04, and receipts RCP-020, RCP-021, RCP-029 and RCP-030 (a stretch goal in the brief) | Time left, or the panel asks | The same cross-receipt context as L1 | M |
+| L7 | Observability of the parts that call no model (engine, retriever, viewer, infrastructure), the ADR that CLAUDE.md rule 11 defers | Running as a service | Each component already has its own span in the receipt's trace | S |
+
+**Why they wait.** None of them is needed for the brief's tests or for the evaluation, and the
+calendar leaves about two working days. Building them early would mean speculative abstractions
+(principle XI). Leaving their seams keeps each one cheap to add later.

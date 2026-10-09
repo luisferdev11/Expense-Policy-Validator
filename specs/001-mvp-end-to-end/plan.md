@@ -120,6 +120,7 @@ src/expense_validator/
 │   ├── taxonomy.py        # 21 categories + restricted flags from data/category-taxonomy.md
 │   ├── cache.py           # committed cache: outputs/classifications.jsonl
 │   ├── openrouter.py      # adapter: pin, cap, cost, request id, generation tracing
+│   ├── prompt_sync.py     # pushes cls-v2 to Langfuse Prompt Management before the first billed call
 │   └── keyword.py         # keyword-classifier baseline (same port)
 ├── retriever.py           # pure trigger map
 ├── engine/

@@ -206,7 +206,7 @@ The session opened with the starter prompt below, written in English, plus three
   The tasks put a thin end-to-end path first, include an "MVP done" checkpoint, and
   `/speckit-analyze` checks that no task implements a deferred item.
 
-**Outcome (in progress).**
+**Outcome.**
 - Spec Kit 1.1.2 initialised with the Claude Code integration, on branch `chore/spec-kit-init`.
   A probe run in a scratch directory showed beforehand that `--force` only adds files.
 - Constitution v1.0.0 has eleven principles. Whether the work is test-first is left as a TODO for
@@ -218,6 +218,29 @@ The session opened with the starter prompt below, written in English, plus three
   - Queue, auth, API and the other candidates stay after delivery. Only their seams are built
     now, and the AWS page explains them.
 - The UTC dates were corrected (AI_NOTES 22).
+- `specs/001-mvp-end-to-end/spec.md` covers iteration 1 only. `/speckit-clarify` asked Luis four
+  questions:
+  - **Recipient fields.** The classifier returns them. This is the new decision A9 in ADR 0001.
+  - **EXC-03 threshold.** 0.5, provisional.
+  - **Keyword baselines.** Two: one through the same engine, and the legacy flagger.
+  - **The 13 DRAFT engine cases.** They are fixtures from the start, and Luis reviews them
+    before "MVP done".
+- ADR 0002, the architecture: ports and adapters around a pure core, plus a committed
+  classification cache. Luis chose it from three options. Test-first for the deterministic
+  core, so the constitution is now v1.1.0.
+- The plan, research (R1–R13), data model, contracts and quickstart, and 97 tasks with a thin
+  path first and an "MVP done" checkpoint.
+
+### Follow-up: "Let's resolve what you found so we can continue"
+
+> Let's resolve what you point out so we can continue. Document the findings you mention, and do
+> everything needed so we can move on to implementing the first version.
+
+**Outcome.**
+- `/speckit-analyze` had found one critical issue, two high, three medium and two low. All were
+  fixed and documented in `specs/001-mvp-end-to-end/checklists/analysis.md`.
+- AI_NOTES entries 23–26.
+- The branch was pushed and merged through a PR, so implementation starts from `main`.
 
 ## Starter prompt for the Spec Kit session, as prepared
 

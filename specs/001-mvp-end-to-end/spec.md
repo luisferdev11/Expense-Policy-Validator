@@ -95,7 +95,9 @@ byte-identical and makes zero billed calls.
 
 1. **Given** the 32 receipts and a valid model key, **When** the auditor runs the validation
    command, **Then** each receipt gets exactly one result, and every line item has a category from
-   the 21-category taxonomy, a restricted flag and a confidence between 0 and 1.
+   the 21-category taxonomy, a restricted flag and a confidence between 0 and 1. The one
+   exception is a line the classifier could not classify (FR-009): it is marked `unclassified`
+   with its reason and a null category, and it raises EXC-03.
 2. **Given** a completed run, **When** the command runs again with the cache in place, **Then**
    the output is byte-identical and no billed model call is made.
 3. **Given** the model gateway fails, or returns an unusable answer for an item, **When** the

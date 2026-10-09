@@ -12,6 +12,7 @@ Validates every receipt in `data/receipts.jsonl` and writes `outputs/results.jso
 | `--classifier {openrouter,keyword}` | `openrouter` | `keyword` writes to `outputs/baselines/keyword_classifier/results.jsonl` instead |
 | `--offline` | off | Never calls a model. A cache miss becomes an unclassified item (EXC-03). Needs no key |
 | `--no-trace` | off | Forces the no-op tracer |
+| `--only RECEIPT_ID ...` | off | Development only: validates just the given receipts, writing to `outputs/dev/results.jsonl` (never `outputs/results.jsonl`). It still writes cache rows. Used for the thin-path cold run (task T039). The receipt IDs come from the command line, never from pipeline code |
 
 **Guarantees.**
 - **Byte-identical output** for the same inputs, cache, prompt, model and rules.
@@ -21,6 +22,10 @@ Validates every receipt in `data/receipts.jsonl` and writes `outputs/results.jso
   cap, calls are refused and the affected items become unclassified.
 - **Stderr summary:** receipts processed, model calls made, cache hits, billed USD, tracer state.
   Never a key.
+
+**Before the first billed call** of a run, `epv run` makes sure the prompt `classify-item-chat`
+at label `cls-v2` exists in Langfuse Prompt Management, so every `classify-item` generation can
+link it. This is skipped when the tracer is no-op.
 
 ## `epv eval`
 

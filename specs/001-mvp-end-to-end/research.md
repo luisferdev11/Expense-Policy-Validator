@@ -124,12 +124,18 @@ file covers only the choices below that level.
     - `eval/`, the only code that reads answer fields;
     - `viewer/`, Streamlit.
   - They are built as packages from `pyproject.toml`, and mypy covers all three.
-  - The architecture test parses imports with `ast`:
+  - The architecture test parses imports with `ast`, over `src/expense_validator/` and
+    `viewer/`:
     - the pure core (`models`, `normaliser`, `retriever`, `engine`, `reporter`) imports no
       adapter, no `openai`, no `langfuse`, no `httpx` and no `requests`;
-    - nothing outside `eval/` imports `eval`;
-    - no code outside `eval/` and `loader.py` opens `receipts.jsonl`;
-    - no module outside `eval/` contains the string keys `labels` or `notes`.
+    - no module imports `eval`, with one exception: a lazy import inside the `eval` subcommand
+      of `cli.py`, which `epv eval` needs to dispatch to the evaluation package;
+    - no module other than `loader.py` names `receipts.jsonl`;
+    - no module other than `loader.py` contains the string keys `labels` or `notes`.
+      `loader.py` must name them to strip them.
+
+    Both exceptions were added after `/speckit-analyze` found the original rule contradicted
+    `loader.py` and `cli.py` (analysis I1 and I2).
 - **Rationale:** CLAUDE.md rule 1 names `eval/` explicitly. Static checks catch a violation
   before it runs.
 - **Alternatives:**

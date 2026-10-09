@@ -141,7 +141,7 @@ Follow-up decisions:
 2. The new model trial with Langfuse.
 3. The rewritten evaluation study.
 
-## 2026-10-09: make the experiments inspectable in Langfuse, show where the runs come from
+## 2026-10-08: make the experiments inspectable in Langfuse, show where the runs come from
 
 > I saw the spend, but it was not recorded in Langfuse. I also can't find in the code where the
 > model test runs are; I don't see them in the notebooks. We also need to review those labels:
@@ -169,7 +169,7 @@ Follow-up decisions:
   (`explorations/dev_set/label_reviews.jsonl`).
 - **AI_NOTES.** Entries 20 and 21.
 
-## 2026-10-09: observability as a system rule
+## 2026-10-08: observability as a system rule
 
 > In the system rules make it clear that everything must run on Langfuse so we have observability
 > of everything, and that generated code must rely on it. In general we must have observability of
@@ -208,7 +208,16 @@ The session opened with the starter prompt below, written in English, plus three
 
 **Outcome (in progress).**
 - Spec Kit 1.1.2 initialised with the Claude Code integration, on branch `chore/spec-kit-init`.
-- A probe run in a scratch directory showed beforehand that `--force` only adds files.
+  A probe run in a scratch directory showed beforehand that `--force` only adds files.
+- Constitution v1.0.0 has eleven principles. Whether the work is test-first is left as a TODO for
+  ADR 0002.
+- Iteration cut, decided by Luis and recorded in `docs/roadmap.md`. The assistant proposed it and
+  recommended each of these options:
+  - The MVP covers all 37 in-scope rules, with a thin path first inside the iteration.
+  - The MVP normaliser does not translate; E5 decides later.
+  - Queue, auth, API and the other candidates stay after delivery. Only their seams are built
+    now, and the AWS page explains them.
+- The UTC dates were corrected (AI_NOTES 22).
 
 ## Starter prompt for the Spec Kit session, as prepared
 

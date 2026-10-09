@@ -121,46 +121,46 @@ work. The engine knows only EXC-01, MCC-02 and TECH-02 here.
 `uv run epv eval`, then `uv run epv view` all succeed. The TECH-02 brief cases (RCP-006 and
 RCP-026) pass as engine tests.
 
-- [ ] T019 [P] [US1] Write `tests/unit/test_normaliser.py`. It asserts: [FR-004]
+- [X] T019 [P] [US1] Write `tests/unit/test_normaliser.py`. It asserts: [FR-004]
   - NFKC normalisation and collapsed whitespace;
   - `description_raw` unchanged;
   - `language` preserved;
   - the same output for the same input;
   - full-width Japanese and accented Latin text survive.
-- [ ] T020 [US1] Implement `src/expense_validator/normaliser.py`: a pure `normalise(receipt) -> list[NormalisedItem]`, with no translation (spec FR-004)
-- [ ] T021 [P] [US1] Write `tests/contract/test_classifier_request.py`. It asserts that `ClassifierRequest` built from any receipt carries only `description_clean`, `merchant_name` and `mcc`, never `submitted_expense_type` or `attendee_count` (FR-007), and that the user message built by `prompt.py` contains no other receipt field [FR-007]
-- [ ] T022 [US1] Implement the `ItemClassifier` protocol and `ClassifierRequest` construction in `src/expense_validator/classification/port.py`, and a `FakeClassifier` in `tests/fakes.py`, a mapping from description to `Classification`
-- [ ] T023 [P] [US1] Write `tests/contract/test_prompt_schema.py`. It asserts that: [FR-005, FR-006, FR-009]
+- [X] T020 [US1] Implement `src/expense_validator/normaliser.py`: a pure `normalise(receipt) -> list[NormalisedItem]`, with no translation (spec FR-004)
+- [X] T021 [P] [US1] Write `tests/contract/test_classifier_request.py`. It asserts that `ClassifierRequest` built from any receipt carries only `description_clean`, `merchant_name` and `mcc`, never `submitted_expense_type` or `attendee_count` (FR-007), and that the user message built by `prompt.py` contains no other receipt field [FR-007]
+- [X] T022 [US1] Implement the `ItemClassifier` protocol and `ClassifierRequest` construction in `src/expense_validator/classification/port.py`, and a `FakeClassifier` in `tests/fakes.py`, a mapping from description to `Classification`
+- [X] T023 [P] [US1] Write `tests/contract/test_prompt_schema.py`. It asserts that: [FR-005, FR-006, FR-009]
   - the `cls-v2` strict schema equals `specs/001-mvp-end-to-end/contracts/classifier-output-cls-v2.schema.json`;
   - `parse()` accepts a valid answer;
   - `parse()` turns invalid JSON, an unknown category, a confidence outside [0, 1], a subtype other than `none` on a non-`other` category, and extra keys each into `unclassified` with reason `schema_violation`.
-- [ ] T024 [US1] Implement `src/expense_validator/classification/prompt.py`: `PROMPT_VERSION = "cls-v2"`, ported from `explorations/lib/classifier_prompt.py`. Extend the system prompt with the closed subtype (A6) and the recipient fields (A9), and add `RESPONSE_FORMAT_STRICT` and `parse()` [FR-005, FR-006]
-- [ ] T025 [P] [US1] Write `tests/unit/test_cache.py`. It asserts that: [FR-008]
+- [X] T024 [US1] Implement `src/expense_validator/classification/prompt.py`: `PROMPT_VERSION = "cls-v2"`, ported from `explorations/lib/classifier_prompt.py`. Extend the system prompt with the closed subtype (A6) and the recipient fields (A9), and add `RESPONSE_FORMAT_STRICT` and `parse()` [FR-005, FR-006]
+- [X] T025 [P] [US1] Write `tests/unit/test_cache.py`. It asserts that: [FR-008]
   - the cache key is the SHA-256 of the canonical JSON of the cleaned text, merchant, MCC, model ID, endpoint and prompt version;
   - a change in any of those is a miss;
   - rows are written sorted by key with a trailing newline;
   - writing and reading round-trips byte for byte.
-- [ ] T026 [US1] Implement `src/expense_validator/classification/cache.py` over `outputs/classifications.jsonl`, plus raw bodies under `.cache/raw/` [FR-008]
-- [ ] T027 [P] [US1] Write `tests/contract/test_openrouter_adapter.py` with a fake HTTP transport. It asserts that: [FR-009, FR-025, FR-026]
+- [X] T026 [US1] Implement `src/expense_validator/classification/cache.py` over `outputs/classifications.jsonl`, plus raw bodies under `.cache/raw/` [FR-008]
+- [X] T027 [P] [US1] Write `tests/contract/test_openrouter_adapter.py` with a fake HTTP transport. It asserts that: [FR-009, FR-025, FR-026]
   - the request uses model `openai/gpt-oss-120b`, provider order `["deepinfra/bf16"]` with `allow_fallbacks: false` and `require_parameters: true`, temperature 0 and the strict response format;
   - `usage.cost` and the request id are recorded;
   - a transport error gives `unclassified/gateway_error`;
   - the cap (USD 1.00) refuses the call with `unclassified/budget_refused`;
   - `--offline` never calls the transport;
   - one `classify-item` generation is emitted per billed call, and none on a cache hit.
-- [ ] T028 [US1] Implement `src/expense_validator/classification/openrouter.py`, porting the pinning, cap and cost reading from `explorations/lib/budget.py` (FR-025, FR-026). It uses `.env` through `python-dotenv`, never logs the key, and emits the generation fields in `contracts/tracing.md`, including the link to the Langfuse prompt `classify-item-chat` at label `cls-v2`. Add `src/expense_validator/classification/prompt_sync.py` with `sync_prompt(tracer)`. It creates `classify-item-chat` in Langfuse Prompt Management with the label `cls-v2`, only when the stored text or config differs (ported from `explorations/scripts/langfuse_log_e13.py`). It is a no-op with `NoopTracer`. The pipeline calls it once before the first billed call of a run (analysis C1)
-- [ ] T029 [P] [US2] Write `tests/unit/test_disposition.py` for EXC-01: [FR-016]
+- [X] T028 [US1] Implement `src/expense_validator/classification/openrouter.py`, porting the pinning, cap and cost reading from `explorations/lib/budget.py` (FR-025, FR-026). It uses `.env` through `python-dotenv`, never logs the key, and emits the generation fields in `contracts/tracing.md`, including the link to the Langfuse prompt `classify-item-chat` at label `cls-v2`. Add `src/expense_validator/classification/prompt_sync.py` with `sync_prompt(tracer)`. It creates `classify-item-chat` in Langfuse Prompt Management with the label `cls-v2`, only when the stored text or config differs (ported from `explorations/scripts/langfuse_log_e13.py`). It is a no-op with `NoopTracer`. The pipeline calls it once before the first billed call of a run (analysis C1)
+- [X] T029 [P] [US2] Write `tests/unit/test_disposition.py` for EXC-01: [FR-016]
   - any critical, high or medium exception gives `flag`;
   - otherwise, any low exception or any review signal gives `review`;
   - otherwise `pass`;
   - the result is the same for any order of findings.
-- [ ] T030 [US2] Implement `src/expense_validator/engine/disposition.py` [FR-016]
-- [ ] T031 [P] [US2] Write `tests/engine_cases/test_brief_thin.py`, with the brief's threshold boundary. RCP-006 and RCP-026 are loaded through the loader, with `Classification`s written by hand from their descriptions, never from labels. RCP-006 has a $189 accessory and raises no TECH-02. RCP-026 has a $329 monitor without pre-approval and raises TECH-02 at medium, citing the monitor line. Also test MCC-02 alone (RCP-028): no exceptions, one MCC-02 review signal, disposition `review`
-- [ ] T032 [US2] Implement `src/expense_validator/engine/rules/technology.py` (TECH-02 only, judged on unit price in USD, `>` $200, with the `PA-` reference satisfying it per A5), `src/expense_validator/engine/rules/merchant.py` (MCC-02 only), and `src/expense_validator/engine/evaluate.py` with `evaluate(receipt, context, ruleset, settings) -> EngineFindings` and the one-per-rule merge
-- [ ] T033 [P] [US1] Write `tests/unit/test_retriever.py` for the thin path. TECH-02 is selected when a `computer_accessory` is present. MCC-02 is selected for a medium-tier MCC. The output is a sorted tuple [FR-010]
-- [ ] T034 [US1] Implement `src/expense_validator/retriever.py` with the trigger-map structure (research R10), holding only these two triggers for now
-- [ ] T035 [P] [US1] Write `tests/unit/test_reporter.py`. A TECH-02 finding gets an explanation naming the rule, the line and `unit_price_usd` against `cap_usd`. The reporter adds no claim missing from `computed` [FR-022]
-- [ ] T036 [US1] Implement `src/expense_validator/reporter.py`: pure templates keyed by `rule_id`, filling `explanation` and building `ReceiptResult` with `RunMetadata`, where `exc03_threshold_status` is `"provisional"` [FR-022, FR-024]
+- [X] T030 [US2] Implement `src/expense_validator/engine/disposition.py` [FR-016]
+- [X] T031 [P] [US2] Write `tests/engine_cases/test_brief_thin.py`, with the brief's threshold boundary. RCP-006 and RCP-026 are loaded through the loader, with `Classification`s written by hand from their descriptions, never from labels. RCP-006 has a $189 accessory and raises no TECH-02. RCP-026 has a $329 monitor without pre-approval and raises TECH-02 at medium, citing the monitor line. Also test MCC-02 alone (RCP-028): no exceptions, one MCC-02 review signal, disposition `review`
+- [X] T032 [US2] Implement `src/expense_validator/engine/rules/technology.py` (TECH-02 only, judged on unit price in USD, `>` $200, with the `PA-` reference satisfying it per A5), `src/expense_validator/engine/rules/merchant.py` (MCC-02 only), and `src/expense_validator/engine/evaluate.py` with `evaluate(receipt, context, ruleset, settings) -> EngineFindings` and the one-per-rule merge
+- [X] T033 [P] [US1] Write `tests/unit/test_retriever.py` for the thin path. TECH-02 is selected when a `computer_accessory` is present. MCC-02 is selected for a medium-tier MCC. The output is a sorted tuple [FR-010]
+- [X] T034 [US1] Implement `src/expense_validator/retriever.py` with the trigger-map structure (research R10), holding only these two triggers for now
+- [X] T035 [P] [US1] Write `tests/unit/test_reporter.py`. A TECH-02 finding gets an explanation naming the rule, the line and `unit_price_usd` against `cap_usd`. The reporter adds no claim missing from `computed` [FR-022]
+- [X] T036 [US1] Implement `src/expense_validator/reporter.py`: pure templates keyed by `rule_id`, filling `explanation` and building `ReceiptResult` with `RunMetadata`, where `exc03_threshold_status` is `"provisional"` [FR-022, FR-024]
 - [ ] T037 [US1] Implement `src/expense_validator/pipeline.py`: load, normalise, classify (cache first), `build_context` (an empty stub for now), then retrieve, evaluate and report for each receipt in `receipt_id` order, then write canonical `outputs/results.jsonl` (research R9). Wrap every stage in the tracer spans named in `contracts/tracing.md` [FR-023, FR-026]
 - [ ] T038 [US1] Implement `src/expense_validator/results.py` (read-only `load_results(path)` and `load_comparison(path)`) and `src/expense_validator/cli.py` (FR-035), as `contracts/cli.md` describes:
   - `epv run [--classifier] [--offline] [--no-trace] [--only RECEIPT_ID ...]`;

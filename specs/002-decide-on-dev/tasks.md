@@ -60,12 +60,12 @@ piece. Adapters get contract tests with fake transports.
   - it writes the SHA-256 of `dev_set_v2.jsonl` to `FROZEN.md`;
   - it is deterministic.
 - [X] T011 Implement `explorations/dev_set/build_frozen.py` (R2, data-model "Frozen dev item")
-- [ ] T012 [P] Write `tests/unit/test_dev_runner.py` with a fake classifier. The runner:
+- [X] T012 [P] Write `tests/unit/test_dev_runner.py` with a fake classifier. The runner:
   - refuses without an approved registration, and refuses a hash mismatch;
   - writes one prediction row per item, with every field in the data model;
   - replays offline from the cache;
   - opens one `classify-dev-item` trace per item.
-- [ ] T013 Implement `eval/experiments/run_dev.py`, using the pipeline normaliser, request builder, `OpenRouterClassifier(pin)`, per-variant caches and the tracer (R4)
+- [X] T013 Implement `eval/experiments/run_dev.py`, using the pipeline normaliser, request builder, `OpenRouterClassifier(pin)`, per-variant caches and the tracer (R4)
 
 **Checkpoint**: every offline piece is tested. No model call has been made.
 

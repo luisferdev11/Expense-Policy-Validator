@@ -53,13 +53,13 @@ piece. Adapters get contract tests with fake transports.
   - one `translate-item` generation per billed call;
   - a gateway error returns None and the caller falls back to the original text.
 - [X] T009 Implement `src/expense_validator/adapters/openrouter/translator.py` (R6) with its own cache file path argument
-- [ ] T010 [P] Write `tests/unit/test_build_frozen.py` on a temporary copy:
+- [X] T010 [P] Write `tests/unit/test_build_frozen.py` on a temporary copy:
   - it refuses while any item is unreviewed;
   - it applies the reviewed category, subtype and recipient;
   - unproposed A6/A9 fields default to `none`, `none` and null;
   - it writes the SHA-256 of `dev_set_v2.jsonl` to `FROZEN.md`;
   - it is deterministic.
-- [ ] T011 Implement `explorations/dev_set/build_frozen.py` (R2, data-model "Frozen dev item")
+- [X] T011 Implement `explorations/dev_set/build_frozen.py` (R2, data-model "Frozen dev item")
 - [ ] T012 [P] Write `tests/unit/test_dev_runner.py` with a fake classifier. The runner:
   - refuses without an approved registration, and refuses a hash mismatch;
   - writes one prediction row per item, with every field in the data model;

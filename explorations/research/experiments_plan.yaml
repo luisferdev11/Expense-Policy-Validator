@@ -232,8 +232,8 @@ iteration_2:
       the non-inferior or superior models, choose the cheapest per 1,000 items, then the lowest
       median latency. A model with schema violations on more than 2 % of items is excluded. If
       no challenger qualifies, keep the reference.
-    approved_by: null
-    registered_at: null
+    approved_by: Luis
+    registered_at: "2026-10-09"
     data: null
   - id: E7
     factor: EXC-03 confidence source and threshold
@@ -249,8 +249,8 @@ iteration_2:
       threshold. A threshold of 0 (EXC-03 only for unusable answers) is a valid outcome. (3) For
       agreement, EXC-03 fires when the two models disagree; it is adopted only if it wins (1), and
       its cost of a second call per item is reported.
-    approved_by: null
-    registered_at: null
+    approved_by: Luis
+    registered_at: "2026-10-09"
     data: null
   - id: E5
     factor: translation before classification
@@ -262,8 +262,8 @@ iteration_2:
       bound of its category-accuracy gain is > 0 on those items. Otherwise keep the original
       text, which is simpler and needs no second call. Report the minimum detectable difference
       at that N.
-    approved_by: null
-    registered_at: null
+    approved_by: Luis
+    registered_at: "2026-10-09"
     data: null
   - id: E15
     factor: reading "subtype" null as "none"
@@ -274,8 +274,8 @@ iteration_2:
       unclassified item into a correctly classified one AND turns no item into a wrong
       classification. If no null subtype occurs on the dev set, keep strict and report that the
       case was not observed on dev (the scored receipts are not used to decide).
-    approved_by: null
-    registered_at: null
+    approved_by: Luis
+    registered_at: "2026-10-09"
     data: null
   - id: RET
     factor: policy retriever
@@ -286,6 +286,6 @@ iteration_2:
       Keep the trigger map if the engine's findings are identical under both variants on every
       case; it is cheaper to explain. Any difference is a bug in the trigger map: fix it and
       re-run, never adopt the difference silently.
-    approved_by: null
-    registered_at: null
+    approved_by: Luis
+    registered_at: "2026-10-09"
     data: null

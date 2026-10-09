@@ -46,13 +46,13 @@ piece. Adapters get contract tests with fake transports.
   - the gpt-oss pins send effort `low`;
   - cache keys differ per pin and are unchanged for the reference (the 78 committed rows still hit).
 - [X] T007 Implement `src/expense_validator/adapters/openrouter/models.py` (`ModelPin`, `PINS`, `REFERENCE`) and make `OpenRouterClassifier` take `pin: ModelPin = REFERENCE` (R1)
-- [ ] T008 [P] Write `tests/contract/test_translator.py` with a fake transport:
+- [X] T008 [P] Write `tests/contract/test_translator.py` with a fake transport:
   - prompt version `tr-v1`;
   - the output is plain text, stripped;
   - the result is cached and a second call is a hit;
   - one `translate-item` generation per billed call;
   - a gateway error returns None and the caller falls back to the original text.
-- [ ] T009 Implement `src/expense_validator/adapters/openrouter/translator.py` (R6) with its own cache file path argument
+- [X] T009 Implement `src/expense_validator/adapters/openrouter/translator.py` (R6) with its own cache file path argument
 - [ ] T010 [P] Write `tests/unit/test_build_frozen.py` on a temporary copy:
   - it refuses while any item is unreviewed;
   - it applies the reviewed category, subtype and recipient;

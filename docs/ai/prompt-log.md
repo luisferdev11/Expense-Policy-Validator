@@ -95,29 +95,56 @@ assistant's memory so later sessions keep it.
 - Two of his answers opened questions for the review session:
   - **FX conversion:** which date (transaction or billing) and which rate (recorded, mid, high or low). It is built as a switch.
   - **VAT:** the field may exist in production, so it is modelled as an optional input.
-- Engram was researched (`explorations/research_notes/engram.md`). The recommendation is not to adopt it before delivery, because it is a side channel around the labels firewall and is changing quickly.
+- Engram was researched (`explorations/research/notes/engram.md`). The recommendation is not to adopt it before delivery, because it is a side channel around the labels firewall and is changing quickly.
 - Version plan: v1 viewer in Streamlit, as the brief asks; v2 a custom front end following the Ledgerline mockups, if time allows.
+
+## 2026-10-08: language with Spec Kit, a cleaner explorations folder, architecture first
+
+> Before that, a few questions and maybe a small adjustment. With Spec Kit, will we keep the same
+> rules, speaking Spanish while the specs are written in English? How will we make sure? Also, the
+> explorations folder has everything mixed up; I'd like something cleaner. And before we start
+> coding, I want us to discuss in the session the architecture we want, whether we do TDD, settle
+> the architecture for the project, and of course discuss the important modules.
+
+**Outcome.**
+- The English-only rule is now enforced in three places:
+  - CLAUDE.md rule 10 names every Spec Kit artifact and says the conversation stays in Spanish;
+  - the constitution will repeat it;
+  - `/speckit-analyze` checks it before implementation.
+- `explorations/` was reorganised by type (`lib/`, `scripts/`, `notebooks/`, `dev_set/`, `policy/`, `results/`, `research/`) with an `INDEX.md`. Files were moved with `git mv`, and every data and results file is byte-identical.
+- The next session holds an architecture discussion before `/speckit-plan`: architecture options, TDD, and the modules and their interfaces. The outcome goes into ADR 0002.
 
 ## Next: starter prompt for the Spec Kit session
 
 The first message of the next session, prepared here so the context carries over:
 
 ```markdown
-We continue the Oversight take-home (Expense Policy Validator). Read CLAUDE.md, ../CLAUDE.md,
-AI_NOTES.md, docs/decisions/0001-policy-ambiguities.md and docs/ai/prompt-log.md first.
+We continue the Oversight take-home (Expense Policy Validator). Talk to me in Spanish; every
+artifact you write (constitution, specs, plans, tasks, code, docs, commits) is in English.
+Read first: CLAUDE.md, ../CLAUDE.md, AI_NOTES.md, docs/decisions/0001-policy-ambiguities.md,
+docs/ai/prompt-log.md and explorations/INDEX.md.
 
-Today: initialise GitHub Spec Kit in this existing repo and run the spec-driven flow up to tasks.
-1. On a new branch, run `specify init --here --force --integration claude` (check
-   `specify init --help` first; the option may be `--ai claude` on older versions), review the
+Today we set up the spec-driven flow and decide the architecture before any code:
+1. Spec Kit. On a new branch, check `specify init --help`, then run
+   `specify init --here --force --integration claude` (older versions: `--ai claude`). Review the
    diff, commit, and tell me to restart the session so the /speckit-* skills load.
-2. After the restart: /speckit-constitution with the draft from the strategy (deterministic engine,
-   labels evaluation-only, policy text as source of truth, evidence or nothing, decide on dev /
-   report on test, honest measurement, reproducibility, separation of components, secrets out,
-   English everywhere).
-3. /speckit-specify for the whole pipeline (normaliser, classifier, retriever, engine, reporter,
-   eval, viewer v1 in Streamlit), using the decisions in docs/decisions/. The labels firewall
-   applies: never read labels, line_items[].labels or notes outside eval/.
-4. /speckit-plan and /speckit-tasks. The engine comes first, test-driven, with the 13 synthetic
-   engine cases and the five brief tests (RCP-027, 016, 006/026, 031, 028).
+2. After the restart: /speckit-constitution, from the strategy draft (deterministic engine, labels
+   evaluation-only, policy text as source of truth, evidence or nothing, decide on dev / report on
+   test, honest measurement, reproducibility, separation of components, secrets out, English
+   artifacts with Spanish conversation, decisions recorded before implementation). Add whether we
+   work test-first only after we discuss it in step 4.
+3. /speckit-specify for the whole system (normaliser, classifier, retriever, engine, reporter,
+   eval, viewer v1 in Streamlit), using docs/decisions/. Labels firewall: never read labels,
+   line_items[].labels or notes outside eval/. Then /speckit-clarify.
+4. Architecture discussion, before /speckit-plan. Present two or three options with trade-offs
+   (for example: a plain Python package with a batch CLI; ports-and-adapters around a pure engine;
+   a pipeline of typed stages with a cache layer). Cover: module boundaries and typed interfaces
+   for the five components plus eval and viewer; where the cache, the FX component and the
+   decision IDs live; how the LLM is isolated so the engine stays pure; the test strategy (TDD for
+   the engine and loader, fixtures from the 13 synthetic engine cases and the five brief tests,
+   a determinism test, contract tests for the classifier). I decide; record it in
+   docs/decisions/0002-architecture.md.
+5. /speckit-plan and /speckit-tasks from that decision, then /speckit-analyze (including the
+   English-only check).
 Log every correction in AI_NOTES.md and every important prompt in docs/ai/prompt-log.md.
 ```

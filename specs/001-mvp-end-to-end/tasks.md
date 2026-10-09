@@ -348,13 +348,13 @@ safety and the trace shape.
 
 **Independent test**: quickstart scenario 9.
 
-- [ ] T087 [US4] Add the receipt detail view to `viewer/app.py`: [FR-034, SC-009]
+- [X] T087 [US4] Add the receipt detail view to `viewer/app.py`: [FR-034, SC-009]
   - line items with category, confidence, subtype and recipient fields;
   - exceptions with `rule_id`, `policy_doc`, `line_ids`, the literal `evidence`, the `explanation` and the `computed` values;
   - review signals;
   - the answer alongside, from `outputs/eval/comparison.jsonl` only (FR-034).
-- [ ] T088 [US4] Add the metrics view to `viewer/app.py`. It renders `outputs/eval/metrics.json` for the three systems, every value with its N, the confusion matrix and the base-rate table [FR-034]
-- [ ] T089 [US4] Extend `tests/smoke/test_viewer.py`. All three views render offline, and a receipt's detail matches its line in `outputs/results.jsonl` [SC-009]
+- [X] T088 [US4] Add the metrics view to `viewer/app.py`. It renders `outputs/eval/metrics.json` for the three systems, every value with its N, the confusion matrix and the base-rate table [FR-034]
+- [X] T089 [US4] Extend `tests/smoke/test_viewer.py`. All three views render offline, and a receipt's detail matches its line in `outputs/results.jsonl` [SC-009]
 
 **Checkpoint**: the viewer can be used for the demo.
 
@@ -362,7 +362,7 @@ safety and the trace shape.
 
 ## Phase 8: Cold Run and "MVP done" Checkpoint
 
-- [ ] T090 Run the full cold classification once, with `uv run epv run`, Langfuse up and the `.env` key. Then run `uv run epv run --classifier keyword` and `uv run epv eval`. Commit `outputs/` with an `exp:` commit stating the model, endpoint, prompt version, billed USD from the stderr summary, and the cache hit count [SC-001, SC-008]
+- [X] T090 Run the full cold classification once, with `uv run epv run`, Langfuse up and the `.env` key. Then run `uv run epv run --classifier keyword` and `uv run epv eval`. Commit `outputs/` with an `exp:` commit stating the model, endpoint, prompt version, billed USD from the stderr summary, and the cache hit count [SC-001, SC-008]
 - [ ] T091 Re-run `uv run epv run --offline` and `uv run epv eval`. Confirm `git diff --exit-code outputs/` is clean (SC-003, SC-004) [SC-003, SC-004]
 - [ ] T092 Ask Luis to review the 13 converted engine cases and `tests/engine_cases/fixtures/CONVERSION_NOTES.md` against the policy text. Record the outcome per case in `tests/engine_cases/fixtures/REVIEW.md` (who, date, changes and reasons), and flip `status` to `REVIEWED` (SC-010). Add the checked items to the "Checked by hand" section of `AI_NOTES.md` [SC-010]
 - [ ] T093 **MVP done.** Run every scenario in `specs/001-mvp-end-to-end/quickstart.md` on a clean checkout, and tick each roadmap iteration 1 exit criterion in `docs/roadmap.md`. Record in the PR description a scenario-by-scenario pass list, with the spend against the USD 1.00 cap (SC-008)

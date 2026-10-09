@@ -99,6 +99,7 @@ def run_variant(
                 "cost_usd": c.source.cost_usd,
                 "cache_hit": c.source.cache_hit,
                 "translation": translation,
+                "unclassified_reason": c.unclassified_reason,
             }
             root.update(
                 output={"predicted": row["category"], "expected": item.get("category")},
@@ -161,9 +162,11 @@ def main(argv: list[str] | None = None) -> int:
         translator.save()
     tracer.flush(timeout_s=15.0)
     failed = sum(1 for r in rows if r["status"] != "classified")
+    gateway = sum(1 for r in rows if r["unclassified_reason"] == "gateway_error")
     print(
         f"{args.experiment}/{args.variant}: {len(rows)} items, {classifier.calls_made} calls, "
-        f"{failed} unclassified, billed USD {classifier.run_spend_usd:.6f}",
+        f"{failed} unclassified ({gateway} gateway errors: re-run to retry them), "
+        f"billed USD {classifier.run_spend_usd:.6f}",
         file=sys.stderr,
     )
     return 0

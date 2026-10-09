@@ -5,7 +5,9 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from eval.experiments.decide import e5, e7, e14, e15, ret
+import pytest
+
+from eval.experiments.decide import IncompleteRunError, e5, e7, e14, e15, ret
 
 N = 60
 
@@ -87,6 +89,26 @@ def test_e14_keeps_the_reference_when_nothing_qualifies() -> None:
 def test_e14_excludes_more_than_2_percent_schema_violations() -> None:
     results = {"gpt-oss-120b": rows(set()), "gpt-oss-20b": rows(set(), 0.0, schema_bad={1, 2})}
     by = {v["variant"]: v for v in e14(results, items())["variants"]}
+    assert by["gpt-oss-20b"]["status"] == "excluded"
+
+
+def test_e14_refuses_to_decide_while_a_run_has_gateway_errors() -> None:
+    broken = rows(set())
+    broken[5] = {**broken[5], "status": "unclassified", "unclassified_reason": "gateway_error"}
+    with pytest.raises(IncompleteRunError, match="gpt-oss-20b"):
+        e14({"gpt-oss-120b": rows(set()), "gpt-oss-20b": broken}, items())
+
+
+def test_e14_counts_only_schema_violations_toward_exclusion() -> None:
+    bad = rows(set(), 0.0, schema_bad={1, 2})
+    for r in bad:
+        if r["status"] == "unclassified":
+            r["unclassified_reason"] = "schema_violation"
+    by = {
+        v["variant"]: v
+        for v in e14({"gpt-oss-120b": rows(set()), "gpt-oss-20b": bad}, items())["variants"]
+    }
+    assert by["gpt-oss-20b"]["schema_violations"]["value"] == 2 / N
     assert by["gpt-oss-20b"]["status"] == "excluded"
 
 

@@ -71,7 +71,19 @@ def _cost_per_1000(pred: Rows) -> float:
     return 1000 * sum(r.get("cost_usd") or 0.0 for r in pred) / len(pred)
 
 
+class IncompleteRunError(RuntimeError):
+    """A run still has gateway errors: items the model never answered. Re-run to retry them."""
+
+
+def _complete(results: Mapping[str, Rows]) -> None:
+    for name, pred in sorted(results.items()):
+        missing = [r["item_id"] for r in pred if r.get("unclassified_reason") == "gateway_error"]
+        if missing:
+            raise IncompleteRunError(f"{name}: {len(missing)} gateway errors, re-run it first")
+
+
 def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    _complete(results)
     ref = results[REFERENCE]
     ref_correct = _correct(ref, items)
     ref_f1 = _restricted_f1(ref, items)
@@ -81,7 +93,12 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
     for name in sorted(results):
         pred = results[name]
         correct = _correct(pred, items)
-        violations = sum(1 for r in pred if r["status"] != "classified")
+        violations = sum(
+            1
+            for r in pred
+            if r["status"] != "classified"
+            and r.get("unclassified_reason", "schema_violation") == "schema_violation"
+        )
         entry: dict[str, Any] = {
             "variant": name,
             "accuracy": _proportion(sum(correct), len(items)),

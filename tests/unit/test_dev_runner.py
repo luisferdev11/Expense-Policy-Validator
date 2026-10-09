@@ -86,12 +86,34 @@ def test_one_row_per_item_with_every_field_and_one_trace_each(tmp_path: Path) ->
     fields = {
         "item_id", "variant", "model_id", "prompt_version", "status", "category", "restricted",
         "confidence", "subtype", "recipient_kind", "recipient_name", "raw_content",
-        "request_id", "cost_usd", "cache_hit", "translation",
+        "request_id", "cost_usd", "cache_hit", "translation", "unclassified_reason",
     }  # fmt: skip
     assert set(rows[0]) == fields
     assert rows[0]["category"] == "alcohol" and rows[0]["raw_content"].startswith("{")
+    assert rows[0]["unclassified_reason"] is None
     assert len(tracer.named("classify-dev-item")) == 2
     assert (tmp_path / "out.jsonl").exists()
+
+
+class Flaky(Fake):
+    """Fails the first call, as a dropped connection does."""
+
+    def __call__(self, payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
+        if self.calls == 0:
+            self.calls += 1
+            raise ConnectionError("network down")
+        return super().__call__(payload)
+
+
+def test_a_network_failure_is_recorded_as_a_gateway_error_and_retried_next_run(
+    tmp_path: Path,
+) -> None:
+    clf, out = classifier(tmp_path, Flaky()), tmp_path / "out.jsonl"
+    first = run_variant("E14", "gpt-oss-20b", ITEMS, clf, RecordingTracer(), out, "t")
+    assert first[0]["unclassified_reason"] == "gateway_error"
+    second = run_variant("E14", "gpt-oss-20b", ITEMS, clf, RecordingTracer(), out, "t")
+    assert [r["status"] for r in second] == ["classified", "classified"]
+    assert second[1]["cache_hit"] is True
 
 
 def test_offline_replay_is_identical(tmp_path: Path) -> None:

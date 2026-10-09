@@ -186,9 +186,34 @@ Follow-up decisions:
   - observability for the rest of the solution is left to a later ADR.
 - The starter prompt adds observability to the constitution and to the architecture discussion.
 
-## Next: starter prompt for the Spec Kit session
+## 2026-10-08: Spec Kit session, iterative delivery
 
-The first message of the next session, prepared here so the context carries over:
+The session opened with the starter prompt below, written in English, plus three changes:
+
+- **How we work, iteratively.**
+  > We want a working, end-to-end MVP early and improve it in small, reviewable iterations. Each
+  > iteration ends in a runnable system with passing tests and an updated report. Design seams
+  > for likely future changes (e.g. a message queue between ingestion and validation,
+  > authentication in front of the viewer, replacing the Streamlit viewer with a more robust
+  > UI/API), but do not build them before their iteration: no speculative abstractions, no unused
+  > interfaces beyond the seam itself.
+- **Iteration scoping before specifying.** A new step proposes the MVP cut and the later
+  candidates (each with its trigger, the seam it needs in the MVP and a rough size), recorded in
+  `docs/roadmap.md`. `/speckit-specify`, `/speckit-plan` and `/speckit-tasks` cover iteration 1
+  only. The deferred items are listed as out of scope.
+- **The architecture discussion** also scores each option on evolvability: the cost of adding a
+  queue, adding auth and swapping the viewer. ADR 0002 records the seams and the deferred items.
+  The tasks put a thin end-to-end path first, include an "MVP done" checkpoint, and
+  `/speckit-analyze` checks that no task implements a deferred item.
+
+**Outcome (in progress).**
+- Spec Kit 1.1.2 initialised with the Claude Code integration, on branch `chore/spec-kit-init`.
+- A probe run in a scratch directory showed beforehand that `--force` only adds files.
+
+## Starter prompt for the Spec Kit session, as prepared
+
+The first message of the Spec Kit session, prepared in the previous session so the context
+carries over. The entry above lists what changed when it was sent:
 
 ```markdown
 We continue the Oversight take-home (Expense Policy Validator). Talk to me in Spanish; every

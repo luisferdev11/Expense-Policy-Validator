@@ -131,8 +131,10 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     metrics = run_eval(results_path=RESULTS_FILE, out_dir=EVAL_DIR)
     posted = 0
     runs = json.loads(RUNS_FILE.read_text(encoding="utf-8")) if RUNS_FILE.exists() else {}
-    if str(RESULTS_FILE) in runs:
-        posted = post_scores(metrics["rows"], run_label=runs[str(RESULTS_FILE)]["run_label"])
+    last = runs.get(str(RESULTS_FILE))
+    # Scores go only on a run that was traced; an untraced run's trace IDs do not exist.
+    if last and last.get("tracer_enabled"):
+        posted = post_scores(metrics["rows"], run_label=last["run_label"])
     print(f"epv eval: wrote {EVAL_DIR}; {posted} Langfuse scores posted", file=sys.stderr)
     return 0
 

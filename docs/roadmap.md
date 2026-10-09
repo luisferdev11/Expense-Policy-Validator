@@ -80,7 +80,9 @@ each against a decision rule registered before its run (principle V).
 
 - Make these comparisons:
   - retriever variants (trigger map against passing every rule);
-  - template reporter against an LLM-drafted reporter;
+  - ~~template reporter against an LLM-drafted reporter~~: cut on 2026-10-09 (clarification).
+    The template stays ("the explanation is the computation"). An LLM-drafted reporter judged for
+    faithfulness is future work;
   - the oracle-classifier ablation, which attributes every error to its stage.
 - Run the 28 receipts once per finalist.
 

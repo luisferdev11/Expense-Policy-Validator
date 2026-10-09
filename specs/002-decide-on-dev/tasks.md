@@ -22,18 +22,18 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 1: Setup
 
-- [ ] T001 Create the folders `eval/experiments/` and `explorations/results/iter2/`, each with a README line saying what it holds
+- [X] T001 Create the folders `eval/experiments/` and `explorations/results/iter2/`, each with a README line saying what it holds
 
 ## Phase 2: Foundational (offline pieces, test-first)
 
-- [ ] T002 [P] Write `tests/unit/test_stats.py` with hand-computed values:
+- [X] T002 [P] Write `tests/unit/test_stats.py` with hand-computed values:
   - Wilson 1/9 is about [0.0199, 0.4350];
   - McNemar's exact two-sided p for b=1, c=6 is 0.125;
   - the paired bootstrap of a known difference is deterministic for a fixed seed, and its CI contains the observed difference;
   - the Brier score of perfect predictions is 0;
   - ECE over 10 bins on a hand example;
   - the coverage-accuracy points are monotone in coverage.
-- [ ] T003 Implement `eval/stats.py` (R5). Move `wilson` there and re-export it from `eval/metrics.py`
+- [X] T003 Implement `eval/stats.py` (R5). Move `wilson` there and re-export it from `eval/metrics.py`
 - [ ] T004 [P] Extend `tests/contract/test_prompt_schema.py`:
   - `parse` of an answer with `"subtype": null` raises `ParseError` by default;
   - it returns `subtype == "none"` with `null_subtype_as_none=True`;

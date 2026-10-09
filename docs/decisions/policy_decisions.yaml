@@ -65,6 +65,14 @@
     Home currency from a full ISO 4217 country-to-currency table, versioned as data with its
     source. International when the receipt currency differs from the home currency.
   status: decided
+- id: A9
+  rule_ids: [GIFT-01, GIFT-03, GIFT-04]
+  decision: >-
+    The classifier also returns recipient_kind (none, client_or_prospect, employee,
+    government_official) and a normalised recipient_name, read from the line text only. Lines on
+    one receipt with the same recipient_name are one recipient for GIFT-01. The engine reads only
+    these fields, never free text. Added 2026-10-08 during /speckit-clarify.
+  status: decided
 open_questions:
   - id: Q1
     for: review session

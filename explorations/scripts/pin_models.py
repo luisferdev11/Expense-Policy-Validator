@@ -128,6 +128,18 @@ def main() -> None:
             "pinned_at": fetched,
             "why": f"highest precision, then cheapest, of {len(ok)} up endpoints with structured outputs",
         }
+    # Record the pinned endpoint's own supported parameters (some reasoning models' endpoints
+    # do not accept `temperature`; budget.py only sends what the endpoint supports).
+    for mid, pin in pins.items():
+        if "endpoint_parameters" in pin:
+            continue
+        eps = requests.get(
+            f"https://openrouter.ai/api/v1/models/{mid}/endpoints", timeout=30
+        ).json()["data"]["endpoints"]
+        match = [e for e in eps if e.get("tag") == pin["endpoint"]]
+        pin["endpoint_parameters"] = (
+            sorted(match[0].get("supported_parameters") or []) if match else []
+        )
     pins_path.write_text(json.dumps(pins, indent=1))
     for mid, p in pins.items():
         print(f"{mid:<34} -> {p['endpoint']:<28} {p.get('provider_name', '')}")

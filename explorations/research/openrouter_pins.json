@@ -2,12 +2,52 @@
  "openai/gpt-oss-120b": {
   "endpoint": "deepinfra/bf16",
   "pinned_at": "2026-10-08",
-  "why": "pinned before this script; kept so cached runs stay valid"
+  "why": "pinned before this script; kept so cached runs stay valid",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "include_reasoning",
+   "logit_bias",
+   "max_tokens",
+   "min_p",
+   "presence_penalty",
+   "reasoning",
+   "reasoning_effort",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_k",
+   "top_p"
+  ]
  },
  "openai/gpt-oss-20b": {
   "endpoint": "deepinfra/bf16",
   "pinned_at": "2026-10-08",
-  "why": "pinned before this script; kept so cached runs stay valid"
+  "why": "pinned before this script; kept so cached runs stay valid",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "include_reasoning",
+   "logit_bias",
+   "max_tokens",
+   "min_p",
+   "presence_penalty",
+   "reasoning",
+   "reasoning_effort",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_k",
+   "top_p"
+  ]
  },
  "qwen/qwen3.5-9b": {
   "endpoint": "deepinfra/bf16",
@@ -16,7 +56,26 @@
   "prompt_usd_per_m": 0.1,
   "completion_usd_per_m": 0.15,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "include_reasoning",
+   "logit_bias",
+   "max_tokens",
+   "min_p",
+   "presence_penalty",
+   "reasoning",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_k",
+   "top_p"
+  ]
  },
  "google/gemma-3-12b-it": {
   "endpoint": "deepinfra/bf16",
@@ -25,7 +84,24 @@
   "prompt_usd_per_m": 0.05,
   "completion_usd_per_m": 0.15,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 2 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 2 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "logit_bias",
+   "max_tokens",
+   "min_p",
+   "presence_penalty",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_k",
+   "top_p"
+  ]
  },
  "google/gemma-3-4b-it": {
   "endpoint": "deepinfra/bf16",
@@ -34,7 +110,22 @@
   "prompt_usd_per_m": 0.05,
   "completion_usd_per_m": 0.1,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "logit_bias",
+   "max_tokens",
+   "min_p",
+   "presence_penalty",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "top_k",
+   "top_p"
+  ]
  },
  "mistralai/ministral-8b-2512": {
   "endpoint": "mistral/zdr",
@@ -43,7 +134,20 @@
   "prompt_usd_per_m": 0.15,
   "completion_usd_per_m": 0.15,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 3 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 3 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "max_tokens",
+   "presence_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_p"
+  ]
  },
  "mistralai/mistral-nemo": {
   "endpoint": "dekallm/fp8",
@@ -52,7 +156,21 @@
   "prompt_usd_per_m": 0.018,
   "completion_usd_per_m": 0.03,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 4 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 4 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "logit_bias",
+   "logprobs",
+   "max_tokens",
+   "presence_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "top_logprobs",
+   "top_p"
+  ]
  },
  "ibm-granite/granite-4.2-8b": {
   "endpoint": "coreweave/bf16",
@@ -61,7 +179,27 @@
   "prompt_usd_per_m": 0.1,
   "completion_usd_per_m": 0.15,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "frequency_penalty",
+   "include_reasoning",
+   "logprobs",
+   "max_tokens",
+   "presence_penalty",
+   "reasoning",
+   "reasoning_effort",
+   "repetition_penalty",
+   "response_format",
+   "seed",
+   "stop",
+   "structured_outputs",
+   "temperature",
+   "tool_choice",
+   "tools",
+   "top_k",
+   "top_logprobs",
+   "top_p"
+  ]
  },
  "anthropic/claude-haiku-5.5": {
   "endpoint": "google-vertex/global",
@@ -70,7 +208,19 @@
   "prompt_usd_per_m": 0.1,
   "completion_usd_per_m": 0.5,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "include_reasoning",
+   "max_tokens",
+   "reasoning",
+   "reasoning_effort",
+   "response_format",
+   "stop",
+   "structured_outputs",
+   "tool_choice",
+   "tools",
+   "verbosity"
+  ]
  },
  "openai/gpt-6-luna": {
   "endpoint": "openai",
@@ -79,6 +229,18 @@
   "prompt_usd_per_m": 0.1,
   "completion_usd_per_m": 0.5,
   "pinned_at": "2026-10-09T02:05:08+00:00",
-  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs",
+  "endpoint_parameters": [
+   "include_reasoning",
+   "max_tokens",
+   "reasoning",
+   "reasoning_effort",
+   "response_format",
+   "seed",
+   "structured_outputs",
+   "tool_choice",
+   "tools",
+   "verbosity"
+  ]
  }
 }

@@ -119,6 +119,13 @@ def prices() -> dict[str, tuple[float, float]]:
     }
 
 
+def endpoint_supports(model: str, parameter: str) -> bool:
+    """Whether the pinned endpoint accepts a parameter (unknown counts as yes)."""
+    pins = json.loads(PINS.read_text()) if PINS.exists() else {}
+    params = pins.get(model, {}).get("endpoint_parameters")
+    return True if not params else parameter in params
+
+
 def pin_for(model: str) -> str | None:
     pins = json.loads(PINS.read_text()) if PINS.exists() else {}
     if model in pins:
@@ -316,10 +323,13 @@ def call(
     kwargs: dict[str, Any] = {
         "model": model,
         "messages": messages,
-        "temperature": 0,
         "max_tokens": max_tokens,
         "extra_body": body,
     }
+    # Temperature 0 everywhere it is accepted; some reasoning models' endpoints reject it.
+    temperature_sent = endpoint_supports(model, "temperature")
+    if temperature_sent:
+        kwargs["temperature"] = 0
     if response_format is not None:
         kwargs["response_format"] = response_format
     client = OpenAI(
@@ -381,6 +391,7 @@ def call(
         "timestamp": ts,
         "served_by": served_by,
         "cost_usd": cost,
+        "temperature_sent": temperature_sent,
     }
     _cache_put(key, result)
     return {**result, "cached": False}

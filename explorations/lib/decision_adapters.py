@@ -57,17 +57,22 @@ class ItemClassifier(Protocol):
 class ChatJSONClassifier:
     model: str
     reasoning_effort: str | None = "low"
+    extra_body: dict[str, Any] | None = None
+    # Part of the cache key: a variant with different call settings must not reuse another
+    # variant's cached answers.
+    prompt_tag: str = cp.PROMPT_VERSION
 
     def classify(self, item: dict[str, Any]) -> Prediction:
         res = budget.call(
             "openrouter",
             self.model,
             cp.messages(item),
-            prompt_version=cp.PROMPT_VERSION,
+            prompt_version=self.prompt_tag,
             cache_input=cp.cache_input(item),
             response_format=cp.RESPONSE_FORMAT_STRICT,
             max_tokens=1024,
             reasoning_effort=self.reasoning_effort,
+            extra_body=self.extra_body,
             purpose="trial",
         )
         cat, conf, err = cp.parse(res["content"])

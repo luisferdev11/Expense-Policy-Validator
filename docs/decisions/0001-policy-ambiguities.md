@@ -4,7 +4,7 @@
 - **Date:** 2026-10-08
 - **Decided by:** Luis. The assistant (Claude Code) proposed the options and a recommendation for
   each.
-- **Input:** `explorations/policy_ambiguities.yaml`, eight places where the policy text admits more
+- **Input:** `explorations/policy/policy_ambiguities.yaml`, eight places where the policy text admits more
   than one reading. Each has a verbatim quote.
 - **Machine-readable copy:** `docs/decisions/policy_decisions.yaml`. The spec and the engine read
   that file, and every rule implementation cites the decision it follows.

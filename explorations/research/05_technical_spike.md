@@ -2,7 +2,7 @@
 
 Exploration material, not the deliverable. Every external fact carries its source URL; all pages
 were fetched on **2026-10-07** unless a line says otherwise. The full research notes, with more
-verbatim quotes, are in `research_notes/` (`providers.md`, `langfuse_speckit_jev.md`, `aws.md`).
+verbatim quotes, are in `notes/` (`providers.md`, `langfuse_speckit_jev.md`, `aws.md`).
 Live facts measured in this run (model ids, rate-limit headers, schema validity) were taken on
 **2026-10-08** and live in `05_models_live.json`, `05_live_check.jsonl` and `budget_log.jsonl`.
 
@@ -222,7 +222,7 @@ results are cached.
 ## AWS services for the design page (us-east-1)
 
 Prices from the official AWS Price List offer files and pricing pages, fetched 2026-10-07 (quotes
-verbatim in `research_notes/aws.md`):
+verbatim in `notes/aws.md`):
 
 | Service | Price used | Source |
 |---|---|---|
@@ -241,7 +241,7 @@ and https://pricing.us-east-1.amazonaws.com/offers/v1.0/aws/AmazonDynamoDB/curre
 fetched 2026-10-07), so older articles overstate it.
 
 **Rough monthly infrastructure cost at 50,000 receipts/day (1.5 M/month), model calls excluded.**
-The arithmetic is in `research_notes/aws.md`: about $70 on x86 (2 s at 1 GB per receipt), about
+The arithmetic is in `notes/aws.md`: about $70 on x86 (2 s at 1 GB per receipt), about
 $60 on Arm, about $30 at 1 s and 512 MB on Arm. Lambda duration is roughly 70 % of it, mostly
 time waiting on the model call, so right-sizing memory and moving to Arm matter more than anything
 else. Design: HTTP API with a JWT authorizer → SQS (with a DLQ) → worker Lambda → DynamoDB

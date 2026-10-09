@@ -3,10 +3,10 @@
 Usage, from the repository root:
 
     uv run --no-project --with openai --with python-dotenv --with requests \
-        python explorations/run_trial.py ollama qwen3:4b
-    uv run ... python explorations/run_trial.py groq openai/gpt-oss-120b
+        python explorations/lib/run_trial.py ollama qwen3:4b
+    uv run ... python explorations/lib/run_trial.py groq openai/gpt-oss-120b
 
-Rows go to explorations/trial_runs/<provider>__<model>.jsonl. Every call is cached (ollama under
+Rows go to explorations/results/trial_runs/<provider>__<model>.jsonl. Every call is cached (ollama under
 cache/ollama/, API models through budget.py), so re-running costs nothing. API calls go through
 budget.call, which logs, saves raw bodies and enforces the spend cap.
 """
@@ -22,13 +22,13 @@ from typing import Any
 
 import requests
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import classifier_prompt as cp
 from decision_adapters import DECISION_ENDPOINTS, DecisionClassifier
 
-RUNS = EXP / "trial_runs"
+RUNS = EXP / "results" / "trial_runs"
 OLLAMA = "http://localhost:11434/api/chat"
 # Groq free tier: about 8,000 tokens per minute per model and ~760 prompt tokens per call.
 MIN_INTERVAL_S = {"groq": 7.5, "deepinfra": 0.3, "gemini": 4.5}
@@ -39,7 +39,7 @@ EXTRA_BODY = {"Qwen/Qwen3.5-9B": {"chat_template_kwargs": {"enable_thinking": Fa
 def dev_items() -> list[dict[str, Any]]:
     return [
         json.loads(line)
-        for line in (EXP / "dev_items_draft.jsonl").read_text().splitlines()
+        for line in (EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines()
         if line.strip()
     ]
 

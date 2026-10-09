@@ -12,7 +12,7 @@ import re
 from pathlib import Path
 from typing import Any
 
-EXP = Path(__file__).resolve().parent
+EXP = Path(__file__).resolve().parent.parent  # explorations/
 REPO = EXP.parent
 PROMPT_VERSION = "cls-v1"
 

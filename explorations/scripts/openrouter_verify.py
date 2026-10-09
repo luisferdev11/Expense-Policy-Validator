@@ -1,7 +1,7 @@
 """Verify OpenRouter calls with GET /api/v1/generation, which can lag the call by many minutes.
 
 Usage: uv run --no-project --with openai --with python-dotenv --with requests \
-           python explorations/openrouter_verify.py
+           python explorations/scripts/openrouter_verify.py
 
 Looks up every OpenRouter request id in 05_live_check.jsonl and checks that the generation
 record exists, names the pinned provider, and bills the same cost the response reported in
@@ -16,13 +16,13 @@ from pathlib import Path
 
 import requests
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 
 rows = [
     json.loads(line)
-    for line in (EXP / "05_live_check.jsonl").read_text().splitlines()
+    for line in (EXP / "results" / "05_live_check.jsonl").read_text().splitlines()
     if '"openrouter"' in line
 ]
 out = []
@@ -56,7 +56,9 @@ for r in rows:
             and abs(float(data.get("total_cost") or 0) - float(reported)) < 1e-9,
         }
     )
-(EXP / "openrouter_verification.jsonl").write_text("".join(json.dumps(o) + "\n" for o in out))
+(EXP / "results" / "openrouter_verification.jsonl").write_text(
+    "".join(json.dumps(o) + "\n" for o in out)
+)
 ok = [o for o in out if o["status"] == 200]
 print(
     f"verified {len(ok)}/{len(out)}; provider DeepInfra on all verified: "

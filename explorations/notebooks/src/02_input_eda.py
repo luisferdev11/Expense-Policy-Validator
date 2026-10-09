@@ -1,7 +1,7 @@
 # %% [markdown]
 # # 02 · Input EDA and a metadata retriever prototype
 #
-# **Inputs only.** Receipts are loaded through `explorations/receipts_safe.py`, which deletes
+# **Inputs only.** Receipts are loaded through `explorations/lib/receipts_safe.py`, which deletes
 # `labels`, `line_items[].labels` and `notes` right after `json.loads`. Nothing here reads,
 # counts or summarises an answer, and nothing is evaluated against one.
 #
@@ -20,9 +20,9 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import pandas as pd
 
-REPO = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+REPO = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data" / "policy-docs").is_dir())
 EXP = REPO / "explorations"
-sys.path.insert(0, str(EXP))
+sys.path.insert(0, str(EXP / "lib"))
 from receipts_safe import assert_clean, load_inputs
 
 receipts = load_inputs()
@@ -340,7 +340,9 @@ def candidates(r) -> list[str]:
 R["candidates"] = R.apply(candidates, axis=1)
 R["n_candidates"] = R["candidates"].map(len)
 cand = dict(zip(R["receipt_id"], R["candidates"]))
-(EXP / "02_retriever_candidates.json").write_text(json.dumps(cand, indent=1, sort_keys=True))
+(EXP / "policy" / "02_retriever_candidates.json").write_text(
+    json.dumps(cand, indent=1, sort_keys=True)
+)
 print(
     f"{len(cand)} receipts; candidates per receipt: mean {R['n_candidates'].mean():.1f}, "
     f"min {R['n_candidates'].min()}, max {R['n_candidates'].max()} (of 41 rules)"

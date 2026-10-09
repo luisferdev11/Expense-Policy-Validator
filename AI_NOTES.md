@@ -29,11 +29,12 @@ strips `labels`, `line_items[].labels` and `notes`, and is never pasted into a p
 | 11 | 2026-10-08 | The assistant treated OpenRouter's `GET /api/v1/generation?id=` as failing because it returned 404 for every call within about 40 seconds, and the key's `usage` still read 0. Both records actually lag the call by many minutes. | Re-checking about half an hour later: 4 of 6 ids verified, all served by DeepInfra, each billed exactly the `usage.cost` the response had reported. Key usage had started moving. | The live check no longer concludes anything from an immediate 404. `openrouter_verify.py` can be re-run later, and it checks the provider and the billed cost against the cost the response reported. The OpenRouter cap uses the larger of reported and measured spend. |
 | 12 | 2026-10-08 | The assistant framed the currency ambiguity (REG-03/REG-04) only as "where does the euro rate come from when it is not on the record". It missed two business questions: whether to convert at the transaction date or the billing date, and which rate of that day to use (recorded, mid, high or low). | Luis, while answering the question, from a note he took on the brief's "convert foreign currency first, using the rate on the receipt". | FX became one component with two explicit settings (`date_basis`, `rate_kind`). The default follows the policy text, and the question goes to the review session (ADR 0001, A1/Q1). |
 | 13 | 2026-10-08 | The assistant treated a gap in the dataset as a fact about production: "the record never has a VAT number, so REG-04 always fires". | Luis: the field can exist in production even though this dataset lacks it. | `vat_number` is modelled as an optional input. REG-04 fires only when it is absent, and the evaluation reports how many exceptions come only from the missing field (ADR 0001, A2/Q2). |
+| 14 | 2026-10-08 | The assistant left `explorations/` as one flat folder of about 50 files, mixing shared code, one-off scripts, notebooks, data, results and research. Finding anything meant knowing the history. | Luis: "it has everything mixed up; I'd like something cleaner". | Reorganised by type (`lib/`, `scripts/`, `notebooks/`, `dev_set/`, `policy/`, `results/`, `research/`) with an `INDEX.md`, using `git mv`. All data and results files are byte-identical; the notebooks were rebuilt from cache with no paid call. |
 
 ## Open issues
 
 - Two of the six OpenRouter live-check ids were still 404 at the last check. Re-run
-  `explorations/openrouter_verify.py` later; it overwrites `openrouter_verification.jsonl`.
+  `explorations/scripts/openrouter_verify.py` later; it overwrites `explorations/results/openrouter_verification.jsonl`.
 
 ## Checked by hand (pending)
 

@@ -10,8 +10,8 @@ import urllib.error
 import urllib.request
 from pathlib import Path
 
-EXP = Path(__file__).resolve().parent
-sys.path.insert(0, str(EXP))
+EXP = Path(__file__).resolve().parent.parent  # explorations/
+sys.path.insert(0, str(EXP / "lib"))
 import os
 
 from budget import USER_AGENT, now, scrub
@@ -42,6 +42,6 @@ row = {
     "status": status,
     "body": scrub(body)[:1000],
 }
-with (EXP / "openrouter_key_checks.jsonl").open("a") as fh:
+with (EXP / "results" / "openrouter_key_checks.jsonl").open("a") as fh:
     fh.write(json.dumps(row) + "\n")
 print(json.dumps(row))

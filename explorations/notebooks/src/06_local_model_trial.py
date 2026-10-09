@@ -38,9 +38,9 @@ import pandas as pd
 from IPython.display import display
 from scipy import stats
 
-REPO = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+REPO = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data" / "policy-docs").is_dir())
 EXP = REPO / "explorations"
-sys.path.insert(0, str(EXP))
+sys.path.insert(0, str(EXP / "lib"))
 import budget
 import run_trial
 
@@ -64,7 +64,7 @@ print(subprocess.run(["ollama", "list"], capture_output=True, text=True).stdout)
 # %%
 DEV = [
     json.loads(line)
-    for line in (EXP / "dev_items_draft.jsonl").read_text().splitlines()
+    for line in (EXP / "dev_set" / "dev_items_draft.jsonl").read_text().splitlines()
     if line.strip()
 ]
 GOLD = {i["item_id"]: i for i in DEV}
@@ -120,8 +120,8 @@ def dump(df: pd.DataFrame, path: Path) -> None:
 
 
 main_mask = (P["provider"] == "ollama") | (P["provider"] == "groq")
-dump(P[main_mask], EXP / "06_predictions.jsonl")
-dump(P[~main_mask], EXP / "06_predictions_extra.jsonl")
+dump(P[main_mask], EXP / "results" / "06_predictions.jsonl")
+dump(P[~main_mask], EXP / "results" / "06_predictions_extra.jsonl")
 print(
     "main:",
     sorted(P[main_mask]["model"].unique()),
@@ -208,7 +208,7 @@ table.sort_values("accuracy", ascending=False)
 
 # %%
 log = pd.DataFrame(
-    [json.loads(line) for line in (EXP / "budget_log.jsonl").read_text().splitlines()]
+    [json.loads(line) for line in (EXP / "results" / "budget_log.jsonl").read_text().splitlines()]
 )
 log["key"] = log["provider"] + ":" + log["model"]
 cost = log.groupby("key").agg(
@@ -250,8 +250,8 @@ for key in list(extra_results) + [f"groq:{m}" for m in main_results if m.startsw
         target = extra_results.get(key) or main_results[key.split(":", 1)[1]]
         target["cost_est_usd"] = float(cost.loc[key, "est_usd"])
         target["calls_logged"] = int(cost.loc[key, "calls"])
-(EXP / "06_results.json").write_text(json.dumps(main_results, indent=2))
-(EXP / "06_results_extra.json").write_text(json.dumps(extra_results, indent=2))
+(EXP / "results" / "06_results.json").write_text(json.dumps(main_results, indent=2))
+(EXP / "results" / "06_results_extra.json").write_text(json.dumps(extra_results, indent=2))
 print("06_results.json:", list(main_results))
 print("06_results_extra.json:", list(extra_results))
 
@@ -327,7 +327,7 @@ for key in ["groq:openai/gpt-oss-120b", "groq:openai/gpt-oss-20b"]:
     pr = paired(key, other)
     tgt = main_results[key.split(":", 1)[1]]
     tgt["cross_provider_agreement_vs_deepinfra"] = pr["agreement"]
-(EXP / "06_results.json").write_text(json.dumps(main_results, indent=2))
+(EXP / "results" / "06_results.json").write_text(json.dumps(main_results, indent=2))
 agreement.round(3)
 
 # %%
@@ -423,7 +423,10 @@ print(
 
 # %%
 det = pd.DataFrame(
-    [json.loads(line) for line in (EXP / "determinism_openrouter.jsonl").read_text().splitlines()]
+    [
+        json.loads(line)
+        for line in (EXP / "results" / "determinism_openrouter.jsonl").read_text().splitlines()
+    ]
 )
 summary = det.groupby("model").agg(
     repeats=("repeat", "count"),

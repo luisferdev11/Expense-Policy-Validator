@@ -36,13 +36,13 @@ import requests
 from dotenv import load_dotenv
 from openai import APIStatusError, OpenAI
 
-EXP = Path(__file__).resolve().parent
+EXP = Path(__file__).resolve().parent.parent  # explorations/
 REPO = EXP.parent
 load_dotenv(REPO / ".env")
 
-LOG = EXP / "budget_log.jsonl"
-ERRORS = EXP / "budget_errors.jsonl"
-STATE = EXP / "budget_state.json"
+LOG = EXP / "results" / "budget_log.jsonl"
+ERRORS = EXP / "results" / "budget_errors.jsonl"
+STATE = EXP / "results" / "budget_state.json"
 RAW = EXP / "raw"
 CACHE = EXP / "cache"
 
@@ -79,7 +79,7 @@ OPENROUTER_PIN: dict[str, Any] = {
 PRICES: dict[tuple[str, str], tuple[float, float]] = {
     ("groq", "openai/gpt-oss-120b"): (0.15, 0.60),
     ("groq", "openai/gpt-oss-20b"): (0.075, 0.30),
-    # DeepInfra model pages and https://deepinfra.com/pricing, fetched 2026-10-07 (research_notes/providers.md).
+    # DeepInfra model pages and https://deepinfra.com/pricing, fetched 2026-10-07 (research/notes/providers.md).
     ("deepinfra", "openai/gpt-oss-120b"): (0.037, 0.17),
     ("deepinfra", "openai/gpt-oss-20b"): (0.03, 0.14),
     ("deepinfra", "ibm-granite/granite-4.2-8b"): (0.06, 0.25),

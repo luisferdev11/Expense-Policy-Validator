@@ -24,9 +24,9 @@ from pathlib import Path
 
 import pandas as pd
 
-REPO = Path.cwd() if (Path.cwd() / "data").exists() else Path.cwd().parent
+REPO = next(p for p in [Path.cwd(), *Path.cwd().parents] if (p / "data" / "policy-docs").is_dir())
 EXP = REPO / "explorations"
-sys.path.insert(0, str(EXP))
+sys.path.insert(0, str(EXP / "lib"))
 from receipts_safe import assert_clean, load_inputs
 
 TAX_TEXT = (REPO / "data" / "category-taxonomy.md").read_text()
@@ -1011,10 +1011,10 @@ D.sort_values("max_similarity", ascending=False)[
 
 # %%
 assert over.empty, "rewrite the items above before freezing"
-with (EXP / "dev_items_draft.jsonl").open("w") as fh:
+with (EXP / "dev_set" / "dev_items_draft.jsonl").open("w") as fh:
     for row in rows:
         fh.write(json.dumps(row, ensure_ascii=False) + "\n")
-sha = hashlib.sha256((EXP / "dev_items_draft.jsonl").read_bytes()).hexdigest()
+sha = hashlib.sha256((EXP / "dev_set" / "dev_items_draft.jsonl").read_bytes()).hexdigest()
 print("wrote", len(rows), "items; dev_items_draft.jsonl SHA-256:", sha)
 
 # %% [markdown]
@@ -1452,7 +1452,7 @@ for n, c in enumerate(CASES, start=1):
             "status": "DRAFT",
         }
     )
-with (EXP / "engine_cases_draft.jsonl").open("w") as fh:
+with (EXP / "dev_set" / "engine_cases_draft.jsonl").open("w") as fh:
     for c in out:
         fh.write(json.dumps(c, ensure_ascii=False) + "\n")
 print(len(out), "engine cases, every quote verbatim")

@@ -28,7 +28,10 @@ retriever, policy engine and exception reporter.
    interface. The classifier never sees the declared expense type or the attendee count.
 9. **Secrets stay out.** The OpenRouter key lives in `.env`, which is gitignored. Never write a
    key into code, logs, outputs, commits or chat. A pre-commit hook blocks key patterns.
-10. **English everywhere.** Code, identifiers, comments, docstrings, commits and docs.
+10. **English everywhere.** Every artifact is in English: code, identifiers, comments,
+    docstrings, commits, PRs, docs, ADRs, and every Spec Kit artifact (constitution, specs,
+    plans, checklists, tasks). The conversation with Luis is in Spanish; anything written to the
+    repo is translated, including quoted prompts in `docs/ai/prompt-log.md`.
 
 ## Code standards
 
@@ -39,6 +42,9 @@ retriever, policy engine and exception reporter.
   experiments) that show how the work developed.
 - Keep `AI_NOTES.md` up to date: every mistake an assistant made, how it was caught, and what
   changed. It is part of the deliverable.
+- Record every decision before implementing it, in `docs/decisions/` (ADRs; policy decisions
+  carry IDs the engine cites), and log the important prompts in `docs/ai/prompt-log.md`.
+- One branch per complete unit of work, merged through a PR.
 
 ## Commands
 

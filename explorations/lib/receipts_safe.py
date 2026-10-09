@@ -17,7 +17,7 @@ ANSWER_KEYS_LINE = ("labels",)
 
 def repo_root() -> Path:
     here = Path(__file__).resolve().parent
-    return here.parent
+    return here.parent.parent
 
 
 def _strip(receipt: dict[str, Any]) -> dict[str, Any]:

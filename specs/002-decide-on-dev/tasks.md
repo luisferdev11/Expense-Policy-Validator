@@ -90,12 +90,12 @@ piece. Adapters get contract tests with fake transports.
 
 - [ ] T016 [US2] Run E14: `run_dev.py --experiment E14 --variant` for each pin, starting with the reference. Commit the predictions and caches with an `exp:` commit that records the calls, spend and failures
 - [ ] T017 [US2] Run E5: `run_dev.py --experiment E5 --variant translate` on the non-English items with the reference pin. Commit with an `exp:` commit
-- [ ] T018 [P] [US2] Write `tests/unit/test_decide.py` on synthetic predictions:
+- [X] T018 [P] [US2] Write `tests/unit/test_decide.py` on synthetic predictions:
   - each registered rule picks the expected winner, including the "nothing qualifies, keep the reference" case;
   - E15 is computed by re-parsing the raw answers;
   - E7 picks the lower Brier score and its threshold by R8;
   - the output matches the data model "Experiment outcome".
-- [ ] T019 [US2] Implement `eval/experiments/decide.py` (R12), which writes `outputs/eval/experiments.json` deterministically
+- [X] T019 [US2] Implement `eval/experiments/decide.py` (R12), which writes `outputs/eval/experiments.json` deterministically
 - [ ] T020 [P] [US2] Implement `eval/experiments/retriever_check.py` (R9). Its result feeds `decide.py`
 - [ ] T021 [US2] Run `decide.py`. Commit `outputs/eval/experiments.json` with an `exp:` commit that summarises each winner and margin
 

@@ -58,6 +58,7 @@ def freeze(
                     "reviewed_recipient_name", item.get("proposed_recipient_name")
                 ),
                 "review": r["decision"],
+                "a6a9": "proposed_recipient_kind" in item or "proposed_subtype" in item,
                 "trap": item.get("trap"),
             }
         )

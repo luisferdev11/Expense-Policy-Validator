@@ -63,6 +63,7 @@ def test_applies_reviews_and_defaults(tmp_path: Path) -> None:
         None,
     )
     assert rows[1]["recipient_kind"] == "client_or_prospect"
+    assert (rows[0]["a6a9"], rows[1]["a6a9"]) == (False, True)
     assert rows[0]["review"] == "changed"
     assert digest == hashlib.sha256(out.read_bytes()).hexdigest()
     assert digest in md.read_text()

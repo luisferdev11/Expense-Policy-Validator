@@ -7,30 +7,18 @@ review signals match on (receipt, rule_id). Only scored (in-scope) receipts coun
 
 from __future__ import annotations
 
-import math
 from collections.abc import Sequence
 from typing import Any
 
+from eval.stats import wilson
 from expense_validator.domain.engine.disposition import disposition
 
 DISPOSITIONS = ["flag", "review", "pass"]
 Rows = Sequence[dict[str, Any]]
-Z95 = 1.959963984540054
 
 
 def _scored(rows: Rows) -> list[dict[str, Any]]:
     return [r for r in rows if r["scored"]]
-
-
-def wilson(k: int, n: int) -> tuple[float, float]:
-    """Wilson score 95 % interval for k successes out of n."""
-    if n == 0:
-        return (0.0, 1.0)
-    p = k / n
-    denom = 1 + Z95**2 / n
-    centre = (p + Z95**2 / (2 * n)) / denom
-    half = Z95 * math.sqrt(p * (1 - p) / n + Z95**2 / (4 * n * n)) / denom
-    return (max(0.0, centre - half), min(1.0, centre + half))
 
 
 def _proportion(k: int, n: int) -> dict[str, Any]:

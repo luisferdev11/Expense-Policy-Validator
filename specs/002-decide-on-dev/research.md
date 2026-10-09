@@ -48,7 +48,7 @@ rationale and the alternatives considered.
 
 ## R4. The dev-set runner
 
-- **Decision:** `explorations/experiments/run_dev.py` runs one variant over the frozen set. Each
+- **Decision:** `eval/experiments/run_dev.py` runs one variant over the frozen set. Each
   run:
   - uses the pipeline's normaliser, request builder and `OpenRouterClassifier`;
   - writes to a per-variant cache, `explorations/results/iter2/cache/<variant>.jsonl`;
@@ -111,7 +111,7 @@ rationale and the alternatives considered.
 
 ## R9. The retriever comparison
 
-- **Decision:** `explorations/experiments/retriever_check.py` runs the engine with the trigger
+- **Decision:** `eval/experiments/retriever_check.py` runs the engine with the trigger
   map and with every rule. It covers the 13 engine fixtures and the 32 receipts, using cached
   classifications (inputs only, no labels), and counts the differences.
 - **Rationale:** it decides on fixtures, not scores. Outcomes are compared, never answers.
@@ -142,7 +142,7 @@ rationale and the alternatives considered.
 
 ## R12. The experiments table
 
-- **Decision:** `explorations/experiments/decide.py` applies each registered rule to the
+- **Decision:** `eval/experiments/decide.py` applies each registered rule to the
   committed results. It writes `outputs/eval/experiments.json` with, for each experiment:
   - the factor and variants, and the rule;
   - the metrics with N and intervals;

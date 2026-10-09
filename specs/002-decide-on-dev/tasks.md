@@ -22,7 +22,7 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 1: Setup
 
-- [ ] T001 Create the folders `explorations/experiments/` and `explorations/results/iter2/`, each with a README line saying what it holds
+- [ ] T001 Create the folders `eval/experiments/` and `explorations/results/iter2/`, each with a README line saying what it holds
 
 ## Phase 2: Foundational (offline pieces, test-first)
 
@@ -65,7 +65,7 @@ piece. Adapters get contract tests with fake transports.
   - writes one prediction row per item, with every field in the data model;
   - replays offline from the cache;
   - opens one `classify-dev-item` trace per item.
-- [ ] T013 Implement `explorations/experiments/run_dev.py`, using the pipeline normaliser, request builder, `OpenRouterClassifier(pin)`, per-variant caches and the tracer (R4)
+- [ ] T013 Implement `eval/experiments/run_dev.py`, using the pipeline normaliser, request builder, `OpenRouterClassifier(pin)`, per-variant caches and the tracer (R4)
 
 **Checkpoint**: every offline piece is tested. No model call has been made.
 
@@ -95,8 +95,8 @@ piece. Adapters get contract tests with fake transports.
   - E15 is computed by re-parsing the raw answers;
   - E7 picks the lower Brier score and its threshold by R8;
   - the output matches the data model "Experiment outcome".
-- [ ] T019 [US2] Implement `explorations/experiments/decide.py` (R12), which writes `outputs/eval/experiments.json` deterministically
-- [ ] T020 [P] [US2] Implement `explorations/experiments/retriever_check.py` (R9). Its result feeds `decide.py`
+- [ ] T019 [US2] Implement `eval/experiments/decide.py` (R12), which writes `outputs/eval/experiments.json` deterministically
+- [ ] T020 [P] [US2] Implement `eval/experiments/retriever_check.py` (R9). Its result feeds `decide.py`
 - [ ] T021 [US2] Run `decide.py`. Commit `outputs/eval/experiments.json` with an `exp:` commit that summarises each winner and margin
 
 ## Phase 5: User Story 3, Know where errors come from (P2)

@@ -98,11 +98,12 @@ src/expense_validator/
 eval/
 ├── stats.py                           # NEW: Wilson, McNemar, paired bootstrap, Brier, ECE (R5)
 ├── oracle.py                          # NEW: oracle ablation and attribution (R10)
+├── experiments/                       # NEW: run_dev.py, retriever_check.py, decide.py (R4, R9, R12)
+│                                      #   never reads data/receipts.jsonl (architecture test)
 └── report.py                          # oracle section and experiments table
 
 explorations/
 ├── dev_set/build_frozen.py, dev_set_v2.jsonl, FROZEN.md   # R2
-├── experiments/run_dev.py, retriever_check.py, decide.py  # R4, R9, R12
 ├── research/experiments_plan.yaml     # registrations (R3)
 └── results/iter2/                     # predictions and caches
 
@@ -111,8 +112,11 @@ viewer/app.py                          # an Experiments view
 docs/decisions/0004-iteration-2-decisions.md   # winners, written after the decisions
 ```
 
-**Structure decision.** Experiments live in `explorations/` and reuse the pipeline's adapters.
-The domain does not change.
+**Structure decision.** The experiment scripts live in `eval/experiments/`. The session's
+permissions blocked new folders under `explorations/` (2026-10-09), and the scripts do evaluate
+variants. They reuse the pipeline's adapters. Unlike `eval/answers.py`, they never read the
+receipts' answers, and an architecture test enforces it. Their results are written by the code
+to `explorations/results/iter2/`. The domain does not change.
 
 ## Delivery order (input to `/speckit-tasks`)
 

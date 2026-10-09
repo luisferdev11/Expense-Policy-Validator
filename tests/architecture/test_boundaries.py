@@ -143,6 +143,19 @@ def test_only_the_loader_names_the_receipts_file() -> None:
     assert offenders == []
 
 
+def test_dev_experiments_never_read_the_receipts_answers() -> None:
+    """eval/experiments evaluates variants on the synthetic dev set only (iteration 2 plan)."""
+    experiments = sorted((ROOT / "eval" / "experiments").rglob("*.py"))
+    offenders = [
+        str(path.relative_to(ROOT))
+        for path in experiments
+        if any("receipts.jsonl" in s for s in _strings(_parse(path)))
+        or any(name in {"eval.answers", "eval.oracle"} for _, name in _imports(_parse(path)))
+    ]
+    assert experiments
+    assert offenders == []
+
+
 def test_only_the_loader_names_the_answer_keys() -> None:
     offenders = [
         str(path.relative_to(ROOT))

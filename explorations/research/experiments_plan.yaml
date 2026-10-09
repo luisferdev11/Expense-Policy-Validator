@@ -156,4 +156,51 @@ experiments:
       among non-excluded models; report ECE and a reliability table with bin counts.
       (4) The labels are DRAFT and the set saturated earlier models, so the outcome is
       PRELIMINARY and must be re-run on the hardened, Luis-reviewed dev set before it is final.
-    status: registered, not yet run
+    status: >-
+      Run 2026-10-09 (15 models x 109 items, no model errors). The registered rule, applied
+      mechanically, chose mistralai/mistral-nemo: no challenger beat the reference, and the rule
+      then picks the cheapest model that is "not significantly worse". That exposed a flaw in
+      the rule: with N=109 McNemar has little power, so "not significantly worse" admitted
+      clearly weaker models (granite-4.2-8b at 89 % had p=0.057). The result is reported as
+      registered, not overridden; the corrected rule is E14. Lowest Brier: qwen/qwen3.5-9b, but
+      all its confidences fall in one bin, so its calibration is barely measurable here.
+      Details: notebooks/05_model_trial.ipynb, results/05_results.json.
+    deviations:   # added after registration, before the full run; the registered text above is unchanged
+      - >-
+        2026-10-09: the pinned endpoints of anthropic/claude-haiku-5.5 (google-vertex/global) and
+        openai/gpt-6-luna (openai) do not accept `temperature`; with require_parameters the call
+        returns 404. For these two models temperature is not sent (provider default). Every other
+        model runs at temperature 0. Found on a one-item probe per model.
+      - >-
+        Transient provider errors (HTTP 429, 5xx) after retries are re-attempted on a later pass
+        instead of being counted as model errors; the exclusion rule (1) counts only errors that
+        come from the model's answer (invalid or empty output).
+      - >-
+        2026-10-09, after 6 items: qwen/qwen3.5-9b with reasoning effort "low" spent the whole
+        1,024-token budget on reasoning and returned empty answers (finish_reason length) on 3
+        of 6 items. That is a configuration failure, not the model's answer, so the model runs
+        with reasoning disabled (as in the earlier direct-provider trial) under cache tag
+        cls-v1+reasoning-off; the 6 truncated rows were discarded (their calls stay in the
+        budget log). No other model's settings changed.
+
+  - id: E14
+    factor: item classifier choice, with a non-inferiority margin (replaces E13's step 3)
+    registered_at: "2026-10-09T02:20:37+00:00"   # written after E13's flaw was found and before any run on the hardened set
+    data: >-
+      The hardened, Luis-reviewed dev set, decision split only (the prompt-development split is
+      never scored). Same models, settings and pins as E13, unless a model is retired.
+    decision_rule: >-
+      (1) Same exclusions as E13. (2) Superiority: a challenger becomes the reference if McNemar
+      exact p < 0.05 in its favour AND the lower bound of the 95 % paired bootstrap interval of
+      its accuracy difference against the reference is above 0. (3) Non-inferiority: a model is
+      "as good as" the reference only if that lower bound is above -0.02 (delta = 2 accuracy
+      points) AND its restricted F1 is at least the reference's minus 0.01. Bootstrap: 10,000
+      paired resamples of items, fixed seed. (4) Among the reference and the non-inferior models,
+      choose the cheapest per 1,000 items, then the lowest median latency. (5) EXC-03 confidence
+      source: lowest Brier score, reported only if at least three confidence bins hold 10 or more
+      items each; otherwise state that calibration could not be measured.
+    why_delta: >-
+      With about 2.5 items per receipt, a 2-point drop in item accuracy puts a misread item on
+      roughly 5 % more receipts, the most the review queue can absorb without hiding real
+      violations. The margin is chosen before seeing the hardened-set results.
+    status: registered, not yet run (waits for the hardened dev set)

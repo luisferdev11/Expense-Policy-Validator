@@ -101,14 +101,14 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 5: User Story 3, Know where errors come from (P2)
 
-- [ ] T022 [P] [US3] Write `tests/unit/test_oracle.py` on synthetic rows. Attribution maps:
+- [x] T022 [P] [US3] Write `tests/unit/test_oracle.py` on synthetic rows. Attribution maps:
   - (pipeline wrong, oracle right) to `classification`;
   - (both wrong) to `rule_logic_or_convention`;
   - (pipeline right, oracle wrong) to `right_for_wrong_reason`;
   - (both right) to `none`.
 
   The oracle classifier builds a confidence-1.0 classification with subtype and recipient `none`.
-- [ ] T023 [US3] Implement `eval/oracle.py` (R10) and add the oracle section to `eval/report.py`. The section shows accuracy with N and an interval, the rows with their stage, and the stated limitation
+- [x] T023 [US3] Implement `eval/oracle.py` (R10) and add the oracle section to `eval/report.py`. The section shows accuracy with N and an interval, the rows with their stage, and the stated limitation
 
 ## Phase 6: User Story 4, Apply the winners and report once (P2)
 

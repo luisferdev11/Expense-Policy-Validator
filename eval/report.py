@@ -15,6 +15,7 @@ from eval.base_rate import base_rate_table
 from eval.baselines import run_flagger
 from eval.compare import compare
 from eval.metrics import system_metrics
+from eval.oracle import attribute, oracle_rows
 from eval.scope import OUT_OF_SCOPE
 from expense_validator.adapters.results_files import load_results
 from expense_validator.paths import BASELINES_DIR
@@ -108,6 +109,37 @@ def _matrix(cm: dict[str, Any]) -> list[str]:
     return out
 
 
+def _oracle(o: dict[str, Any]) -> list[str]:
+    wrong = [r for r in o["rows"] if r["stage"] != "none"]
+    lines = [
+        "## Oracle ablation: where errors come from",
+        "",
+        "The same pipeline code, fed each line's answer category with confidence 1.0 "
+        "(research R10).",
+        "",
+        f"- **Pipeline disposition accuracy:** {_prop(o['pipeline_accuracy'])}.",
+        f"- **Oracle disposition accuracy:** {_prop(o['oracle_accuracy'])}.",
+        f"- **Limitation:** {o['limitation']}",
+        "- **Stages:** `classification` (only the oracle is right), `rule_logic_or_convention` "
+        "(both wrong), `right_for_wrong_reason` (only the pipeline is right), "
+        "`oracle_limitation` (only the pipeline is right, through a rule that needs subtype or "
+        "recipient).",
+        "",
+    ]
+    if not wrong:
+        return [*lines, "Both sides get every scored disposition right.", ""]
+    lines += [
+        "| Receipt | Answer | Pipeline | Oracle | Stage |",
+        "|---|---|---|---|---|",
+    ]
+    for r in wrong:
+        lines.append(
+            f"| {r['receipt_id']} | {r['answer_disposition']} | {r['pipeline_disposition']} | "
+            f"{r['oracle_disposition']} | {r['stage']} |"
+        )
+    return [*lines, ""]
+
+
 def _render(metrics: dict[str, Any]) -> str:
     systems = metrics["systems"]
     p = systems["pipeline"]
@@ -168,6 +200,7 @@ def _render(metrics: dict[str, Any]) -> str:
         f"- **REG-04 from the absent VAT field only** (decision A2): {reg04['value']} of "
         f"{reg04['n']} REG-04 exceptions.",
         "",
+        *(_oracle(metrics["oracle"]) if "oracle" in metrics else []),
         "## Base rate",
         "",
     ]
@@ -217,6 +250,7 @@ def run_eval(
     metrics: dict[str, Any] = {
         "run": results[0].run.model_dump(mode="json") if results else {},
         "systems": systems,
+        "oracle": attribute(rows["pipeline"], oracle_rows()),
         "base_rate": base_rate_table(
             fp=p["false_positives"]["value"],
             n_pass=p["false_positives"]["n"],

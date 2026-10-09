@@ -11,7 +11,8 @@
 # Report every comparison with its N, Wilson intervals and the McNemar b/c counts.
 #
 # Status: planned unless stated. Runner: explorations/lib/run_trial.py (one model per call);
-# classifiers: explorations/lib/decision_adapters.py.
+# classifiers: explorations/lib/decision_adapters.py. Since 2026-10-08 every run goes through
+# OpenRouter only; earlier multi-provider results are in explorations/archive/.
 
 prerequisites:
   - id: P0
@@ -123,3 +124,36 @@ experiments:
     factor: self-consistency
     variants: [single call, majority of three gpt-oss-20b calls]
     question: Does a cheap ensemble beat one 120b call on cost per correct item?
+
+  - id: E13
+    factor: model, all through OpenRouter (generative models with a strict JSON schema, and decision models)
+    registered_at: "2026-10-09T02:05:34+00:00"   # written before any of these runs
+    variants:
+      chat: [openai/gpt-oss-120b, openai/gpt-oss-20b, qwen/qwen3.5-9b, google/gemma-3-12b-it,
+             google/gemma-3-4b-it, mistralai/ministral-8b-2512, mistralai/mistral-nemo,
+             ibm-granite/granite-4.2-8b, anthropic/claude-haiku-5.5, openai/gpt-6-luna]
+      decision: [typesafe/jev-1.13, openai/gpt-6-luna-decisions, cloudflare/clef-flash,
+                 cloudflare/clef, liquid/d1]
+    held_fixed: >-
+      109 DRAFT dev items (SHA-256 2565118c...3ecb); temperature 0; one pinned endpoint per chat
+      model (research/openrouter_pins.json: highest precision, then cheapest, no fallbacks);
+      prompt cls-v1 for chat models (reasoning effort low where supported), dec-v1 for decision
+      models (same category descriptions and "names lie" rules). Input: item text, merchant,
+      MCC; never the declared expense type or attendee count.
+    note: >-
+      Haiku is included as a normal candidate by Luis's decision, although the team had asked
+      not to use Anthropic models; the report must say so.
+    question: >-
+      Which model should the pipeline's item classifier use, and which confidence signal should
+      drive the EXC-03 threshold?
+    decision_rule: >-
+      (1) Exclude any model with a schema-valid rate below 0.98 or an error rate above 2 %.
+      (2) Reference: openai/gpt-oss-120b (the current choice). A challenger replaces it only if
+      McNemar exact p < 0.05 in its favour on correctness and its restricted F1 is not lower.
+      Otherwise, among models not significantly worse than the reference (McNemar p >= 0.05, or
+      better), choose the cheapest per 1,000 items, then the lowest median latency.
+      (3) EXC-03 confidence source: the lowest Brier score (top-label confidence vs correctness)
+      among non-excluded models; report ECE and a reliability table with bin counts.
+      (4) The labels are DRAFT and the set saturated earlier models, so the outcome is
+      PRELIMINARY and must be re-run on the hardened, Luis-reviewed dev set before it is final.
+    status: registered, not yet run

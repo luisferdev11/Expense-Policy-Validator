@@ -1,0 +1,84 @@
+{
+ "openai/gpt-oss-120b": {
+  "endpoint": "deepinfra/bf16",
+  "pinned_at": "2026-10-08",
+  "why": "pinned before this script; kept so cached runs stay valid"
+ },
+ "openai/gpt-oss-20b": {
+  "endpoint": "deepinfra/bf16",
+  "pinned_at": "2026-10-08",
+  "why": "pinned before this script; kept so cached runs stay valid"
+ },
+ "qwen/qwen3.5-9b": {
+  "endpoint": "deepinfra/bf16",
+  "provider_name": "DeepInfra",
+  "quantization": "bf16",
+  "prompt_usd_per_m": 0.1,
+  "completion_usd_per_m": 0.15,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+ },
+ "google/gemma-3-12b-it": {
+  "endpoint": "deepinfra/bf16",
+  "provider_name": "DeepInfra",
+  "quantization": "bf16",
+  "prompt_usd_per_m": 0.05,
+  "completion_usd_per_m": 0.15,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 2 up endpoints with structured outputs"
+ },
+ "google/gemma-3-4b-it": {
+  "endpoint": "deepinfra/bf16",
+  "provider_name": "DeepInfra",
+  "quantization": "bf16",
+  "prompt_usd_per_m": 0.05,
+  "completion_usd_per_m": 0.1,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs"
+ },
+ "mistralai/ministral-8b-2512": {
+  "endpoint": "mistral/zdr",
+  "provider_name": "Mistral",
+  "quantization": "unknown",
+  "prompt_usd_per_m": 0.15,
+  "completion_usd_per_m": 0.15,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 3 up endpoints with structured outputs"
+ },
+ "mistralai/mistral-nemo": {
+  "endpoint": "dekallm/fp8",
+  "provider_name": "DekaLLM",
+  "quantization": "fp8",
+  "prompt_usd_per_m": 0.018,
+  "completion_usd_per_m": 0.03,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 4 up endpoints with structured outputs"
+ },
+ "ibm-granite/granite-4.2-8b": {
+  "endpoint": "coreweave/bf16",
+  "provider_name": "CoreWeave",
+  "quantization": "bf16",
+  "prompt_usd_per_m": 0.1,
+  "completion_usd_per_m": 0.15,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 1 up endpoints with structured outputs"
+ },
+ "anthropic/claude-haiku-5.5": {
+  "endpoint": "google-vertex/global",
+  "provider_name": "Google",
+  "quantization": "unknown",
+  "prompt_usd_per_m": 0.1,
+  "completion_usd_per_m": 0.5,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+ },
+ "openai/gpt-6-luna": {
+  "endpoint": "openai",
+  "provider_name": "OpenAI",
+  "quantization": "unknown",
+  "prompt_usd_per_m": 0.1,
+  "completion_usd_per_m": 0.5,
+  "pinned_at": "2026-10-09T02:05:08+00:00",
+  "why": "highest precision, then cheapest, of 6 up endpoints with structured outputs"
+ }
+}

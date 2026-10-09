@@ -125,13 +125,27 @@ def test_gateway_error_is_unclassified(tmp_path: Path) -> None:
     assert (c.status, c.unclassified_reason) == ("unclassified", "gateway_error")
 
 
-def test_schema_violation_is_unclassified_and_not_cached(tmp_path: Path) -> None:
+def test_schema_violation_is_unclassified_and_cached_as_the_raw_answer(tmp_path: Path) -> None:
     transport = FakeTransport(content='{"category": "beer", "confidence": 1}')
     clf, _ = make(tmp_path, transport)
     c = clf.classify("L1", REQ)
     assert (c.status, c.unclassified_reason) == ("unclassified", "schema_violation")
+    again = clf.classify("L2", REQ)
+    assert (again.status, again.unclassified_reason) == ("unclassified", "schema_violation")
+    assert again.source.cache_hit is True
+    assert len(transport.payloads) == 1
+    (row,) = clf.cache._rows.values()
+    assert row.content == '{"category": "beer", "confidence": 1}'
+
+
+def test_cached_raw_answers_are_parsed_on_read(tmp_path: Path) -> None:
+    clf, _ = make(tmp_path, FakeTransport())
     clf.classify("L1", REQ)
-    assert len(transport.payloads) == 2
+    clf.cache.save()
+    reread = ClassificationCache(tmp_path / "c.jsonl")
+    offline = OpenRouterClassifier(reread, RecordingTracer(), offline=True)
+    c = offline.classify("L1", REQ)
+    assert (c.status, c.category, c.source.cache_hit) == ("classified", "food_beverage", True)
 
 
 def test_cap_refuses_the_call(tmp_path: Path) -> None:

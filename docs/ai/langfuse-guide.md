@@ -29,7 +29,7 @@ From iteration 1 on, the pipeline itself traces every receipt in the **`default`
 The contract is `specs/001-mvp-end-to-end/contracts/tracing.md`.
 
 - **One trace per receipt.** Its trace ID is derived from the run label and the receipt ID. The
-  run label of the latest run is in the gitignored `.cache/last_run.json`.
+  run label of the latest run per results file is in the gitignored `.cache/runs.json`.
 - **Two top-level spans per trace.**
   - **`validate-receipt`** holds `normalise-receipt` and `classify-receipt`. Under
     `classify-receipt` there is one `classify-item` generation per billed model call.

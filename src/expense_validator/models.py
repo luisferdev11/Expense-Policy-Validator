@@ -125,12 +125,11 @@ class Classification(_Frozen):
 
 
 class CacheEntry(_Frozen):
+    """One billed model answer, kept literally. It is parsed on every read, so a parser change
+    never needs a new paid call and a schema violation replays identically offline."""
+
     cache_key: str
-    category: Category
-    confidence: float = Field(ge=0, le=1)
-    subtype: Subtype
-    recipient_kind: RecipientKind
-    recipient_name: str | None
+    content: str | None
     model_id: str
     provider_endpoint: str
     prompt_version: str

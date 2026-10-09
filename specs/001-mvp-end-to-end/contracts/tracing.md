@@ -19,7 +19,7 @@ has two implementations: `LangfuseTracer` and `NoopTracer` (research R6).
 **Two passes per run.** Each receipt's trace therefore has two top-level spans:
 `validate-receipt` (normalise, classify) and `decide-receipt` (retrieve, apply, report). Both use
 the trace ID derived from the same seed. The run label is unique per run and is recorded in the
-gitignored `.cache/last_run.json`, so `epv eval` can score the latest run's traces.
+gitignored `.cache/runs.json` (one entry per results file), so `epv eval` can score the latest run's traces.
 
 **Names.** Every name is stable and verb-first. No name contains a model name.
 

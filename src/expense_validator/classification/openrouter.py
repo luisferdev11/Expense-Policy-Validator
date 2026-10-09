@@ -101,7 +101,6 @@ class OpenRouterClassifier:
         self.calls_made = 0
         self.cache_hits = 0
         self.run_spend_usd = 0.0
-        self._uncached_spend = 0.0
 
     def _get_transport(self) -> Transport:
         if self._transport is None:
@@ -147,15 +146,28 @@ class OpenRouterClassifier:
         )
 
     def _from_entry(self, line_id: str, entry: CacheEntry, cache_hit: bool) -> Classification:
+        """Parse the cached raw answer; a schema violation stays one on every replay."""
+        try:
+            answer = parse(entry.content)
+        except ParseError:
+            return Classification(
+                line_id=line_id,
+                status="unclassified",
+                category=None,
+                restricted=None,
+                confidence=None,
+                unclassified_reason="schema_violation",
+                source=self._source(entry.cache_key, entry, cache_hit),
+            )
         return Classification(
             line_id=line_id,
             status="classified",
-            category=entry.category,
-            restricted=restricted_for(entry.category),
-            confidence=entry.confidence,
-            subtype=entry.subtype,
-            recipient_kind=entry.recipient_kind,
-            recipient_name=entry.recipient_name,
+            category=answer.category,
+            restricted=restricted_for(answer.category),
+            confidence=answer.confidence,
+            subtype=answer.subtype,
+            recipient_kind=answer.recipient_kind,
+            recipient_name=answer.recipient_name,
             source=self._source(entry.cache_key, entry, cache_hit),
         )
 
@@ -167,7 +179,7 @@ class OpenRouterClassifier:
             return self._from_entry(line_id, hit, cache_hit=True)
         if self.offline:
             return self._unclassified(line_id, key, "offline_cache_miss")
-        if self.cache.total_cost_usd() + self._uncached_spend >= self.cap_usd:
+        if self.cache.total_cost_usd() >= self.cap_usd:
             return self._unclassified(line_id, key, "budget_refused")
         return self._call(line_id, request, key)
 
@@ -217,18 +229,12 @@ class OpenRouterClassifier:
                 },
             )
             try:
-                answer = parse(content)
+                parse(content)
             except ParseError as exc:
                 generation.update(level="WARNING", status_message=f"schema_violation: {exc}")
-                self._uncached_spend += cost_usd or 0.0
-                return self._unclassified(line_id, key, "schema_violation")
         entry = CacheEntry(
             cache_key=key,
-            category=answer.category,
-            confidence=answer.confidence,
-            subtype=answer.subtype,
-            recipient_kind=answer.recipient_kind,
-            recipient_name=answer.recipient_name,
+            content=content,
             model_id=MODEL_ID,
             provider_endpoint=ENDPOINT,
             prompt_version=PROMPT_VERSION,

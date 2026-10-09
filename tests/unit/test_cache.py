@@ -11,11 +11,8 @@ REQ = ClassifierRequest(description_clean="Coffee", merchant_name="Cafe", mcc=58
 def entry(key: str, cost: float = 0.0001) -> CacheEntry:
     return CacheEntry(
         cache_key=key,
-        category="food_beverage",
-        confidence=0.9,
-        subtype="none",
-        recipient_kind="none",
-        recipient_name=None,
+        content='{"category": "food_beverage", "confidence": 0.9, "subtype": "none", '
+        '"recipient_kind": "none", "recipient_name": null}',
         model_id="m",
         provider_endpoint="e",
         prompt_version="p",

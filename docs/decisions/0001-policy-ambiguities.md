@@ -101,6 +101,7 @@ threshold is applied to the cached response, so a re-run makes the same decision
 - When the category is `other`, the classifier also returns a closed `subtype`: `event_ticket`, `mobile_handset`, `prescription_medication` or `none`.
 - The engine reads only this structured field. No keyword matching happens inside the engine, so it stays deterministic and auditable.
 - The subtype list is part of the versioned prompt and schema.
+- Interpretation of ENT-01's "similar venue" (Luis, 2026-10-09, while labelling dev item DEV-113): registration to a professional event, such as a conference or summit, is an `event_ticket`. ENT-01 then asks for a VP approval reference. This is the stricter reading. The frozen prompt cls-v2 does not name conferences, so the dev set measures whether a model reads "similar venue" this way.
 
 ### A7. What counts as a gift (GIFT-01)
 

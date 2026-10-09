@@ -26,6 +26,20 @@ TAXONOMY = ROOT / "data" / "category-taxonomy.md"
 REVIEWER = "Luis"
 SUBTYPES = ["none", "event_ticket", "mobile_handset", "prescription_medication"]
 RECIPIENTS = ["none", "client_or_prospect", "employee", "government_official"]
+# The same definitions the classifier prompt (cls-v2) gives, so reviewer and model read one rule.
+SUBTYPE_HELP = (
+    "Only for category other. event_ticket: a ticket or entry to golf, a sporting event, "
+    "theatre, a concert or a similar venue (a conference or summit counts, ADR 0001 A6). "
+    "mobile_handset: mobile phone hardware. prescription_medication: medication dispensed on "
+    "prescription. Otherwise none."
+)
+RECIPIENT_HELP = (
+    "Whom the line itself says the item is for. none: the line names nobody, including items "
+    "for the employee's own use. employee: a named colleague or staff member of the company. "
+    "client_or_prospect: a client, customer or prospect, or any other named recipient. "
+    "government_official: a government official, public employee or state-owned enterprise "
+    "employee."
+)
 
 
 def _jsonl(path: Path) -> list[dict[str, Any]]:
@@ -83,13 +97,17 @@ with st.form(key=f"form-{item['item_id']}"):
     subtype = recipient_kind = None
     if "proposed_subtype" in item:
         subtype = st.selectbox(
-            "Subtype (A6)", SUBTYPES, index=SUBTYPES.index(item["proposed_subtype"])
+            "Subtype (A6)",
+            SUBTYPES,
+            index=SUBTYPES.index(item["proposed_subtype"]),
+            help=SUBTYPE_HELP,
         )
     if "proposed_recipient_kind" in item:
         recipient_kind = st.selectbox(
             "Recipient kind (A9)",
             RECIPIENTS,
             index=RECIPIENTS.index(item["proposed_recipient_kind"]),
+            help=RECIPIENT_HELP,
         )
     recipient_name = None
     if "proposed_recipient_kind" in item:

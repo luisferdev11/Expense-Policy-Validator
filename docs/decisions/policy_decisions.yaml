@@ -53,6 +53,8 @@ decisions:
     decision: >-
       For category other, the classifier returns a closed subtype (event_ticket, mobile_handset,
       prescription_medication, none). The engine reads only that field, never free text.
+      Interpretation (Luis, 2026-10-09): registration to a professional event such as a
+      conference or summit is an event_ticket, a "similar venue" under ENT-01.
     status: decided
   - id: A7
     rule_ids: [GIFT-01]

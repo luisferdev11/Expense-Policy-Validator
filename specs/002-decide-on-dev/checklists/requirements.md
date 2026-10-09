@@ -34,7 +34,7 @@
 - **Technologies named on purpose.** Model IDs (`gpt-oss-120b`) and metric names (Brier, ECE)
   are the subject of the experiments, not implementation choices. OpenRouter, Langfuse and
   Streamlit are named only under Assumptions.
-- **No clarification markers.** Two informed defaults are listed under Assumptions for
-  `/speckit-clarify` to raise:
+- **No clarification markers.** Two informed defaults were listed under Assumptions; both were
+  resolved by `/speckit-clarify` on 2026-10-09, together with the split, E5 and E7:
   - the exact E14 candidate list;
   - whether the LLM-drafted reporter comparison stays in scope.

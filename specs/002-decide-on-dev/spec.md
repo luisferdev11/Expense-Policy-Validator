@@ -26,6 +26,36 @@ The full description is preserved in the session prompt log. It covers:
 **Labels firewall**: the dev set is synthetic and may be read. The answers in
 `data/receipts.jsonl` are read only inside the evaluation.
 
+## Clarifications
+
+### Session 2026-10-09
+
+- Q: Which models compete in E14 against gpt-oss-120b on cls-v2? → A: Four in total:
+  - `openai/gpt-oss-120b`, the reference;
+  - `openai/gpt-oss-20b`;
+  - Qwen3.5-9B;
+  - Gemma-3-12B.
+
+  This matches the team's interest in models under 14B. Decision models are excluded, because
+  they cannot return the subtype and recipient fields. Anthropic models are excluded from E14.
+- Q: Which part of the dev set takes the decisions? → A: All 130 items. Prompt cls-v2 is frozen
+  for iteration 2: no prompt is tuned on dev results. E14's registration ("decision split only")
+  is amended before its first run, with that reason recorded.
+- Q: Does E5 (translate to English before classifying) stay in this iteration? → A: Yes, scoped
+  down. It runs only on the reference `gpt-oss-120b` and only on the non-English dev items,
+  comparing translate-then-classify against classifying the original.
+- Q: Is the LLM-drafted reporter compared against the template reporter here? → A: No, it is cut.
+  The template reporter stays, argued as "the explanation is the computation": every number comes
+  from `computed` and every quote is verbatim. The LLM variant, judged for faithfulness, goes to
+  the roadmap as future work.
+- Q: Which confidence signals does E7 compare for EXC-03? → A: Two:
+  - the model's self-reported confidence;
+  - agreement between `gpt-oss-120b` and `gpt-oss-20b`, which comes at no extra cost because both
+    run in E14.
+
+  The signal is chosen by Brier score, then the threshold on the coverage-accuracy curve. If
+  agreement wins, the pipeline makes two calls per item.
+
 ## User Scenarios & Testing *(mandatory)*
 
 The actors:
@@ -37,22 +67,22 @@ The actors:
 
 Luis reviews every DRAFT item of the synthetic dev set, blind to model outputs. He confirms or
 corrects the category and, where proposed, the subtype (A6) and the recipient (A9). The set is
-then frozen: its content hash and a fixed decision split are recorded before any experiment runs
-on it.
+then frozen: its content hash is recorded before any experiment runs on it, and all 130 items
+decide.
 
 **Why this priority**: Every later decision is only as good as these labels. Iteration 1's model
 comparison was marked preliminary for exactly this reason.
 
 **Independent Test**: The review record holds one decision per item. The frozen hash matches
-the file. The decision split is written down and never changes afterwards.
+the file. It never changes afterwards unless the history shows the affected re-runs.
 
 **Acceptance Scenarios**:
 
 1. **Given** the 130 dev items, **When** Luis finishes reviewing, **Then** every item has a
    recorded decision (confirmed or changed, with a note for each change), and none was reviewed
    with a model output in view.
-2. **Given** the reviewed set, **When** it is frozen, **Then** its hash and the list of items in
-   the decision split are committed before the first experiment call.
+2. **Given** the reviewed set, **When** it is frozen, **Then** its hash is committed before the
+   first experiment call.
 
 ---
 
@@ -65,8 +95,8 @@ For each open choice there is a decision rule, which Luis approves before any ru
 - whether `"subtype": null` reads as `"none"` (E15);
 - the retriever.
 
-Each experiment then runs on the dev set's decision split only, through the same classifier code
-the pipeline uses. The rule picks the winner mechanically.
+Each experiment then runs on the frozen dev set, through the same classifier code the pipeline
+uses. The rule picks the winner mechanically.
 
 **Why this priority**: This is principle V and the heart of what the team asked to see: "see
 many different options, attack them and take the right decision".
@@ -76,7 +106,7 @@ history, and the winner can be re-derived from the committed results with no mod
 
 **Acceptance Scenarios**:
 
-1. **Given** a registered rule and the frozen decision split, **When** the experiment runs,
+1. **Given** a registered rule and the frozen dev set, **When** the experiment runs,
    **Then** results record each variant's metrics with N and intervals, and the rule's outcome
    is applied as written. A result that contradicts intuition is reported, not overridden.
 2. **Given** any experiment, **When** its calls run, **Then** every model call is traced, cached
@@ -150,8 +180,9 @@ model call.
   any decision run. Changed labels need a note.
 - **FR-002**: Items that exercise A6 or A9 MUST carry reviewed subtype and recipient labels. All
   other items default to `none`, `none` and null.
-- **FR-003**: The reviewed set MUST be frozen by content hash. A fixed decision split, disjoint
-  from any items used to develop prompts, MUST be recorded before the first experiment call.
+- **FR-003**: The reviewed set MUST be frozen by content hash before the first experiment call.
+  All 130 items decide. Prompt cls-v2 stays frozen for the iteration, so no item is used to
+  develop prompts.
 
 **Registered decisions**
 
@@ -163,11 +194,17 @@ model call.
   accuracy and restricted F1 are reported as secondary, with any minimum they must meet stated in
   the rule. Anthropic models MAY appear only as disclosed comparisons. They MUST NOT become the
   delivered model (team request).
-- **FR-006**: E7 MUST compare confidence sources available on cls-v2, using Brier score, ECE and
-  the coverage-accuracy curve. It MUST choose the EXC-03 threshold by the registered rule, and
-  report how often the threshold fires on dev.
+- **FR-006**: E7 MUST compare two confidence sources on cls-v2, using Brier score, ECE and the
+  coverage-accuracy curve:
+  - self-reported confidence;
+  - agreement between gpt-oss-120b and gpt-oss-20b.
+
+  It MUST choose the source with the lower Brier score, then the EXC-03 threshold by the
+  registered rule, and report how often the threshold fires on dev. If agreement wins, the
+  delivered pipeline makes two calls per item, and the cost is stated.
 - **FR-007**: E5 MUST compare classifying the original text against translating to English
-  first. The translation step is itself a traced model call.
+  first. It runs on the reference model only, over the non-English dev items. The translation
+  step is itself a traced, cached model call with a versioned prompt.
 - **FR-008**: E15 MUST compare a strict parser against one that reads `"subtype": null` as
   `"none"`, on the same cached answers, without new calls where possible.
 - **FR-009**: The retriever comparison MUST show whether passing every rule changes any engine
@@ -175,7 +212,7 @@ model call.
 
 **Running**
 
-- **FR-010**: Experiments MUST run only on the decision split, through the pipeline's own
+- **FR-010**: Experiments MUST run only on the frozen dev set, through the pipeline's own
   classifier code. Every model call is traced, cached and counted against the spend cap.
 - **FR-011**: Every metric MUST carry its N and, for proportions, a 95 % interval. Each
   experiment's outcome MUST be re-derivable from committed results with no model call.
@@ -197,8 +234,8 @@ model call.
 ### Key Entities
 
 - **Dev item**: description, language, merchant, MCC, and the reviewed category, restricted
-  flag, subtype and recipient (kind, name). It also records its split and review decision.
-- **Frozen dev set**: the item file's content hash, the decision split, and the date.
+  flag, subtype and recipient (kind, name). It also records its review decision.
+- **Frozen dev set**: the item file's content hash and the date.
 - **Experiment registration**: ID, factor, variants, what is held fixed, metric, decision rule,
   approval, and registration time.
 - **Experiment result**: per variant, the metrics with N and intervals, cost, and failures; and
@@ -225,19 +262,13 @@ model call.
 
 - **Tools.** The model gateway is OpenRouter, tracing is Langfuse, and the review page is
   Streamlit. These are named here only, as in iteration 1.
-- **E14 candidates by default:**
-  - the reference `gpt-oss-120b`;
-  - `gpt-oss-20b`;
-  - the strongest small open models from E13 that return strict JSON.
-
-  Decision models are excluded because they cannot return the cls-v2 subtype and recipient
-  fields. Haiku is excluded from the delivered pipeline. The exact list is a clarification item.
-- **The LLM-drafted reporter comparison** is deferred unless Luis keeps it. It needs a
-  faithfulness judge, and time is short. This is a clarification item.
+- **E14 candidates** (clarified): `gpt-oss-120b` (reference), `gpt-oss-20b`, Qwen3.5-9B and
+  Gemma-3-12B. Each is pinned to one endpoint, as in E13. Decision models and Anthropic models are
+  excluded.
+- **The LLM-drafted reporter comparison is cut** (clarified). The template reporter stays, and the
+  future work is listed in the roadmap.
 - **Spend cap for the iteration:** USD 1.00, the same as iteration 1. Iteration 1 spent USD
   0.0032.
-- **The decision split** is fixed by item ID before any run. Its construction is decided in the
-  plan.
 - **Iteration 1's provisional threshold of 0.5** stays until E7 decides.
 
 ## Out of Scope

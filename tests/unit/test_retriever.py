@@ -1,6 +1,6 @@
 """Deterministic trigger-map retriever (T033, FR-010)."""
 
-from expense_validator.retriever import retrieve
+from expense_validator.domain.retriever import retrieve
 from tests.factories import classified, item, receipt
 
 

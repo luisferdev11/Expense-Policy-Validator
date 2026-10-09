@@ -179,6 +179,10 @@ tests/
 └── smoke/                 # CLI and viewer start
 ```
 
+**Layout update (ADR 0003, 2026-10-09).** After iteration 1 the package was reorganised by
+layer: `domain/` (pure core), `ports/`, `adapters/` and `app/`. The tree above is the
+iteration 1 layout, kept as history.
+
 **Structure decision**: a single project with three packages: the pipeline, `eval` and
 `viewer`. All three are built from `pyproject.toml` and checked by mypy (R7). `explorations/`
 stays frozen research. Code from it is ported into `src/`, never imported.

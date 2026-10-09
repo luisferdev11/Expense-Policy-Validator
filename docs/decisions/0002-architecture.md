@@ -1,6 +1,7 @@
 # ADR 0002: Architecture for iteration 1
 
-- **Status:** accepted
+- **Status:** accepted. The module layout below is superseded by ADR 0003 (2026-10-09): the
+  same architecture, organised by layer (domain, ports, adapters, app).
 - **Date:** 2026-10-08
 - **Decided by:** Luis. The assistant (Claude Code) proposed three options and recommended B.
 - **Scope:** iteration 1, the end-to-end MVP (`specs/001-mvp-end-to-end/spec.md`,

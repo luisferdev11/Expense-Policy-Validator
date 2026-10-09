@@ -9,18 +9,18 @@ from __future__ import annotations
 
 from pathlib import Path
 
-from expense_validator.classification.keyword import KEYWORDS, matches
-from expense_validator.classification.taxonomy import restricted_for
-from expense_validator.loader import load_receipts
-from expense_validator.models import (
+from expense_validator.adapters.keyword_classifier import KEYWORDS, matches
+from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.adapters.results_files import write_results
+from expense_validator.domain.models import (
     Disposition,
     OutputLineItem,
     ReceiptInput,
     ReceiptResult,
     RunMetadata,
 )
-from expense_validator.normaliser import clean
-from expense_validator.pipeline import write_results
+from expense_validator.domain.normaliser import clean
+from expense_validator.domain.taxonomy import restricted_for
 
 RESTRICTED_WORDS = tuple(w for c, words in KEYWORDS.items() if restricted_for(c) for w in words)
 RUN = RunMetadata(

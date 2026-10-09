@@ -2,8 +2,8 @@
 
 from pathlib import Path
 
-from expense_validator.classification.cache import ClassificationCache, cache_key
-from expense_validator.models import CacheEntry, ClassifierRequest
+from expense_validator.adapters.classification_cache import ClassificationCache, cache_key
+from expense_validator.domain.models import CacheEntry, ClassifierRequest
 
 REQ = ClassifierRequest(description_clean="Coffee", merchant_name="Cafe", mcc=5812)
 

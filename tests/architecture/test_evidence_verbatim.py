@@ -2,7 +2,8 @@
 
 import re
 
-from expense_validator.engine.registry import REGISTRY, rules_version
+from expense_validator.adapters.config_files import rules_version
+from expense_validator.domain.engine.registry import REGISTRY
 from expense_validator.paths import POLICY_DIR
 
 IN_SCOPE = {

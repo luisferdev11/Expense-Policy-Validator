@@ -8,14 +8,14 @@ from typing import Any
 
 import pytest
 
-from expense_validator.classification.cache import ClassificationCache
-from expense_validator.classification.openrouter import (
+from expense_validator.adapters.classification_cache import ClassificationCache
+from expense_validator.adapters.openrouter.classifier import (
     ENDPOINT,
     MODEL_ID,
     OpenRouterClassifier,
 )
-from expense_validator.classification.prompt import PROMPT_VERSION
-from expense_validator.models import ClassifierRequest
+from expense_validator.adapters.openrouter.prompt import PROMPT_VERSION
+from expense_validator.domain.models import ClassifierRequest
 from tests.fakes import RecordingTracer
 
 REQ = ClassifierRequest(description_clean="Arnold Palmer", merchant_name="Diner", mcc=5812)

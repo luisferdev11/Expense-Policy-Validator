@@ -2,7 +2,7 @@
 
 from decimal import Decimal
 
-from expense_validator.engine.settings import load_settings
+from expense_validator.adapters.config_files import load_settings
 
 
 def test_fx_defaults_follow_a1() -> None:

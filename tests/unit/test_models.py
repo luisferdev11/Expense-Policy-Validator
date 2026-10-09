@@ -6,7 +6,7 @@ from typing import Any
 import pytest
 from pydantic import ValidationError
 
-from expense_validator.models import (
+from expense_validator.domain.models import (
     Classification,
     ClassificationSource,
     ExceptionFinding,

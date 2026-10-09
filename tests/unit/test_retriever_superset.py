@@ -2,11 +2,11 @@
 
 from typing import Any
 
-from expense_validator.engine.context import build_context
-from expense_validator.engine.evaluate import RULES, evaluate
-from expense_validator.engine.registry import REGISTRY
-from expense_validator.models import Classification, ClassifiedReceipt, RuleSet
-from expense_validator.retriever import TRIGGERS, retrieve
+from expense_validator.domain.engine.context import build_context
+from expense_validator.domain.engine.evaluate import RULES, evaluate
+from expense_validator.domain.engine.registry import REGISTRY
+from expense_validator.domain.models import Classification, ClassifiedReceipt, RuleSet
+from expense_validator.domain.retriever import TRIGGERS, retrieve
 from tests.engine_cases.helpers import settings
 from tests.engine_cases.test_synthetic_cases import CASES, _classified
 from tests.factories import classified, cls, item, receipt

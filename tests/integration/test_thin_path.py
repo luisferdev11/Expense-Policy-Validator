@@ -4,7 +4,7 @@ import shutil
 import warnings
 from pathlib import Path
 
-from expense_validator.cli import run_command
+from expense_validator.app.cli import run_command
 from expense_validator.paths import CLASSIFICATIONS_FILE
 
 
@@ -32,7 +32,7 @@ def test_offline_run_is_byte_identical_and_needs_no_tracer(tmp_path: Path) -> No
 def test_tracer_falls_back_without_keys(tmp_path: Path, monkeypatch) -> None:  # type: ignore[no-untyped-def]
     monkeypatch.delenv("LANGFUSE_PUBLIC_KEY", raising=False)
     monkeypatch.delenv("LANGFUSE_SECRET_KEY", raising=False)
-    monkeypatch.setattr("expense_validator.cli.load_env", lambda: None)
+    monkeypatch.setattr("expense_validator.app.cli.load_env", lambda: None)
     with warnings.catch_warnings():
         warnings.simplefilter("ignore")
         summary = run_command(

@@ -10,7 +10,7 @@ from __future__ import annotations
 from collections.abc import Mapping, Sequence
 from typing import Any
 
-from expense_validator.tracing import LangfuseTracer, make_tracer, trace_id_for
+from expense_validator.adapters.tracing import LangfuseTracer, make_tracer, trace_id_for
 
 
 def post_scores(

@@ -7,7 +7,7 @@ from contextlib import contextmanager
 from dataclasses import dataclass, field
 from typing import Any
 
-from expense_validator.models import Classification, ClassifierRequest
+from expense_validator.domain.models import Classification, ClassifierRequest
 
 
 @dataclass

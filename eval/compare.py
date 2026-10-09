@@ -11,7 +11,7 @@ from typing import Any
 
 from eval.answers import Answer
 from eval.scope import in_scope
-from expense_validator.models import ReceiptResult
+from expense_validator.domain.models import ReceiptResult
 
 
 def compare(results: Sequence[ReceiptResult], answers: dict[str, Answer]) -> list[dict[str, Any]]:

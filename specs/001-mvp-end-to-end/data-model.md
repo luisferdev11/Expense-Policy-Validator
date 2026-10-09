@@ -1,6 +1,6 @@
 # Data Model: Iteration 1 MVP
 
-All models live in `src/expense_validator/models.py`, except where noted. They are Pydantic v2
+All models live in `src/expense_validator/domain/models.py` (ADR 0003), except where noted. They are Pydantic v2
 models, frozen; see research R1. Money is `Decimal` (R2). Field names follow `data/README.md` and
 the brief's output shape. Exact Python types are settled in implementation. The constraints below
 are the contract.

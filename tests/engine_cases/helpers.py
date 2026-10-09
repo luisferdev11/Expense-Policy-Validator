@@ -7,12 +7,13 @@ from __future__ import annotations
 
 from functools import cache
 
-from expense_validator.engine.context import build_context
-from expense_validator.engine.evaluate import evaluate
-from expense_validator.engine.registry import REGISTRY
-from expense_validator.engine.settings import Settings, load_settings
-from expense_validator.loader import load_receipts
-from expense_validator.models import (
+from expense_validator.adapters.config_files import load_settings
+from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.domain.engine.context import build_context
+from expense_validator.domain.engine.evaluate import evaluate
+from expense_validator.domain.engine.registry import REGISTRY
+from expense_validator.domain.engine.settings import Settings
+from expense_validator.domain.models import (
     Classification,
     ClassifiedReceipt,
     CrossReceiptContext,

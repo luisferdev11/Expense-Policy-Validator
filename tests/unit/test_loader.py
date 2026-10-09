@@ -10,7 +10,7 @@ from pathlib import Path
 import pytest
 from pydantic import ValidationError
 
-from expense_validator.loader import load_receipts, parse_receipt_line
+from expense_validator.adapters.receipts_file import load_receipts, parse_receipt_line
 
 
 def test_loads_32_receipts_and_79_items() -> None:

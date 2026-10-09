@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from expense_validator.models import Classification, ClassifiedReceipt, EngineFindings
+from expense_validator.domain.models import Classification, ClassifiedReceipt, EngineFindings
 from tests.engine_cases.helpers import run
 from tests.factories import classified, item, receipt
 

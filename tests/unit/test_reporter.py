@@ -1,8 +1,13 @@
 """Template reporter: explanations state the rule, the lines and the arithmetic (T035, FR-022)."""
 
-from expense_validator.engine.registry import REGISTRY
-from expense_validator.models import EngineFindings, ExceptionFinding, ReviewSignal, RunMetadata
-from expense_validator.reporter import report
+from expense_validator.domain.engine.registry import REGISTRY
+from expense_validator.domain.models import (
+    EngineFindings,
+    ExceptionFinding,
+    ReviewSignal,
+    RunMetadata,
+)
+from expense_validator.domain.reporter import report
 from tests.factories import classified, item, receipt
 
 RUN = RunMetadata(
@@ -64,7 +69,7 @@ def test_mcc_02_signal_gets_a_reason() -> None:
 
 
 def test_every_exception_rule_has_its_own_template() -> None:
-    from expense_validator.reporter import EXCEPTION_TEMPLATES, SIGNAL_TEMPLATES
+    from expense_validator.domain.reporter import EXCEPTION_TEMPLATES, SIGNAL_TEMPLATES
 
     exception_rules = {s.rule_id for s in REGISTRY.values() if s.kind == "exception"}
     assert exception_rules <= set(EXCEPTION_TEMPLATES)

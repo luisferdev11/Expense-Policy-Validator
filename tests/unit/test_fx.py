@@ -6,8 +6,8 @@ from decimal import Decimal as D
 
 import pytest
 
-from expense_validator.engine import fx
-from expense_validator.engine.settings import load_settings
+from expense_validator.adapters.config_files import load_settings
+from expense_validator.domain.engine import fx
 from tests.factories import item, receipt
 
 S = load_settings()

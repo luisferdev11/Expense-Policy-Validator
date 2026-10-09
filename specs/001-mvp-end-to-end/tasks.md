@@ -376,7 +376,7 @@ safety and the trace shape.
 - [X] T094 [P] Update `AI_NOTES.md` with every assistant mistake caught during iteration 1: what happened, how it was caught and what changed. Update the "Assistants and what they did" table
 - [X] T095 [P] Update `docs/ai/prompt-log.md` with this session's outcome, and the implementation session's important prompts, translated into English, with their outcomes
 - [X] T096 [P] Update `explorations/INDEX.md` to say which `explorations/lib` modules were ported into `src/`, and that explorations stay frozen
-- [ ] T097 Run `uv run pre-commit run -a` and `uv run pytest`. Open the iteration 1 PR and merge it after review
+- [X] T097 Run `uv run pre-commit run -a` and `uv run pytest`. Open the iteration 1 PR and merge it after review
 
 ---
 

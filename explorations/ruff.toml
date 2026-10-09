@@ -15,4 +15,5 @@ extend-ignore = [
     "RUF003",
     "B023",
     "SIM108",
+    "SIM117", # nested with blocks read better for observation scopes
 ]

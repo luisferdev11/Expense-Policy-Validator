@@ -47,6 +47,21 @@ explicit "MVP done" checkpoint.
 - Luis has reviewed the 13 synthetic engine cases against the policy text. They are used as DRAFT
   fixtures until then.
 
+**Status: done on 2026-10-09** (task T093). Every criterion was checked on a clean checkout with
+no `.env`:
+
+| Criterion | Evidence |
+|---|---|
+| Brief cases, synthetic cases, determinism and firewall tests pass | `uv run pytest`: 233 passed |
+| ruff, mypy and pytest are clean | pre-commit on every commit |
+| Results committed, with model, provider, prompt and rules versions | `outputs/results.jsonl`, `run` field on every line |
+| `eval` reproduces every number with no model call | `epv eval` without a key leaves `outputs/eval/` byte-identical |
+| The viewer starts with one command | `uv run epv view`; smoke tests cover its three views |
+| Every model call traced; runs complete with Langfuse down | 78 `classify-item` generations linked to `cls-v2`; tracer fallback tests; the clean-checkout run had tracing off |
+| Luis reviewed the 13 engine cases | `tests/engine_cases/fixtures/REVIEW.md` |
+
+Spend for the whole iteration: USD 0.003205 of the USD 1.00 cap.
+
 ## Iteration 2: decide on the dev set
 
 **Goal.** Replace the MVP's provisional choices with choices measured on the synthetic dev set,

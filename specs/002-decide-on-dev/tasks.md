@@ -79,7 +79,7 @@ piece. Adapters get contract tests with fake transports.
   - **retriever:** keep the trigger map if 0 outcome differences, else investigate.
 
   Each entry has `approved_by: null` until Luis approves.
-- [ ] T015 [US1] **GATE, Luis.**
+- [x] T015 [US1] **GATE, Luis.**
   1. Luis finishes the blind review of all 130 items in the review page.
   2. The assistant commits `label_reviews.jsonl` and runs `build_frozen.py`, then commits `dev_set_v2.jsonl` and `FROZEN.md`.
   3. Luis approves or edits each registration; the assistant sets `approved_by`, `registered_at` and the `data` hash.

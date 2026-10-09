@@ -234,7 +234,7 @@ iteration_2:
       no challenger qualifies, keep the reference.
     approved_by: Luis
     registered_at: "2026-10-09"
-    data: null
+    data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
   - id: E7
     factor: EXC-03 confidence source and threshold
     variants: [self_reported, agreement_120b_20b]
@@ -251,7 +251,7 @@ iteration_2:
       its cost of a second call per item is reported.
     approved_by: Luis
     registered_at: "2026-10-09"
-    data: null
+    data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
   - id: E5
     factor: translation before classification
     variants: [original, translate]
@@ -264,7 +264,7 @@ iteration_2:
       at that N.
     approved_by: Luis
     registered_at: "2026-10-09"
-    data: null
+    data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
   - id: E15
     factor: reading "subtype" null as "none"
     variants: [strict, null_as_none]
@@ -276,7 +276,7 @@ iteration_2:
       case was not observed on dev (the scored receipts are not used to decide).
     approved_by: Luis
     registered_at: "2026-10-09"
-    data: null
+    data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
   - id: RET
     factor: policy retriever
     variants: [trigger_map, all_rules]
@@ -288,4 +288,4 @@ iteration_2:
       re-run, never adopt the difference silently.
     approved_by: Luis
     registered_at: "2026-10-09"
-    data: null
+    data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"

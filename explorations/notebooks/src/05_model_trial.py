@@ -52,6 +52,113 @@ print("\nDECISION RULE (as registered):\n" + E13["decision_rule"])
 print("\nDEVIATIONS:\n- " + "\n- ".join(E13.get("deviations", [])))
 
 # %% [markdown]
+# ## How these runs were produced
+#
+# The model calls are **not made inside this notebook**. They were made by a script, so 1,635
+# calls could run in parallel, resume after interruptions, and be cached. This notebook only
+# reads what that script stored.
+#
+# The call path, with each file under `explorations/`:
+#
+# 1. `scripts/run_e13.py` runs every pre-registered model (`research/openrouter_models.json`),
+#    five at a time, in three passes. Later passes only retry transient provider errors.
+# 2. `lib/run_trial.py` classifies the 109 dev items with one model and writes one row per item
+#    to `results/trial_runs/openrouter__<model>.jsonl`.
+# 3. `lib/decision_adapters.py` builds the request:
+#    - `ChatJSONClassifier`: system and user messages with a strict JSON schema;
+#    - `DecisionClassifier`: a decision payload.
+# 4. `lib/budget.py` sends it to OpenRouter:
+#    - pins the chat model's endpoint (`research/openrouter_pins.json`);
+#    - enforces the spend cap;
+#    - caches the answer;
+#    - logs the call in `results/budget_log.jsonl`;
+#    - saves the raw response body under `raw/openrouter/` (local, gitignored).
+#
+# Every call is also visible, with its prompt, output, tokens and cost, in Langfuse (experiment
+# "E13 item classifier"; see `docs/ai/langfuse-guide.md`).
+#
+# The cells below show exactly what one model received and returned for one item, then re-run
+# the whole trial from the cache to prove the stored rows are complete. Nothing is billed: every
+# answer is already cached.
+
+# %%
+import decision_adapters as da
+
+example = run_trial.dev_items()[1]
+print(
+    "ITEM:",
+    json.dumps(
+        {k: example[k] for k in ("item_id", "description", "merchant_name", "mcc")},
+        ensure_ascii=False,
+    ),
+)
+print("\n=== Generative models (prompt cls-v1): system message ===\n")
+print(cp.SYSTEM)
+print("\n=== user message ===\n")
+print(cp.messages(example)[1]["content"])
+print("\n=== JSON schema the answer must follow (strict) ===\n")
+print(json.dumps(cp.SCHEMA, indent=1)[:600])
+
+# %%
+payload = da.decision_payload(example)
+shown = json.loads(json.dumps(payload))
+crit = shown["questions"]["category"]["criteria"]
+shown["questions"]["category"]["criteria"] = dict(list(crit.items())[:3]) | {
+    "...": f"{len(crit) - 3} more categories"
+}
+print("=== Decision models (prompt dec-v1): POST /api/alpha/decisions body ===\n")
+print(json.dumps(shown, indent=1, ensure_ascii=False))
+
+# %%
+budget_log = [
+    json.loads(x) for x in (EXP / "results" / "budget_log.jsonl").read_text().splitlines()
+]
+by_req = {r["request_id"]: r for r in budget_log}
+for model in ["openai/gpt-oss-120b", "typesafe/jev-1.13"]:
+    row = next(
+        json.loads(x)
+        for x in run_trial.run_file(model).read_text().splitlines()
+        if json.loads(x)["item_id"] == example["item_id"]
+    )
+    call = by_req.get(row.get("request_id"), {})
+    print(f"--- {model} ---")
+    print(
+        "stored prediction:",
+        {
+            k: row.get(k)
+            for k in ("predicted_category", "confidence", "request_id", "served_by", "latency_s")
+        },
+    )
+    print(
+        "billed call      :",
+        {
+            k: call.get(k)
+            for k in (
+                "timestamp",
+                "prompt_tokens",
+                "completion_tokens",
+                "cost_usd_reported",
+                "prompt_version",
+            )
+        },
+    )
+
+# %%
+# Re-run the whole trial from the cache: each model is a no-op if all 109 rows exist, and any
+# missing row would be filled from the cache (or, if absent, by a billed call).
+import budget
+
+before = budget.spend_report()["calls"]
+for model, meta in json.loads((EXP / "research" / "openrouter_models.json").read_text())[
+    "models"
+].items():
+    run_trial.main(meta["kind"], model)
+after = budget.spend_report()["calls"]
+print(
+    f"billed calls before {before}, after {after}: {'no new call' if after == before else 'NEW CALLS MADE'}"
+)
+
+# %% [markdown]
 # ## Load every run
 
 # %%

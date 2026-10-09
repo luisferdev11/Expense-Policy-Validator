@@ -141,6 +141,34 @@ Follow-up decisions:
 2. The new model trial with Langfuse.
 3. The rewritten evaluation study.
 
+## 2026-10-09: make the experiments inspectable in Langfuse, show where the runs come from
+
+> I saw the spend, but it was not recorded in Langfuse. I also can't find in the code where the
+> model test runs are; I don't see them in the notebooks. We also need to review those labels:
+> ask me and we check them. Then we start the other Claude session. In the Langfuse dashboard
+> things don't look organised and I don't see the experiments. I think you have access to the
+> Langfuse MCP, so make good use of it, so that it is easy to show the judges what we did; from
+> OpenRouter I only see calls and costs. I want to open the experiment for each model, see what
+> it generated, compare it with the correct answer, and see the system prompt and every step.
+> Explore experiments, datasets and tracing for this. With so many calls I'm not sure how we
+> will keep control of all of it.
+
+**Outcome.**
+- **Langfuse rebuilt.**
+  - The prompts are versioned.
+  - The dataset holds the expected outputs.
+  - The experiment has one run per model.
+  - Each item trace has a `classify-item` generation with input, output, reasoning, tokens,
+    billed cost and the linked prompt.
+  - `docs/ai/langfuse-guide.md` walks through it.
+- **Langfuse MCP.** The project-data MCP server was not connected in this session (only the docs
+  MCP was). Luis can add it locally with his keys.
+- **Notebook 05** now shows how the runs were produced and re-runs them from the cache with no
+  billed call.
+- **Labels.** The 8 debatable labels were confirmed by Luis blind to model outputs
+  (`explorations/dev_set/label_reviews.jsonl`).
+- **AI_NOTES.** Entries 20 and 21.
+
 ## Next: starter prompt for the Spec Kit session
 
 The first message of the next session, prepared here so the context carries over:

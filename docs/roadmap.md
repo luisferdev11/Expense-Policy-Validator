@@ -44,6 +44,8 @@ explicit "MVP done" checkpoint.
 - `eval` reproduces every number from the committed outputs with no model call.
 - The viewer starts with one command.
 - Every model call has a Langfuse trace, and the run also completes with Langfuse down.
+- Luis has reviewed the 13 synthetic engine cases against the policy text. They are used as DRAFT
+  fixtures until then.
 
 ## Iteration 2: decide on the dev set
 

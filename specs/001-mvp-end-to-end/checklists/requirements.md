@@ -37,10 +37,8 @@
   path, because they are inputs, not design.
 - **Debatable implementation detail.** FR-004 names Unicode normalisation. It is kept, because it
   defines what "deterministic cleanup" means and can be tested.
-- **No clarification markers.** Three choices were made as informed defaults and listed under
-  Assumptions. `/speckit-clarify` should raise them:
-  - the recipient fields (proposed decision A9);
-  - the provisional EXC-03 threshold value;
-  - the keyword baseline's design.
+- **No clarification markers.** The three informed defaults (the recipient fields, the provisional
+  EXC-03 threshold and the keyword baseline) were resolved by `/speckit-clarify` on 2026-10-08,
+  together with how the DRAFT engine cases are used. See the spec's Clarifications.
 - **Labels firewall.** The spec was written from the data dictionary only. No answer field was
   read.

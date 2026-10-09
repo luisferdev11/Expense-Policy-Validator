@@ -38,6 +38,34 @@ Its MVP decisions:
 `notes` in `data/receipts.jsonl`. Everything it says about the answers comes from the data
 dictionary.
 
+## Clarifications
+
+### Session 2026-10-08
+
+- Q: Who reads, from the line text, whom an item is for and whether it names a recipient (needed
+  by GIFT-01, GIFT-03 and GIFT-04)? → A: The classifier, in the same call that returns the
+  category. It returns two closed fields:
+  - `recipient_kind`: `none`, `client_or_prospect`, `employee` or `government_official`;
+  - `recipient_name`: a normalised name, or null.
+
+  The engine reads only these fields. This is decision A9.
+- Q: What provisional confidence threshold does EXC-03 use in the MVP? → A: 0.5, declared as
+  provisional in configuration and in every result. The final value is chosen on the dev set in
+  iteration 2 (A3).
+- Q: What keyword baseline do we compare against? → A: Two deterministic baselines, both run on
+  the same receipts and both in the report:
+  - **keyword-classifier**: restricted-word lists per category, in the six languages, replace the
+    classifier, and the same engine runs downstream. It yields every measure.
+  - **keyword-flagger**: the legacy system. Any restricted word on a line makes the receipt
+    `flag`, otherwise `pass`. It yields restricted F1 and dispositions only. Macro F1 is reported
+    as not applicable.
+- Q: How do the 13 DRAFT synthetic engine cases enter the engine tests? → A: As fixtures from
+  the start, marked DRAFT.
+  - A failing case is resolved against the policy text, never by bending the case to the code.
+  - Luis's review of all 13 is an exit criterion of the "MVP done" checkpoint.
+- Consistency fix, made without a question: the viewer shows the correct answers by reading the
+  evaluation's committed comparison output, never the receipts file (constitution, principle I).
+
 ## User Scenarios & Testing *(mandatory)*
 
 The actors:
@@ -137,7 +165,7 @@ reproduces the committed report exactly.
    - the 3×3 disposition confusion matrix over the 28 receipts;
    - false positives out of the 9 receipts that should pass;
    - missed violations out of the 16 receipts that should be flagged;
-   - the same measures for the keyword baseline;
+   - the same measures for both keyword baselines (FR-032);
    - per-rule precision and recall;
    - evidence correctness;
    - two marked failure-case slots;
@@ -243,10 +271,13 @@ panel names, and check that its detail matches the results file.
   - a confidence between 0 and 1;
   - when the category is `other`, a subtype from the closed set `event_ticket`,
     `mobile_handset`, `prescription_medication`, `none` (A6).
-- **FR-006**: The classifier MUST determine, from the line text only, whether a line names who it
-  is for, and the recipient's kind: client or prospect, employee, government official, or
-  unknown. Lines naming the same recipient on one receipt MUST be identifiable as such. This feeds
-  GIFT-01, GIFT-03 and GIFT-04, and is a proposed new decision (A9; see Assumptions).
+- **FR-006**: In the same call, the classifier MUST read from the line text only:
+  - `recipient_kind`: `none`, `client_or_prospect`, `employee` or `government_official`;
+  - `recipient_name`: a normalised name, or null when the line names nobody.
+
+  Lines on one receipt with the same `recipient_name` are the same recipient for GIFT-01. These
+  fields feed GIFT-01, GIFT-03 and GIFT-04, and the engine reads only them, never free text
+  (decision A9).
 - **FR-007**: The classifier MUST NOT receive the declared expense type or the attendee count. It
   MAY receive the merchant name and MCC.
 - **FR-008**: Every classification MUST be cached under its normalised input, model and prompt
@@ -287,7 +318,7 @@ panel names, and check that its detail matches the results file.
   - otherwise → `pass`.
 - **FR-017**: The engine MUST raise EXC-03 for every item whose confidence is below a single named
   threshold, and MUST leave that item out of every other rule's calculation. The MVP threshold is
-  provisional, recorded in configuration and stated in the output. The final value is chosen on
+  0.5, provisional, recorded in configuration and stated in the output. The final value is chosen on
   the dev set in iteration 2 (A3).
 - **FR-018**: Every exception MUST carry:
   - `rule_id`, `policy_doc` and `severity`;
@@ -343,7 +374,7 @@ panel names, and check that its detail matches the results file.
   - the 3×3 disposition matrix;
   - false positives out of 9;
   - missed violations out of 16;
-  - the keyword baseline on the same measures;
+  - both keyword baselines on the same measures (FR-032);
   - two failure-case slots;
   - the base-rate computation.
 - **FR-031**: The evaluation MUST also report:
@@ -352,8 +383,15 @@ panel names, and check that its detail matches the results file.
     answer's;
   - how many EXC-03 signals fired, and which dispositions they changed;
   - how many REG-04 exceptions come only from the absent VAT field (A2).
-- **FR-032**: The keyword baseline MUST be a simple matcher over restricted words, the kind of
-  system this project replaces. It runs on the same receipts and is scored on the same measures.
+- **FR-032**: The evaluation MUST include two deterministic keyword baselines over restricted
+  words, run on the same receipts:
+  - **keyword-classifier**: keyword lists per category in the six languages replace the
+    classifier, and the same engine runs downstream. It is scored on every measure.
+  - **keyword-flagger**: the legacy kind of system this project replaces. Any restricted word
+    flags the receipt; otherwise it passes. It is scored on restricted F1 and dispositions, and
+    macro F1 is shown as not applicable.
+
+  The report MUST say honestly where either baseline does better.
 - **FR-033**: The base-rate section MUST compute, from the measured false-positive and
   missed-violation rates, how many flags out of 10,000 receipts would be false at realistic
   prevalence, for example 1 %, 3 % and 5 %.
@@ -361,7 +399,9 @@ panel names, and check that its detail matches the results file.
 **Viewer**
 
 - **FR-034**: The viewer MUST provide the receipt list, receipt detail and metrics views. It
-  reads committed outputs and the evaluation report only, with no model call.
+  reads only committed outputs, the evaluation report and the evaluation's committed comparison
+  output, and makes no model call. It shows the correct answers from that comparison output and
+  MUST NOT read the receipts file's answer fields itself.
 
 **Commands**
 
@@ -385,10 +425,10 @@ whole-receipt rule, which cites empty `line_ids`.
 | | TECH-02 | medium | items, unit price in USD | A5 |
 | | TECH-03 | high | items | A6 |
 | | TECH-04 | low | items | A5 |
-| gifts-and-awards-policy.md | GIFT-01 | medium | items, per recipient per receipt | A7, A9 (proposed) |
+| gifts-and-awards-policy.md | GIFT-01 | medium | items, per recipient per receipt | A7, A9 |
 | | GIFT-02 | high | items | |
-| | GIFT-03 | medium | items | A9 (proposed) |
-| | GIFT-04 | critical | items, replaces GIFT-01 for those lines | A9 (proposed) |
+| | GIFT-03 | medium | items | A9 |
+| | GIFT-04 | critical | items, replaces GIFT-01 for those lines | A9 |
 | non-reimbursable-items.md | PERS-01 | medium | items | A5 |
 | | PERS-02 | medium | items | A5 |
 | | PERS-03 | high | items | |
@@ -422,7 +462,7 @@ whole-receipt rule, which cites empty `line_ids`.
   amount in USD.
 - **Normalised item**: a line item plus its cleaned text.
 - **Classification**: per line, the category, restricted flag, confidence, subtype for `other`,
-  recipient kind and recipient identity, plus the model ID and prompt version. A classification
+  `recipient_kind` and `recipient_name`, plus the model ID and prompt version. A classification
   can also be marked unclassified, with a reason.
 - **Applicable rule set**: per receipt, the rule IDs the retriever selected.
 - **Exception**: rule ID, policy document, severity, line IDs, literal evidence, explanation, and
@@ -434,7 +474,7 @@ whole-receipt rule, which cites empty `line_ids`.
 - **Cross-receipt context**: per employee per date, the meal spend per person; per trip, the OTC
   medication total. It is an explicit input to the engine, never hidden state.
 - **Evaluation report**: every metric in FR-030 and FR-031 with its N, for the system and for the
-  keyword baseline.
+  keyword-classifier and keyword-flagger baselines.
 
 ## Success Criteria *(mandatory)*
 
@@ -457,6 +497,8 @@ whole-receipt rule, which cites empty `line_ids`.
   the gateway's reported costs.
 - **SC-009**: A panel member can open any receipt they name in the viewer, and see its
   exceptions with policy text and arithmetic, within one minute of launching it.
+- **SC-010**: Before the MVP is declared done, Luis has reviewed all 13 synthetic engine cases
+  against the policy text. Any case he changed is recorded with its reason.
 
 ## Assumptions
 
@@ -469,16 +511,14 @@ whole-receipt rule, which cites empty `line_ids`.
   They are named here, not in the requirements, so the requirements stay testable without them.
 - **The provisional MVP classifier** is the reference model from the exploration trials,
   `openai/gpt-oss-120b` with a pinned provider. The final model is chosen in iteration 2 (E14).
-- **A9 (proposed, to be recorded in ADR 0001):** recipient kind and recipient identity are read
-  by the classifier from the line text, as closed fields. The engine never parses free text.
-  The data dictionary says that whether a recipient is a government official, a client or an
-  employee "is stated only in the line text".
-- **The provisional EXC-03 threshold** is set before the 28-receipt run and is not tuned on it.
-  Its value is a clarification item.
-- **The keyword baseline** produces categories from keywords and runs through the same engine. Its
-  exact design is a clarification item.
-- **The 13 synthetic engine cases** in `explorations/dev_set/engine_cases_draft.jsonl` are used
-  as test fixtures after Luis reviews them.
+- **A9 (decided 2026-10-08, recorded in ADR 0001):** the classifier returns `recipient_kind` and
+  `recipient_name` from the line text. The data dictionary says that whether a recipient is a
+  government official, a client or an employee "is stated only in the line text".
+- **The provisional EXC-03 threshold** is 0.5. It was set before the 28-receipt run and is not
+  tuned on it.
+- **The 13 synthetic engine cases** in `explorations/dev_set/engine_cases_draft.jsonl` are test
+  fixtures from the start, marked DRAFT. Luis reviews them before the "MVP done" checkpoint
+  (SC-010).
 - **The four out-of-scope receipts** are processed but neither scored nor tested on timing rules.
 - **The two failure-case analyses** are written in iteration 3. The MVP report holds their slots.
 - **Seams only, no features** (constitution XI):

@@ -141,7 +141,7 @@ Follow-up decisions:
 2. The new model trial with Langfuse.
 3. The rewritten evaluation study.
 
-## 2026-10-09: make the experiments inspectable in Langfuse, show where the runs come from
+## 2026-10-08: make the experiments inspectable in Langfuse, show where the runs come from
 
 > I saw the spend, but it was not recorded in Langfuse. I also can't find in the code where the
 > model test runs are; I don't see them in the notebooks. We also need to review those labels:
@@ -169,7 +169,7 @@ Follow-up decisions:
   (`explorations/dev_set/label_reviews.jsonl`).
 - **AI_NOTES.** Entries 20 and 21.
 
-## 2026-10-09: observability as a system rule
+## 2026-10-08: observability as a system rule
 
 > In the system rules make it clear that everything must run on Langfuse so we have observability
 > of everything, and that generated code must rely on it. In general we must have observability of
@@ -186,9 +186,66 @@ Follow-up decisions:
   - observability for the rest of the solution is left to a later ADR.
 - The starter prompt adds observability to the constitution and to the architecture discussion.
 
-## Next: starter prompt for the Spec Kit session
+## 2026-10-08: Spec Kit session, iterative delivery
 
-The first message of the next session, prepared here so the context carries over:
+The session opened with the starter prompt below, written in English, plus three changes:
+
+- **How we work, iteratively.**
+  > We want a working, end-to-end MVP early and improve it in small, reviewable iterations. Each
+  > iteration ends in a runnable system with passing tests and an updated report. Design seams
+  > for likely future changes (e.g. a message queue between ingestion and validation,
+  > authentication in front of the viewer, replacing the Streamlit viewer with a more robust
+  > UI/API), but do not build them before their iteration: no speculative abstractions, no unused
+  > interfaces beyond the seam itself.
+- **Iteration scoping before specifying.** A new step proposes the MVP cut and the later
+  candidates (each with its trigger, the seam it needs in the MVP and a rough size), recorded in
+  `docs/roadmap.md`. `/speckit-specify`, `/speckit-plan` and `/speckit-tasks` cover iteration 1
+  only. The deferred items are listed as out of scope.
+- **The architecture discussion** also scores each option on evolvability: the cost of adding a
+  queue, adding auth and swapping the viewer. ADR 0002 records the seams and the deferred items.
+  The tasks put a thin end-to-end path first, include an "MVP done" checkpoint, and
+  `/speckit-analyze` checks that no task implements a deferred item.
+
+**Outcome.**
+- Spec Kit 1.1.2 initialised with the Claude Code integration, on branch `chore/spec-kit-init`.
+  A probe run in a scratch directory showed beforehand that `--force` only adds files.
+- Constitution v1.0.0 has eleven principles. Whether the work is test-first is left as a TODO for
+  ADR 0002.
+- Iteration cut, decided by Luis and recorded in `docs/roadmap.md`. The assistant proposed it and
+  recommended each of these options:
+  - The MVP covers all 37 in-scope rules, with a thin path first inside the iteration.
+  - The MVP normaliser does not translate; E5 decides later.
+  - Queue, auth, API and the other candidates stay after delivery. Only their seams are built
+    now, and the AWS page explains them.
+- The UTC dates were corrected (AI_NOTES 22).
+- `specs/001-mvp-end-to-end/spec.md` covers iteration 1 only. `/speckit-clarify` asked Luis four
+  questions:
+  - **Recipient fields.** The classifier returns them. This is the new decision A9 in ADR 0001.
+  - **EXC-03 threshold.** 0.5, provisional.
+  - **Keyword baselines.** Two: one through the same engine, and the legacy flagger.
+  - **The 13 DRAFT engine cases.** They are fixtures from the start, and Luis reviews them
+    before "MVP done".
+- ADR 0002, the architecture: ports and adapters around a pure core, plus a committed
+  classification cache. Luis chose it from three options. Test-first for the deterministic
+  core, so the constitution is now v1.1.0.
+- The plan, research (R1–R13), data model, contracts and quickstart, and 97 tasks with a thin
+  path first and an "MVP done" checkpoint.
+
+### Follow-up: "Let's resolve what you found so we can continue"
+
+> Let's resolve what you point out so we can continue. Document the findings you mention, and do
+> everything needed so we can move on to implementing the first version.
+
+**Outcome.**
+- `/speckit-analyze` had found one critical issue, two high, three medium and two low. All were
+  fixed and documented in `specs/001-mvp-end-to-end/checklists/analysis.md`.
+- AI_NOTES entries 23–26.
+- The branch was pushed and merged through a PR, so implementation starts from `main`.
+
+## Starter prompt for the Spec Kit session, as prepared
+
+The first message of the Spec Kit session, prepared in the previous session so the context
+carries over. The entry above lists what changed when it was sent:
 
 ```markdown
 We continue the Oversight take-home (Expense Policy Validator). Talk to me in Spanish; every

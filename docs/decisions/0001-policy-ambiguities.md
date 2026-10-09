@@ -21,6 +21,7 @@
 | A6 | ENT-01, TECH-03, HEALTH-01 (prescription) | For category `other`, the classifier also returns a closed subtype: `event_ticket`, `mobile_handset`, `prescription_medication` or `none`. The engine reads only that field, never free text | The subtype list is versioned with the prompt |
 | A7 | GIFT-01 | Literal definition. An item is a gift only if the receipt is declared Client Gifts or the line names a recipient. A gift-category item outside that is not tested under GIFT-01; DOC-03 catches the mismatch | No |
 | A8 | MEAL-01 | The home currency comes from a full ISO 4217 country→currency table, so domestic vs international never needs a guess | The table is data, versioned |
+| A9 | GIFT-01, GIFT-03, GIFT-04 | The classifier also returns `recipient_kind` (`none`, `client_or_prospect`, `employee`, `government_official`) and a normalised `recipient_name`, read from the line text. The engine reads only these fields. Added 2026-10-08 during `/speckit-clarify` | The closed list is versioned with the prompt |
 
 ## Decisions in detail
 
@@ -112,6 +113,33 @@ threshold is applied to the cached response, so a re-run makes the same decision
 **Decision.**
 - Use a full ISO 4217 country→currency table, versioned as data with its source.
 - Travel is international when the receipt currency differs from the home currency of the employee's country. On a day that mixes both, the higher cap applies.
+
+### A9. Whom an item is for (GIFT-01, GIFT-03, GIFT-04)
+
+**Ambiguity.** The gift rules depend on who an item is for:
+- GIFT-01 needs a named client recipient, per recipient;
+- GIFT-03 is about employee gifts;
+- GIFT-04 is about anything of value for a government official, including meal lines.
+
+The data dictionary says this "is stated only in the line text", so no structured field holds it.
+
+**Options considered.**
+- **Chosen:** closed fields returned by the classifier.
+- A separate extraction call: a second prompt and a second failure point.
+- Deterministic patterns in six languages. Rejected: that is the keyword trap the brief warns
+  about.
+
+**Decision.**
+- In the same call that returns the category, the classifier returns two fields:
+  - `recipient_kind`: `none`, `client_or_prospect`, `employee` or `government_official`;
+  - `recipient_name`: a normalised name, or null.
+- Lines on one receipt with the same `recipient_name` are one recipient for the GIFT-01 cap.
+- The engine reads only these fields, never free text, so it stays deterministic. The answer is
+  cached like the category, so a re-run decides identically.
+- The classifier still never sees the declared expense type or the attendee count. Whether an
+  item is a gift at all follows A7.
+
+Decided by Luis on 2026-10-08, during `/speckit-clarify` for iteration 1.
 
 ## Open questions for the review session
 

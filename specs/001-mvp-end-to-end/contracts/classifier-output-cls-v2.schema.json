@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Item classification, prompt cls-v2",
+  "description": "Strict response schema for one line item. The model receives only the cleaned description, the merchant name and the MCC, never the declared expense type or the attendee count (FR-007). The restricted flag is derived from the taxonomy by code, not returned by the model. Decisions: subtype is A6, the recipient fields are A9.",
+  "type": "object",
+  "properties": {
+    "category": {
+      "type": "string",
+      "enum": [
+        "alcohol", "tobacco", "personal_electronics", "gift", "gift_card", "household_goods",
+        "personal_care", "clothing", "gambling", "jewelry", "food_beverage",
+        "computer_accessory", "office_supplies", "lodging", "ground_transport", "airfare",
+        "laundry_service", "health_otc", "software_subscription", "service_fee", "other"
+      ]
+    },
+    "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+    "subtype": {
+      "type": "string",
+      "enum": ["event_ticket", "mobile_handset", "prescription_medication", "none"],
+      "description": "Must be none unless category is other."
+    },
+    "recipient_kind": {
+      "type": "string",
+      "enum": ["none", "client_or_prospect", "employee", "government_official"]
+    },
+    "recipient_name": {
+      "type": ["string", "null"],
+      "description": "The name the line gives for whom the item is for, normalised; null if none."
+    }
+  },
+  "required": ["category", "confidence", "subtype", "recipient_kind", "recipient_name"],
+  "additionalProperties": false
+}

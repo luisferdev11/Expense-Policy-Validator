@@ -1,42 +1,263 @@
 {
   "base_rate": {
-    "detection_rate": 1.0,
-    "false_positive_rate": 0.1111111111111111,
+    "detection_rate": 0.9375,
+    "false_positive_rate": 0.0,
     "n_flag": 16,
     "n_pass": 9,
     "receipts": 10000,
     "rows": [
       {
-        "false_flags": 1100.0,
-        "false_share": 0.9166666666666666,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.01,
-        "true_flags": 100.0,
+        "true_flags": 93.75,
         "violations": 100.0
       },
       {
-        "false_flags": 1077.7777777777778,
-        "false_share": 0.782258064516129,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.03,
-        "true_flags": 300.0,
+        "true_flags": 281.25,
         "violations": 300.0
       },
       {
-        "false_flags": 1055.5555555555554,
-        "false_share": 0.6785714285714285,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.05,
-        "true_flags": 500.0,
+        "true_flags": 468.75,
         "violations": 500.0
+      }
+    ]
+  },
+  "oracle": {
+    "limitation": "The answers label category and restricted flag only. The oracle sets subtype and recipient to none, so ENT-01, TECH-03, the HEALTH-01 prescription carve-out and GIFT-01/03/04 cannot fire on the oracle side.",
+    "oracle_accuracy": {
+      "interval": [
+        0.8229,
+        0.9937
+      ],
+      "n": 28,
+      "rate": 0.9642857142857143,
+      "value": 27
+    },
+    "pipeline_accuracy": {
+      "interval": [
+        0.8229,
+        0.9937
+      ],
+      "n": 28,
+      "rate": 0.9642857142857143,
+      "value": 27
+    },
+    "rows": [
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-001",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-002",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-003",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-004",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-005",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-006",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-007",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-008",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-009",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-010",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-011",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-012",
+        "stage": "classification"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-013",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-014",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-015",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-016",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-017",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-018",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-019",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-022",
+        "stage": "oracle_limitation"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-023",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-024",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-025",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-026",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-027",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-028",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-031",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-032",
+        "stage": "none"
       }
     ]
   },
   "run": {
     "classifier": "openrouter",
-    "exc03_threshold": 0.5,
-    "exc03_threshold_status": "provisional",
+    "confidence_source": "self_reported",
+    "exc03_threshold": 0.95,
+    "exc03_threshold_status": "chosen_on_dev",
     "model_id": "openai/gpt-oss-120b",
+    "pipeline_config_version": "259bda8937cd",
     "prompt_version": "cls-v2",
-    "provider_endpoint": "deepinfra/bf16",
-    "rules_version": "951312dbdc78"
+    "provider_endpoint": "openrouter",
+    "rules_version": "298de0bb0c05"
   },
   "systems": {
     "keyword-classifier": {
@@ -529,8 +750,8 @@
         ],
         "matrix": [
           [
-            16,
-            0,
+            15,
+            1,
             0
           ],
           [
@@ -540,43 +761,43 @@
           ],
           [
             0,
-            1,
-            8
+            0,
+            9
           ]
         ],
         "n": 28
       },
       "evidence_correctness": {
         "interval": [
-          0.8668,
+          0.8569,
           1.0
         ],
-        "n": 25,
+        "n": 23,
         "rate": 1.0,
-        "value": 25
+        "value": 23
       },
       "exc03": {
         "dispositions_changed": 1,
-        "receipts": 2,
-        "signals": 2
+        "receipts": 3,
+        "signals": 3
       },
       "false_positives": {
         "interval": [
-          0.0199,
-          0.435
+          0.0,
+          0.2991
         ],
         "n": 9,
-        "rate": 0.1111111111111111,
-        "value": 1
+        "rate": 0.0,
+        "value": 0
       },
       "macro_f1": {
         "categories": 19,
         "n": 65,
         "per_category": {
-          "alcohol": 0.9231,
+          "alcohol": 1.0,
           "clothing": 1.0,
           "computer_accessory": 1.0,
-          "food_beverage": 0.9767,
+          "food_beverage": 1.0,
           "gift": 1.0,
           "gift_card": 1.0,
           "ground_transport": 1.0,
@@ -593,16 +814,16 @@
           "software_subscription": 1.0,
           "tobacco": 1.0
         },
-        "value": 0.9947274267959701
+        "value": 1.0
       },
       "missed_violations": {
         "interval": [
-          0.0,
-          0.1936
+          0.0111,
+          0.2833
         ],
         "n": 16,
-        "rate": 0.0,
-        "value": 0
+        "rate": 0.0625,
+        "value": 1
       },
       "per_rule": {
         "ALC-01": {
@@ -620,11 +841,11 @@
           "tp": 1
         },
         "ALC-03": {
-          "fn": 1,
+          "fn": 0,
           "fp": 0,
           "precision": 1.0,
-          "recall": 0.5,
-          "tp": 1
+          "recall": 1.0,
+          "tp": 2
         },
         "DOC-01": {
           "fn": 0,
@@ -634,11 +855,11 @@
           "tp": 1
         },
         "DOC-03": {
-          "fn": 0,
+          "fn": 1,
           "fp": 0,
           "precision": 1.0,
-          "recall": 1.0,
-          "tp": 3
+          "recall": 0.6666666666666666,
+          "tp": 2
         },
         "GIFT-01": {
           "fn": 0,
@@ -718,11 +939,11 @@
           "tp": 1
         },
         "TECH-01": {
-          "fn": 0,
+          "fn": 1,
           "fp": 0,
           "precision": 1.0,
-          "recall": 1.0,
-          "tp": 2
+          "recall": 0.5,
+          "tp": 1
         },
         "TECH-02": {
           "fn": 0,
@@ -732,11 +953,11 @@
           "tp": 1
         },
         "TECH-04": {
-          "fn": 0,
+          "fn": 1,
           "fp": 0,
-          "precision": 1.0,
-          "recall": 1.0,
-          "tp": 1
+          "precision": null,
+          "recall": 0.0,
+          "tp": 0
         }
       },
       "reg04_vat_only": {
@@ -744,16 +965,16 @@
         "value": 0
       },
       "restricted_f1": {
-        "fn": 1,
+        "fn": 0,
         "fp": 0,
         "n": 65,
-        "tp": 20,
-        "value": 0.975609756097561
+        "tp": 21,
+        "value": 1.0
       },
       "review_signals": {
         "fn": 0,
-        "fp": 2,
-        "n": 9,
+        "fp": 3,
+        "n": 10,
         "tp": 7
       }
     }

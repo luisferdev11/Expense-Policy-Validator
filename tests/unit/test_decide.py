@@ -158,7 +158,7 @@ def test_the_table_has_one_row_per_experiment_with_winner_and_evidence() -> None
     ]
     out = table(outcomes)
     assert [r["experiment"] for r in out] == ["E14", "E15", "RET"]
-    assert out[0]["winner"] == "gpt-oss-120b" and "60/60" in out[0]["evidence"]
+    assert out[0]["winner"] == "gpt-oss-120b" and "60/60 (95 % CI" in out[0]["evidence"]
     assert "gpt-oss-20b" in out[0]["why_others_lost"]
     assert "0 differences on 45" in out[2]["evidence"]
 

@@ -324,7 +324,8 @@ def _load(path: Path) -> list[dict[str, Any]]:
 
 
 def _frac(p: dict[str, Any]) -> str:
-    return f"{p['k']}/{p['n']}"
+    lo, hi = p["interval"]
+    return f"{p['k']}/{p['n']} (95 % CI {lo:.3f}-{hi:.3f})"
 
 
 def _evidence(o: dict[str, Any]) -> str:

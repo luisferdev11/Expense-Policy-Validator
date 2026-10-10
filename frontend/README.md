@@ -20,10 +20,12 @@ headers (`FINDINGS.md` F-04).
 
 | Route | What it is |
 |---|---|
-| `/queue`, `/compliance`, `/sample`, `/all` | Split view: list on the left, receipt on the right |
+| `/queue`, `/compliance`, `/sample`, `/all` | Split view: list on the left, receipt on the right; `?batch=<id>` narrows to one batch; deciding opens the next receipt |
 | `/intake` | Submit one receipt or a batch; per-row outcome; batch progress; retry of failed receipts |
+| `/history/:id` | Events, what each revision changed, evaluation versions |
+| `/how-it-works` | The states, who acts in each, and the events |
 | `/insights` | Volume, aging, agreement with the engine, rules that fire, each with its N |
-| `/evaluation` | Classifier comparison; shows only figures a committed file provides |
+| `/evaluation` | Scores, classifier comparison and dev-set decisions, from `public/evaluation.json` (provenance on the page) |
 
 A receipt shows the verdict, the findings with the literal policy text, the line items with how
 each was read, revisions, the audit trail and a fixed decision bar. Actions follow
@@ -33,8 +35,9 @@ explained and the receipt is refreshed.
 ## Checks
 
 ```bash
-npm test          # unit tests of the pure helpers (Vitest)
+npm test          # unit tests of the helpers and a check of the API contract against docs/api/openapi.json (Vitest)
 npm run typecheck
+npx playwright install chromium   # once
 npm run e2e       # smoke tests per screen (Playwright), against its own throwaway backend
 ```
 

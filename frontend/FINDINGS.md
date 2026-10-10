@@ -40,16 +40,20 @@ propose, and how the front end copes today. Luis reviews these after the backend
 ## F-03. The Evaluation screen has no data source
 
 - **Date:** 2026-10-10
-- **Expected:** a demonstrative comparison of gpt-oss-120b, gpt-oss-20b and jev-1.13
-  (`docs/roadmap.md`, iteration 4).
-- **What happened:** no endpoint serves evaluation figures, and the jev-1.13 dev-set run planned in
-  `docs/plans/2026-10-10-product-plan.md` needs model calls (not allowed in this session). I also
-  did not read `outputs/` or `eval/`, to keep the labels firewall intact.
-- **Proposal:** decide where the figures come from (a committed JSON of per-model metrics, each
-  with its N, produced by `epv eval` with no model call; or an endpoint reading it).
-- **Today:** the screen reads `frontend/public/evaluation.json`. It ships with the three models and
-  **no figures**, and says so ("No measurements loaded yet"). Filling `metrics` and setting
-  `status: "measured"` is enough to show a table with each figure's N. I did not invent numbers.
+- **Expected:** the comparison of gpt-oss-120b, gpt-oss-20b and jev-1.13 (`docs/roadmap.md`,
+  iteration 4) reads committed figures.
+- **What happened:** no endpoint serves evaluation figures, and the jev-1.13 run on the frozen dev
+  set (`docs/plans/2026-10-10-product-plan.md`) needs model calls, which this session may not
+  make. I did not read `outputs/` or `eval/` (labels firewall).
+- **Proposal:** decide where the figures come from: a committed JSON of per-model metrics, each with
+  its N, produced by `epv eval` with no model call, and either copied into `frontend/public/` at
+  build time or served by an endpoint.
+- **Today:** `frontend/public/evaluation.json` carries the figures that the design canvas (board 5)
+  shows: the 28-receipt scores, the three classifiers on the frozen dev set (N = 130) and the five
+  decisions. The canvas cites `outputs/eval/metrics.json` and `experiments.json` of v0.2.0; **they
+  were copied from the canvas, not re-read from the repository, so check them against the committed
+  outputs before delivery.** The screen says so. jev-1.13 shows "not run" where the canvas has
+  `[frozen-set run]` and `[pending]`: the run needs model calls.
 
 ## F-04. The API sends no CORS headers
 
@@ -123,3 +127,59 @@ propose, and how the front end copes today. Luis reviews these after the backend
 - **What happened:** the summary has `state` only; the decision and the actor are in the events.
 - **Proposal:** `decided_by` and `decided_at` in the summary and detail, next to the state.
 - **Today:** the detail pane shows them in the audit trail.
+
+## F-10. The quality sample can never be cleared
+
+- **Date:** 2026-10-10
+- **Expected:** a reviewer who looks at a sampled auto-approved receipt and finds it fine can
+  record that, and it leaves the sample list (ADR 0007 D12: "sampled for quality review").
+- **What happened:** `auto_approved` allows only `reject` (`domain/lifecycle.py`). There is no `confirm-sample`
+  action or `qa_reviewed` flag, so `/sample` never empties after a check.
+- **Proposal:** a `confirm-sample` action (event `SampleChecked`, agreement 1) that clears `qa_sample`
+  from the queue, or a `qa_reviewed` flag on the projection and a filter on the list.
+- **Today:** the Quality sample screen says that reading a receipt does not take it off the list
+  and that rejecting is the only action.
+
+## F-11. The mockups promise things the API does not expose
+
+- **Date:** 2026-10-10
+- **Expected:** the canvas (`9v6nEUUa73z4WyNrnQu5U3`) and the API agree.
+- **What happened:**
+  - *Linked receipts*: the history board shows "Linked by a shared meal day" and an event
+    "Linked receipt re-evaluated". The API exposes neither the group a receipt shares nor an event
+    on the partner receipt that says why it was re-evaluated.
+  - *Batch header*: the canvas shows a file name and a sent time; `BatchResponse` has no
+    `created_at` or file name.
+  - *Compliance*: the lifecycle board says a Compliance officer leaves a case as "rejected and
+    referred, rejected, or back to review". The API lets `compliance` approve, reject, correct a
+    category or request information; there is no role, no "referred" outcome and no way back to
+    review. The board's event names (`ReviewDecided`, `CaseClosed`, `ReceiptClosed`, `LinesClassified`) are
+    not the log's (`ReceiptApproved`, `ReceiptRejected`, `ReceiptClassified`).
+  - *Plain titles and rules passed*: see F-05.
+- **Proposal:** `linked_receipts` (id, shared key) on the detail; `created_at` and `source_name` on a
+  batch; decide whether Compliance needs its own role and outcomes, and fix the board or the API.
+- **Today:** the front end shows the file name and the sent time it knows on the client (lost on
+  reload), omits linked receipts, and its "How a receipt moves" page follows the API and the log's
+  real event names.
+
+## Assistant mistakes to merge into AI_NOTES.md
+
+Each one was caught during this iteration. `AI_NOTES.md` was not edited here (it is outside
+`frontend/`); Luis can fold these in.
+
+1. **Never opened the design canvas the brief named.** Built from `docs/design/` and the brief's
+   description only. *Caught by:* the advisor review before delivery. *Changed:* read the five
+   boards and added the history page, the lifecycle page, the batch result layout, auto-advance
+   after a decision and the evaluation figures.
+2. **Evaluation screen shipped with no figures** although the plan said E14 results were committed.
+   *Caught by:* the same review. *Changed:* figures from the canvas, with their provenance on the screen (F-03).
+3. **Layout bug: the line-items table was covered by the pane.** Flex children of the scrolling
+   pane shrank. *Caught by:* a Playwright click that was "intercepted". *Changed:* `flex-shrink: 0` on the pane's children.
+4. **Playwright browser mismatch.** The installed package wanted a Chromium build that was not in
+   the cache. *Caught by:* the first e2e run. *Changed:* pinned `@playwright/test` to the version that matches the cached build.
+5. **A one-line batch was sent as a single receipt**, so the test that expected a batch hung.
+   *Caught by:* the e2e timeout. *Changed:* the test sends a JSON array for one row; the app explains which mode it detected.
+6. **Ambiguous test selectors** (a word that appeared in three places) made three assertions fail
+   for the wrong reason. *Caught by:* Playwright's strict mode. *Changed:* selectors scoped to the element.
+7. **Toast told the auditor "Differs from the engine's proposal" after every category correction.**
+   Agreement is always 0 for corrections (ADR 0007 D10), so it read like an error. *Caught by:* the advisor review. *Changed:* the toasts no longer mention agreement.

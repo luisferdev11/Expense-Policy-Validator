@@ -11,7 +11,7 @@ async function submitBatch(page: Page, rows: unknown[]) {
   await page.goto("/intake");
   // A JSON array is a batch even with one row; one bare object would be a single receipt.
   await page.getByLabel("Receipt JSON or batch").fill(rows.length > 1 ? jsonl(rows) : JSON.stringify(rows));
-  await page.getByRole("button", { name: "Submit batch" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   await expect(page.getByRole("region", { name: "Batch result" })).toBeVisible();
 }
 
@@ -28,7 +28,7 @@ test("empty screens say what is done and what is next", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Submit one or a batch" })).toBeVisible();
   await shot(page, "01-queue-empty");
   await page.goto("/evaluation");
-  await expect(page.getByText("No measurements loaded yet.")).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Three classifiers on the frozen dev set" })).toBeVisible();
   await page.goto("/insights");
   await expect(page.getByText("No receipts yet.")).toBeVisible();
   await expect(page.locator(".nav__health")).toContainText("API connected");
@@ -38,39 +38,58 @@ test("intake: a batch with one bad row is a partial success", async ({ page }) =
   await page.goto("/intake");
   await page.getByRole("button", { name: "Load a sample batch" }).click();
   await expect(page.getByText("A batch of 3 rows (JSON Lines)")).toBeVisible();
-  await page.getByRole("button", { name: "Submit batch" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   const result = page.getByRole("region", { name: "Batch result" });
   await expect(result).toContainText("1 refused");
-  await expect(result.locator(".outcome--invalid")).toHaveText("Refused");
+  await expect(result.locator(".outcome--invalid")).toHaveText("Rejected, not saved");
   await expect(result.getByRole("link", { name: "SAMPLE-001" })).toBeVisible();
   await expect(result.getByText("Done.")).toBeVisible({ timeout: 20_000 });
   await shot(page, "02-intake-batch");
+  const dl = page.waitForEvent("download");
+  await result.getByRole("button", { name: "Download rejected rows" }).click();
+  expect((await dl).suggestedFilename()).toMatch(/refused\.jsonl$/);
+  await result.getByRole("link", { name: "Open in the review queue" }).click();
+  await expect(page).toHaveURL(/\/all\?batch=bat_/);
+  await expect(page.getByText("Showing only batch")).toBeVisible();
+  await expect(page.locator("table.queue tbody tr")).toHaveCount(2);
+  await page.goBack();
   // Submitting the same batch again starts no new work.
-  await page.getByRole("button", { name: "Submit batch" }).click();
-  await expect(page.getByRole("region", { name: "Batch result" }).getByText("Already known").first()).toBeVisible();
+  await page.getByRole("button", { name: "Load a sample batch" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Batch result" }).getByText(/already known/i).first()).toBeVisible();
 });
 
 test("intake: one receipt, repeated, then revised", async ({ page }) => {
   await page.goto("/intake");
   await page.getByLabel("Receipt JSON or batch").fill(JSON.stringify(receipt("E2E-REV")));
-  await page.getByRole("button", { name: "Submit receipt" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Accepted");
-  await page.getByRole("button", { name: "Submit receipt" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Already known");
   await page.getByLabel("Receipt JSON or batch").fill(JSON.stringify(receipt("E2E-REV", { merchant_name: "Other Shop" })));
-  await page.getByRole("button", { name: "Submit receipt" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   await expect(page.getByRole("region", { name: "Submission result" })).toContainText("New revision");
   await waitForState(page, "E2E-REV", "In review");
   await expect(page.locator(".verdict .tag", { hasText: "revision 2" })).toBeVisible();
   await expect(page.getByRole("heading", { name: "Revisions" })).toBeVisible();
 });
 
+test("history: events, what a revision changed, and the evaluation versions", async ({ page }) => {
+  await page.goto("/history/E2E-REV");
+  await expect(page.getByRole("heading", { name: /E2E-REV · history/ })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Revision 1 → 2" })).toBeVisible();
+  await expect(page.locator("table").filter({ hasText: "merchant_name" })).toContainText("Other Shop");
+  await expect(page.getByRole("heading", { name: "Evaluation versions" })).toBeVisible();
+  await expect(page.locator(".timeline")).toContainText("replaced by revision 2");
+  await shot(page, "07-history");
+});
+
 test("intake: invalid input is explained, not sent", async ({ page }) => {
   await page.goto("/intake");
   await page.getByLabel("Receipt JSON or batch").fill("hello there");
-  await expect(page.getByRole("button", { name: /Submit/ }).first()).toBeDisabled();
+  await expect(page.getByRole("button", { name: "Validate" })).toBeDisabled();
   await page.getByLabel("Receipt JSON or batch").fill('{"receipt_id": "E2E-BAD"}');
-  await page.getByRole("button", { name: "Submit receipt" }).click();
+  await page.getByRole("button", { name: "Validate" }).click();
   await expect(page.getByRole("alert")).toContainText("Not submitted");
   await expect(page.getByRole("alert").locator("code").first()).toBeVisible();
 });
@@ -85,7 +104,7 @@ test("workbench: a category correction raises a finding with the policy text, an
   const dlg = page.getByRole("dialog");
   await dlg.getByLabel("Correct category").selectOption("alcohol");
   await dlg.getByLabel("Your name").fill("Ada Auditor");
-  await dlg.getByRole("button", { name: "Correct a category" }).click();
+  await dlg.getByRole("button", { name: "Re-run the rules" }).click();
 
   const finding = pane.getByRole("article", { name: "Finding REG-01" });
   await expect(finding).toBeVisible();
@@ -95,7 +114,7 @@ test("workbench: a category correction raises a finding with the policy text, an
 
   // Confirming the flag (reject) matches the proposal, so no reason is needed.
   await page.keyboard.press("r");
-  await page.getByRole("dialog").getByRole("button", { name: "Reject" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Reject expense" }).click();
   await expect(pane.locator(".state-chip")).toHaveText("Rejected");
   await expect(pane.getByText("Rejected", { exact: true }).first()).toBeVisible();
   await expect(pane.locator(".timeline")).toContainText("Category of E2E-APAC-L2 changed");
@@ -108,17 +127,17 @@ test("workbench: approving a flag is an override and needs a reason", async ({ p
   await page.getByRole("button", { name: "Correct the category of E2E-OVR-L2" }).click();
   await page.getByRole("dialog").getByLabel("Correct category").selectOption("alcohol");
   await page.getByRole("dialog").getByLabel("Your name").fill("Ada Auditor");
-  await page.getByRole("dialog").getByRole("button", { name: "Correct a category" }).click();
+  await page.getByRole("dialog").getByRole("button", { name: "Re-run the rules" }).click();
   const pane = page.getByRole("region", { name: "Receipt E2E-OVR" });
   await expect(pane.getByRole("article", { name: "Finding REG-01" })).toBeVisible();
 
   await pane.getByRole("button", { name: /^Approve/ }).click();
   const dlg = page.getByRole("dialog");
   await expect(dlg).toContainText("goes against that proposal");
-  await dlg.getByRole("button", { name: "Approve" }).click();
+  await dlg.getByRole("button", { name: "Approve anyway" }).click();
   await expect(dlg.getByRole("alert")).toContainText("Choose a reason");
   await dlg.getByLabel("Reason").selectOption("policy_exception_granted");
-  await dlg.getByRole("button", { name: "Approve" }).click();
+  await dlg.getByRole("button", { name: "Approve anyway" }).click();
   await expect(pane.locator(".state-chip")).toHaveText("Approved");
   await expect(pane.locator(".timeline")).toContainText("Policy exception granted");
 });
@@ -137,7 +156,7 @@ test("workbench: a stale decision is refused with a clear message", async ({ pag
   await pane.getByRole("button", { name: /^Reject/ }).click();
   const dlg = page.getByRole("dialog");
   await dlg.getByLabel("Your name").fill("Ada Auditor");
-  await dlg.getByRole("button", { name: "Reject" }).click();
+  await dlg.getByRole("button", { name: "Reject expense" }).click();
   await expect(dlg.getByRole("alert")).toContainText("re-evaluated while you were looking");
   await dlg.getByRole("button", { name: "Close and read the new result" }).click();
   await expect(pane.getByRole("article", { name: "Finding REG-01" })).toBeVisible();
@@ -148,9 +167,9 @@ test("workbench: request information, then escalate another receipt to Complianc
   await waitForState(page, "E2E-INFO", "In review");
   await page.getByRole("button", { name: /^Request information/ }).click();
   let dlg = page.getByRole("dialog");
-  await dlg.getByLabel("Question for the employee").fill("Please attach the itemized invoice.");
+  await dlg.getByLabel(/Message to/).fill("Please attach the itemized invoice.");
   await dlg.getByLabel("Your name").fill("Ada Auditor");
-  await dlg.getByRole("button", { name: "Request information" }).last().click();
+  await dlg.getByRole("button", { name: "Send and hold" }).click();
   await expect(page.getByText("Waiting for information.")).toBeVisible();
   await expect(page.getByText("Please attach the itemized invoice.").first()).toBeVisible();
 
@@ -163,6 +182,21 @@ test("workbench: request information, then escalate another receipt to Complianc
   await page.goto("/compliance");
   await expect(page.getByRole("link", { name: "E2E-ESC" })).toBeVisible();
   await shot(page, "04-compliance");
+});
+
+test("deciding opens the next receipt of the queue", async ({ page }) => {
+  await submitBatch(page, [receipt("E2E-NEXT-A"), receipt("E2E-NEXT-B")]);
+  await waitForState(page, "E2E-NEXT-A", "In review");
+  await waitForState(page, "E2E-NEXT-B", "In review");
+  await page.goto("/queue/E2E-NEXT-A");
+  const pane = page.getByRole("region", { name: "Receipt E2E-NEXT-A" });
+  await expect(pane).toBeVisible();
+  await pane.getByRole("button", { name: /^Reject expense/ }).click();
+  const dlg = page.getByRole("dialog");
+  await dlg.getByLabel("Your name").fill("Ada Auditor");
+  await dlg.getByRole("button", { name: "Reject expense" }).click();
+  await expect(page).not.toHaveURL(/E2E-NEXT-A/);
+  await expect(page).toHaveURL(/\/queue\/.+/);
 });
 
 test("queue: keyboard navigation, filters and the quality sample view", async ({ page }) => {
@@ -178,6 +212,17 @@ test("queue: keyboard navigation, filters and the quality sample view", async ({
   await page.keyboard.press("Escape");
   await page.goto("/sample");
   await expect(page.getByRole("heading", { name: "Quality sample" })).toBeVisible();
+  await expect(page.getByRole("note")).toContainText("does not take it off this list");
+});
+
+test("how it works and evaluation", async ({ page }) => {
+  await page.goto("/how-it-works");
+  await expect(page.getByRole("heading", { name: "How a receipt moves" })).toBeVisible();
+  await expect(page.getByRole("rowheader", { name: "With Compliance" })).toBeVisible();
+  await page.goto("/evaluation");
+  await expect(page.getByText("28 of 28")).toBeVisible();
+  await expect(page.getByText("not run").first()).toBeVisible();
+  await shot(page, "08-evaluation");
 });
 
 test("insights, history and theme", async ({ page }) => {

@@ -32,7 +32,7 @@ needs_outputs = pytest.mark.skipif(
 @needs_outputs
 def test_every_view_renders() -> None:
     at = _app()
-    for view in ("Receipt list", "Receipt detail", "Metrics", "Experiments"):
+    for view in ("Receipt list", "Receipt detail", "Metrics", "Experiments", "Upload"):
         at.sidebar.radio[0].set_value(view).run()
         assert not at.exception, view
 

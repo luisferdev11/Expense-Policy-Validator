@@ -19,6 +19,13 @@ Luis wants, before delivery (Saturday 2026-10-10, night):
 This session only defines the design. A later session implements it with Spec Kit
 (specify → plan → tasks), one iteration per release.
 
+## Design reference
+
+The application design that iterations 3 and 4 build from: https://claude.ai/artifact/9v6nEUUa73z4WyNrnQu5U3
+(intake, review workbench with the four actions, receipt history, lifecycle, evaluation). The earlier
+mockups (compliance case, insights, who sees what, AWS options) stay valid:
+https://claude.ai/artifact/EMAPwShVsAojUGiPCHtzqZ
+
 ## What exists and is reused
 
 - `app/pipeline.py`: `classify_receipt` (per receipt) and `run_pipeline` (batch; the cross-receipt

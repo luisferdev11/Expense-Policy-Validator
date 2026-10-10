@@ -13,7 +13,7 @@
 
 | Experiment | Winner | Evidence (N) | Why the others lost |
 |---|---|---|---|
-| E14 classifier model | gpt-oss-120b (unchanged) | 123/130 correct; restricted F1 0.991; 3 of 29 A6/A9 items wrong | gpt-oss-20b 122/130 and gemma-3-12b 115/130: the bootstrap lower bound of the difference (-0.062 and -0.123) is below the -0.02 margin, so non-inferiority is not shown. qwen3.5-9b: 4/130 schema violations, over the 2 % exclusion |
+| E14 classifier model | gpt-oss-120b (unchanged) | 123/130 correct; restricted F1 0.991; 2 of 29 A6/A9 items wrong | gpt-oss-20b 122/130 and gemma-3-12b 115/130: the bootstrap lower bound of the difference (-0.062 and -0.123) is below the -0.02 margin, so non-inferiority is not shown. qwen3.5-9b: 4/130 schema violations, over the 2 % exclusion |
 | E7 EXC-03 source | self-reported confidence | Brier 0.036 vs 0.0625 for 120b/20b agreement (N = 128) | Agreement has a higher Brier score and costs a second call per item |
 | E7 EXC-03 threshold | 0.97 | Fires on 7/128 dev items: catches 2 errors, sends 5 correct items to review, leaves 3/121 errors unflagged (0.5 fired on none and left 5/128) | Highest accuracy on the kept items with at most 10 % of correct items sent to review |
 | E5 translation | original text | original 55/56, translate 54/56 (N = 56); McNemar p = 1.0 | No evidence of a gain |
@@ -47,5 +47,5 @@ and Luis approved applying it.
 - **The model is not one fixed artefact under routing** (ADR 0004). gemma-3-12b was served 73
   times out of 130 by an int4 endpoint. Results record the serving provider.
 - **Low power.** At N = 130 a 2-point non-inferiority margin is hard to show. gpt-oss-20b costs
-  half as much per 1,000 items (USD 0.027 vs 0.054) and was one item behind the reference. A
+  less than half as much per 1,000 items (USD 0.026 vs 0.061) and was one item behind the reference. A
   larger dev set could change E14.

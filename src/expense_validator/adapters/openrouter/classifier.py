@@ -41,11 +41,20 @@ BASE_URL = "https://openrouter.ai/api/v1"
 CAP_USD = 1.00
 MAX_TOKENS = 1024
 KEY_ENV = "OPENROUTER_API_KEY"
+IGNORED_PROVIDERS = ("coreweave",)
 
 
 def provider(pin: ModelPin) -> dict[str, Any]:
-    """OpenRouter routes, among providers honouring every parameter and storing no data."""
-    return {"require_parameters": True, "data_collection": "deny"}
+    """OpenRouter routes, among providers honouring every parameter and storing no data.
+
+    CoreWeave is ignored: on the dev set every gpt-oss-120b answer with confidence 0 came from it,
+    with malformed whitespace around the field (ADR 0004, amendment of 2026-10-09).
+    """
+    return {
+        "require_parameters": True,
+        "data_collection": "deny",
+        "ignore": list(IGNORED_PROVIDERS),
+    }
 
 
 Transport = Callable[[dict[str, Any]], tuple[dict[str, Any], str]]

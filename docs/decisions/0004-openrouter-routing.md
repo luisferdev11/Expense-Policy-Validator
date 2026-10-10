@@ -24,6 +24,17 @@ throttles, and E14 cannot compare a model it cannot run.
 - E14 re-runs all four models under this routing, so they are compared under the same
   conditions. The DeepInfra runs are kept only as evidence and decide nothing.
 
+## Amendment, 2026-10-09: CoreWeave is ignored
+
+- **Finding.** Every gpt-oss-120b answer with `confidence: 0` came from CoreWeave (fp4): 3 of 3
+  on the dev set and 3 of 3 in the first finalist run. Each one had stray whitespace and
+  carriage returns around the field and no reasoning. No other provider, and no other model,
+  produced one. EXC-03 treated those lines as uncertain, so the finalist missed TECH-01 and
+  DOC-03 on RCP-012 and TECH-04 on RCP-032.
+- **Decision (Luis).** Requests carry `ignore: ["coreweave"]`. The answers CoreWeave served were
+  removed from the caches and asked again; every other cached answer stands. The evidence for
+  the decision is the dev set; the 28 receipts only confirmed it.
+
 ## Consequences
 
 - Temperature 0 and the pinned model ID and prompt still hold, but two runs may be served by

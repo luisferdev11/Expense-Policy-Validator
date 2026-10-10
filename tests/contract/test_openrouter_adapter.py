@@ -78,7 +78,11 @@ def test_request_is_pinned_and_deterministic(tmp_path: Path) -> None:
     provider = payload["extra_body"]["provider"]
     assert ENDPOINT == "openrouter"
     assert "order" not in provider and "allow_fallbacks" not in provider
-    assert provider == {"require_parameters": True, "data_collection": "deny"}
+    assert provider == {
+        "require_parameters": True,
+        "data_collection": "deny",
+        "ignore": ["coreweave"],
+    }
 
 
 def test_the_serving_provider_is_recorded_on_the_source_and_the_cache(tmp_path: Path) -> None:

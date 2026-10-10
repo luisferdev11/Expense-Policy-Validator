@@ -1,6 +1,6 @@
 {
   "base_rate": {
-    "detection_rate": 0.9375,
+    "detection_rate": 1.0,
     "false_positive_rate": 0.0,
     "n_flag": 16,
     "n_pass": 9,
@@ -10,21 +10,21 @@
         "false_flags": 0.0,
         "false_share": 0.0,
         "prevalence": 0.01,
-        "true_flags": 93.75,
+        "true_flags": 100.0,
         "violations": 100.0
       },
       {
         "false_flags": 0.0,
         "false_share": 0.0,
         "prevalence": 0.03,
-        "true_flags": 281.25,
+        "true_flags": 300.0,
         "violations": 300.0
       },
       {
         "false_flags": 0.0,
         "false_share": 0.0,
         "prevalence": 0.05,
-        "true_flags": 468.75,
+        "true_flags": 500.0,
         "violations": 500.0
       }
     ]
@@ -38,14 +38,14 @@
       "winner": "gpt-oss-120b"
     },
     {
-      "evidence": "threshold 0.95, Brier 0.06014, fires on 6/128 (95 % CI 0.022-0.099)",
+      "evidence": "threshold 0.97, Brier 0.03649, fires on 7/128 (95 % CI 0.027-0.109)",
       "experiment": "E7",
       "factor": "EXC-03 confidence source and threshold",
       "why_others_lost": "agreement_120b_20b: higher Brier (0.0625)",
       "winner": "self_reported"
     },
     {
-      "evidence": "original 54/56 (95 % CI 0.879-0.990), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0",
+      "evidence": "original 55/56 (95 % CI 0.905-0.997), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0",
       "experiment": "E5",
       "factor": "translation before classification",
       "why_others_lost": "translate: no evidence of a gain at this N",
@@ -79,12 +79,12 @@
     },
     "pipeline_accuracy": {
       "interval": [
-        0.8229,
-        0.9937
+        0.8794,
+        1.0
       ],
       "n": 28,
-      "rate": 0.9642857142857143,
-      "value": 27
+      "rate": 1.0,
+      "value": 28
     },
     "rows": [
       {
@@ -167,9 +167,9 @@
       {
         "answer_disposition": "flag",
         "oracle_disposition": "flag",
-        "pipeline_disposition": "review",
+        "pipeline_disposition": "flag",
         "receipt_id": "RCP-012",
-        "stage": "classification"
+        "stage": "none"
       },
       {
         "answer_disposition": "flag",
@@ -288,13 +288,13 @@
   "run": {
     "classifier": "openrouter",
     "confidence_source": "self_reported",
-    "exc03_threshold": 0.95,
+    "exc03_threshold": 0.97,
     "exc03_threshold_status": "chosen_on_dev",
     "model_id": "openai/gpt-oss-120b",
     "pipeline_config_version": "259bda8937cd",
     "prompt_version": "cls-v2",
     "provider_endpoint": "openrouter",
-    "rules_version": "298de0bb0c05"
+    "rules_version": "3dd5e8498c09"
   },
   "systems": {
     "keyword-classifier": {
@@ -772,12 +772,12 @@
     "pipeline": {
       "disposition_accuracy": {
         "interval": [
-          0.8229,
-          0.9937
+          0.8794,
+          1.0
         ],
         "n": 28,
-        "rate": 0.9642857142857143,
-        "value": 27
+        "rate": 1.0,
+        "value": 28
       },
       "disposition_confusion": {
         "labels": [
@@ -787,8 +787,8 @@
         ],
         "matrix": [
           [
-            15,
-            1,
+            16,
+            0,
             0
           ],
           [
@@ -806,17 +806,17 @@
       },
       "evidence_correctness": {
         "interval": [
-          0.8569,
+          0.8713,
           1.0
         ],
-        "n": 23,
+        "n": 26,
         "rate": 1.0,
-        "value": 23
+        "value": 26
       },
       "exc03": {
-        "dispositions_changed": 1,
-        "receipts": 3,
-        "signals": 3
+        "dispositions_changed": 0,
+        "receipts": 0,
+        "signals": 0
       },
       "false_positives": {
         "interval": [
@@ -855,12 +855,12 @@
       },
       "missed_violations": {
         "interval": [
-          0.0111,
-          0.2833
+          0.0,
+          0.1936
         ],
         "n": 16,
-        "rate": 0.0625,
-        "value": 1
+        "rate": 0.0,
+        "value": 0
       },
       "per_rule": {
         "ALC-01": {
@@ -892,11 +892,11 @@
           "tp": 1
         },
         "DOC-03": {
-          "fn": 1,
+          "fn": 0,
           "fp": 0,
           "precision": 1.0,
-          "recall": 0.6666666666666666,
-          "tp": 2
+          "recall": 1.0,
+          "tp": 3
         },
         "GIFT-01": {
           "fn": 0,
@@ -976,11 +976,11 @@
           "tp": 1
         },
         "TECH-01": {
-          "fn": 1,
+          "fn": 0,
           "fp": 0,
           "precision": 1.0,
-          "recall": 0.5,
-          "tp": 1
+          "recall": 1.0,
+          "tp": 2
         },
         "TECH-02": {
           "fn": 0,
@@ -990,11 +990,11 @@
           "tp": 1
         },
         "TECH-04": {
-          "fn": 1,
+          "fn": 0,
           "fp": 0,
-          "precision": null,
-          "recall": 0.0,
-          "tp": 0
+          "precision": 1.0,
+          "recall": 1.0,
+          "tp": 1
         }
       },
       "reg04_vat_only": {
@@ -1010,8 +1010,8 @@
       },
       "review_signals": {
         "fn": 0,
-        "fp": 3,
-        "n": 10,
+        "fp": 0,
+        "n": 7,
         "tp": 7
       }
     }

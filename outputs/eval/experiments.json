@@ -47,7 +47,7 @@
         },
         {
           "a6a9_n": 29,
-          "a6a9_wrong": 3,
+          "a6a9_wrong": 2,
           "accuracy": {
             "interval": [
               0.893,
@@ -57,7 +57,7 @@
             "n": 130,
             "value": 0.9461538461538461
           },
-          "cost_per_1000_usd": 0.054468,
+          "cost_per_1000_usd": 0.060824,
           "restricted_f1": 0.9912,
           "schema_violations": {
             "interval": [
@@ -73,7 +73,7 @@
         },
         {
           "a6a9_n": 29,
-          "a6a9_wrong": 2,
+          "a6a9_wrong": 3,
           "accuracy": {
             "interval": [
               0.8833,
@@ -83,7 +83,7 @@
             "n": 130,
             "value": 0.9384615384615385
           },
-          "cost_per_1000_usd": 0.027471,
+          "cost_per_1000_usd": 0.026332,
           "difference": {
             "interval": [
               -0.0615,
@@ -92,8 +92,8 @@
             "value": -0.0077
           },
           "mcnemar": {
-            "b_challenger_only": 6,
-            "c_reference_only": 7,
+            "b_challenger_only": 5,
+            "c_reference_only": 6,
             "p": 1.0
           },
           "restricted_f1": 0.9825,
@@ -170,7 +170,7 @@
         {
           "accuracy": 1.0,
           "coverage": 0.0234,
-          "threshold": 0.99
+          "threshold": 1.0
         },
         {
           "accuracy": 1.0,
@@ -605,208 +605,208 @@
         {
           "accuracy": 1.0,
           "coverage": 0.7031,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
           "accuracy": 1.0,
           "coverage": 0.7109,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
           "accuracy": 1.0,
           "coverage": 0.7188,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
-          "accuracy": 0.9892,
+          "accuracy": 1.0,
           "coverage": 0.7266,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
-          "accuracy": 0.9894,
+          "accuracy": 1.0,
           "coverage": 0.7344,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
-          "accuracy": 0.9895,
+          "accuracy": 1.0,
           "coverage": 0.7422,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
-          "accuracy": 0.9896,
+          "accuracy": 1.0,
           "coverage": 0.75,
-          "threshold": 0.98
+          "threshold": 0.99
         },
         {
-          "accuracy": 0.9897,
+          "accuracy": 1.0,
           "coverage": 0.7578,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.7656,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.7734,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.7812,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.7891,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.7969,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.8047,
+          "threshold": 0.99
+        },
+        {
+          "accuracy": 1.0,
+          "coverage": 0.8125,
           "threshold": 0.98
         },
         {
-          "accuracy": 0.9898,
-          "coverage": 0.7656,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.9899,
-          "coverage": 0.7734,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.99,
-          "coverage": 0.7812,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.9901,
-          "coverage": 0.7891,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.9902,
-          "coverage": 0.7969,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.9903,
-          "coverage": 0.8047,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.9904,
-          "coverage": 0.8125,
-          "threshold": 0.97
-        },
-        {
-          "accuracy": 0.981,
+          "accuracy": 1.0,
           "coverage": 0.8203,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9811,
+          "accuracy": 1.0,
           "coverage": 0.8281,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9813,
+          "accuracy": 0.9907,
           "coverage": 0.8359,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9722,
+          "accuracy": 0.9907,
           "coverage": 0.8438,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9633,
+          "accuracy": 0.9908,
           "coverage": 0.8516,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9636,
+          "accuracy": 0.9909,
           "coverage": 0.8594,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.964,
+          "accuracy": 0.991,
           "coverage": 0.8672,
-          "threshold": 0.97
+          "threshold": 0.98
         },
         {
-          "accuracy": 0.9643,
+          "accuracy": 0.9911,
           "coverage": 0.875,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9646,
+          "accuracy": 0.9912,
           "coverage": 0.8828,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9649,
+          "accuracy": 0.9912,
           "coverage": 0.8906,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9652,
+          "accuracy": 0.9913,
           "coverage": 0.8984,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9655,
+          "accuracy": 0.9828,
           "coverage": 0.9062,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9658,
+          "accuracy": 0.9744,
           "coverage": 0.9141,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9661,
+          "accuracy": 0.9746,
           "coverage": 0.9219,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9664,
+          "accuracy": 0.9748,
           "coverage": 0.9297,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9667,
+          "accuracy": 0.975,
           "coverage": 0.9375,
           "threshold": 0.97
         },
         {
-          "accuracy": 0.9669,
+          "accuracy": 0.9752,
           "coverage": 0.9453,
-          "threshold": 0.95
+          "threshold": 0.97
         },
         {
           "accuracy": 0.9672,
           "coverage": 0.9531,
-          "threshold": 0.95
+          "threshold": 0.96
         },
         {
           "accuracy": 0.9675,
           "coverage": 0.9609,
-          "threshold": 0.93
+          "threshold": 0.95
         },
         {
-          "accuracy": 0.9597,
+          "accuracy": 0.9677,
           "coverage": 0.9688,
-          "threshold": 0.93
+          "threshold": 0.95
         },
         {
-          "accuracy": 0.96,
+          "accuracy": 0.968,
           "coverage": 0.9766,
-          "threshold": 0.9
+          "threshold": 0.95
         },
         {
-          "accuracy": 0.9603,
+          "accuracy": 0.9683,
           "coverage": 0.9844,
-          "threshold": 0.0
+          "threshold": 0.93
         },
         {
           "accuracy": 0.9606,
           "coverage": 0.9922,
-          "threshold": 0.0
+          "threshold": 0.93
         },
         {
           "accuracy": 0.9609,
           "coverage": 1.0,
-          "threshold": 0.0
+          "threshold": 0.9
         }
       ],
       "factor": "EXC-03 confidence source and threshold",
       "fires_on_dev": {
         "interval": [
-          0.0217,
-          0.0985
+          0.0267,
+          0.1086
         ],
-        "k": 6,
+        "k": 7,
         "n": 128,
-        "value": 0.046875
+        "value": 0.0546875
       },
       "id": "E7",
       "n": 128,
@@ -817,26 +817,26 @@
         },
         "self_reported": {
           "bins_with_10_items": 1,
-          "brier": 0.06014,
+          "brier": 0.03649,
           "calibration_measurable": false,
-          "ece": 0.04641
+          "ece": 0.0243
         }
       },
-      "threshold": 0.95,
+      "threshold": 0.97,
       "winner": "self_reported"
     },
     {
       "difference": {
         "interval": [
-          -0.0714,
-          0.0714
+          -0.0893,
+          0.0357
         ],
-        "value": 0.0
+        "value": -0.0179
       },
       "factor": "translation before classification",
       "id": "E5",
       "mcnemar": {
-        "b_translate_only": 2,
+        "b_translate_only": 1,
         "c_original_only": 2,
         "p": 1.0
       },
@@ -845,12 +845,12 @@
         {
           "accuracy": {
             "interval": [
-              0.8788,
-              0.9902
+              0.9055,
+              0.9968
             ],
-            "k": 54,
+            "k": 55,
             "n": 56,
-            "value": 0.9642857142857143
+            "value": 0.9821428571428571
           },
           "variant": "original"
         },
@@ -892,7 +892,7 @@
       "winner": "trigger_map"
     }
   ],
-  "spend_usd_of_kept_answers": 0.032099,
+  "spend_usd_of_kept_answers": 0.03302,
   "table": [
     {
       "evidence": "accuracy 123/130 (95 % CI 0.893-0.974), restricted F1 0.9912",
@@ -902,14 +902,14 @@
       "winner": "gpt-oss-120b"
     },
     {
-      "evidence": "threshold 0.95, Brier 0.06014, fires on 6/128 (95 % CI 0.022-0.099)",
+      "evidence": "threshold 0.97, Brier 0.03649, fires on 7/128 (95 % CI 0.027-0.109)",
       "experiment": "E7",
       "factor": "EXC-03 confidence source and threshold",
       "why_others_lost": "agreement_120b_20b: higher Brier (0.0625)",
       "winner": "self_reported"
     },
     {
-      "evidence": "original 54/56 (95 % CI 0.879-0.990), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0",
+      "evidence": "original 55/56 (95 % CI 0.905-0.997), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0",
       "experiment": "E5",
       "factor": "translation before classification",
       "why_others_lost": "translate: no evidence of a gain at this N",

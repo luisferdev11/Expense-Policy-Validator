@@ -14,7 +14,7 @@ def test_fx_defaults_follow_a1() -> None:
 
 def test_exc03_threshold_is_the_value_chosen_on_dev() -> None:
     s = load_settings()
-    assert (s.exc03_threshold, s.exc03_threshold_status) == (Decimal("0.95"), "chosen_on_dev")
+    assert (s.exc03_threshold, s.exc03_threshold_status) == (Decimal("0.97"), "chosen_on_dev")
 
 
 def test_reference_prefixes_follow_a5() -> None:

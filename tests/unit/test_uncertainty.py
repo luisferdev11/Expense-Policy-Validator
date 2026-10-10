@@ -21,10 +21,10 @@ def test_threshold_is_inclusive_at_0_5() -> None:
     assert "EXC-03" not in signals(f)
 
 
-def test_the_chosen_threshold_is_inclusive_at_0_95() -> None:
+def test_the_chosen_threshold_is_inclusive_at_0_97() -> None:
     real = load_settings()
     r = receipt([item(1)])
-    for confidence, fires in ((0.95, False), (0.94, True)):
+    for confidence, fires in ((0.97, False), (0.96, True)):
         cr = classified(r, cls("SYN-1-L1", "office_supplies", confidence=confidence))
         f = evaluate(cr, build_context([cr], real), ALL_RULES, real)
         assert ("EXC-03" in signals(f)) is fires

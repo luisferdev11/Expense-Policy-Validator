@@ -32,5 +32,5 @@ def test_run_metadata_records_the_configuration() -> None:
     meta = run_metadata(_Clf(), load_settings(), config)  # type: ignore[arg-type]
     assert meta.confidence_source == "self_reported"
     assert meta.pipeline_config_version == config.version
-    assert meta.exc03_threshold == 0.95
+    assert meta.exc03_threshold == 0.97
     assert meta.exc03_threshold_status == "chosen_on_dev"

@@ -39,8 +39,11 @@ Nothing here changes a policy decision or the engine.
 |---|---|
 | `domain/` (pure) | `lifecycle.py` (states, transitions, allowed actions), `idempotency.py` (key and canonical hash), `events.py` (typed events), `cascade.py` (affected set), `review.py` (reason codes, agreement rule, human classification) |
 | `ports/` | `store.py` (`ReceiptStore`), `Tracer` gains `score` |
-| `adapters/` | `sqlite_store.py`, `http/` (FastAPI routes and schemas) |
-| `app/` | `service.py` (submit, batch, actions), `worker.py` (stages), `decide.py` (the decision step shared with `epv run`) |
+| `adapters/` | `sqlite_store.py` |
+| `app/` | `service.py` (submit, batch, actions), `worker.py` (stages), `decide.py` (the decision step shared with `epv run`), `api/` (FastAPI routes and schemas) |
+
+The HTTP routes call the use-case services, and adapters may not import `app/` (architecture
+test), so they live in `app/api/`, like the CLI.
 
 `app/decide.py` extracts the loop body of `run_pipeline` (retrieve, apply, report). `epv run` and
 the worker both call it, so the two cannot diverge. `outputs/results.jsonl` stays byte-identical.
@@ -125,7 +128,8 @@ is out of scope.
   `engine_missed_issue`, `documentation_provided`, `other` (a note is then required). Required
   when the decision overrides the proposal: approving a `flag`, or rejecting a `pass`.
 - **Allowed actions by state.** Approve, reject, correct a category, request information and
-  escalate need `in_review` or `compliance`. Escalate needs `in_review`. A receipt in
+  escalate need `in_review` or `compliance`, except that escalate needs `in_review`, and reject
+  is also allowed from `needs_info` (a request that is never answered). A receipt in
   `auto_approved` may be rejected (an override, so a reason code is required) or sampled for
   quality review. Anything else gives `409`.
 - **Actor.** Free text recorded in the event; there is no authentication in this iteration.

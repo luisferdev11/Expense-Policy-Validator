@@ -31,3 +31,6 @@ outputs/dev/
 .vscode/
 .idea/
 .DS_Store
+
+# Local application state (iteration 3: SQLite store)
+var/

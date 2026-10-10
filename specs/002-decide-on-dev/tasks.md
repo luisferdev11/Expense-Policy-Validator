@@ -124,8 +124,8 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 7: Polish and checkpoint
 
-- [ ] T029 [P] Update `AI_NOTES.md` with this iteration's mistakes, and `docs/ai/prompt-log.md` with its prompts
-- [ ] T030 [P] Update `docs/roadmap.md`: iteration 2 exit criteria ticked, with evidence
+- [x] T029 [P] Update `AI_NOTES.md` with this iteration's mistakes, and `docs/ai/prompt-log.md` with its prompts
+- [x] T030 [P] Update `docs/roadmap.md`: iteration 2 exit criteria ticked, with evidence
 - [ ] T031 **Decide-on-dev done:** run every scenario in `specs/002-decide-on-dev/quickstart.md`, then run `uv run pre-commit run -a` and `uv run pytest`. Open the PR with a pass list per scenario, merge it, then tag `v0.2.0` on the merge commit and publish its GitHub release (what it includes, the results with N, what changed from v0.1.1)
 
 ## Dependencies

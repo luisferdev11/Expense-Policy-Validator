@@ -91,6 +91,13 @@ each against a decision rule registered before its run (principle V).
   and why the others lost.
 - The pipeline runs with the chosen settings, and the report and viewer are updated.
 
+**Status: done on 2026-10-09** (release `v0.2.0`). ADR 0004 replaced the provider pin with
+OpenRouter routing; ADR 0005 records the winners: gpt-oss-120b, self-reported confidence with
+EXC-03 at 0.95, original text, strict parser, trigger map. The finalist run scores 27/28
+dispositions; its one miss (RCP-012) is EXC-03 at 0.95 hiding a violation behind a review,
+which iteration 3 writes up as a failure case. Carried forward: a larger dev set to separate
+gpt-oss-20b (half the cost, one item behind) from the reference.
+
 ## Iteration 3: delivery package
 
 **Scope.**

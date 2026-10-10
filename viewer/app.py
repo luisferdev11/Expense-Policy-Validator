@@ -8,6 +8,7 @@ Launch with `uv run epv view`.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 import pandas as pd
@@ -19,6 +20,9 @@ from expense_validator.adapters.results_files import (
     load_metrics,
     load_results,
 )
+from expense_validator.adapters.tracing import make_tracer
+from expense_validator.app.cli import load_env
+from expense_validator.app.intake import default_classifier, parse_upload, run_upload
 from expense_validator.paths import EVAL_DIR
 
 st.set_page_config(page_title="Expense Policy Validator", layout="wide")
@@ -32,7 +36,9 @@ if not results:
     st.info("No results yet. Run `uv run epv run`, then `uv run epv eval`.")
     st.stop()
 
-view = st.sidebar.radio("View", ["Receipt list", "Receipt detail", "Metrics", "Experiments"])
+view = st.sidebar.radio(
+    "View", ["Receipt list", "Receipt detail", "Metrics", "Experiments", "Upload"]
+)
 run = results[0].run
 st.sidebar.caption(
     f"Model `{run.model_id}` · prompt `{run.prompt_version}` · rules `{run.rules_version}` · "
@@ -146,6 +152,74 @@ elif view == "Experiments":
         "before any run (ADR 0005). None of the 28 scored receipts informed a choice."
     )
     st.dataframe(pd.DataFrame(experiments["table"]), hide_index=True, width="stretch")
+
+elif view == "Upload":
+    st.subheader("Validate new receipts")
+    st.caption(
+        "One receipt (JSON object), a JSON array, or JSONL. Answer keys are stripped as for the "
+        "dataset, and the uploaded batch is the context for cross-receipt rules (meal days, "
+        "trips). Lines seen before cost nothing; new lines call the classifier and are traced."
+    )
+    upload = st.file_uploader("Receipt file", type=["json", "jsonl"])
+    pasted = st.text_area("Or paste JSON", height=160)
+    source = upload.getvalue().decode("utf-8") if upload is not None else pasted
+    if st.button("Validate", type="primary", disabled=not source.strip()):
+        parsed = parse_upload(source)
+        for bad_row, message in parsed.errors:
+            st.error(f"Row {bad_row}: {message}")
+        if parsed.receipts:
+            load_env()
+            tracer = make_tracer()
+            classifier = default_classifier(tracer)
+            with st.spinner(f"Validating {len(parsed.receipts)} receipts"):
+                upload_run = run_upload(parsed.receipts, classifier, tracer)
+            tracer.flush(timeout_s=10.0)
+            st.session_state["upload_run"] = {
+                "run_id": upload_run.run_id,
+                "path": str(upload_run.path),
+                "calls": classifier.calls_made,
+                "usd": classifier.run_spend_usd,
+                "errors": len(parsed.errors),
+            }
+    last = st.session_state.get("upload_run")
+    if last:
+        uploaded = load_results(Path(last["path"]))
+        st.success(
+            f"Run {last['run_id']}: {len(uploaded)} receipts validated, {last['errors']} rows "
+            f"rejected, {last['calls']} new model calls (USD {last['usd']:.6f})."
+        )
+        st.dataframe(
+            pd.DataFrame(
+                [
+                    {
+                        "receipt": r.receipt_id,
+                        "disposition": r.disposition,
+                        "exceptions": ", ".join(
+                            f"{e.rule_id} ({e.severity})" for e in r.exceptions
+                        ),
+                        "signals": ", ".join(s.rule_id for s in r.review_signals),
+                    }
+                    for r in uploaded
+                ]
+            ),
+            hide_index=True,
+            width="stretch",
+        )
+        for r in uploaded:
+            with st.expander(f"{r.receipt_id} · {r.disposition}"):
+                for li in r.line_items:
+                    st.markdown(
+                        f"`{li.line_id}` {li.description_raw} · **{li.category or 'unclassified'}**"
+                        f" · confidence {li.confidence if li.confidence is not None else '—'}"
+                    )
+                for e in r.exceptions:
+                    st.markdown(
+                        f"**{e.rule_id}** ({e.severity}) · lines {', '.join(e.line_ids) or '—'}"
+                    )
+                    st.markdown(e.explanation)
+                    st.caption(f"{e.policy_doc}: “{e.evidence}”")
+                for s in r.review_signals:
+                    st.markdown(f"**{s.rule_id}** (signal) · {s.reason}")
 
 else:
     st.subheader("Metrics")

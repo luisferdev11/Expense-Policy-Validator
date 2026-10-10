@@ -226,7 +226,7 @@ export const QUEUE_VIEWS: Record<
 > = {
   queue: {
     title: "Review queue",
-    hint: "Receipts waiting for a person to decide.",
+    hint: "Severity, then oldest. Critical findings go to Compliance instead.",
     empty: "Queue clear. Nothing is waiting for your decision.",
     match: (r) => ["in_review", "needs_info"].includes(r.state),
   },
@@ -248,3 +248,37 @@ export type Row = { summary: ReceiptSummary; detail?: ReceiptDetail };
 
 export const findingCount = (d?: ReceiptDetail): number | null =>
   d?.result ? d.result.exceptions.length : null;
+
+// Revisions ---------------------------------------------------------------------------------
+
+export interface FieldChange {
+  field: string;
+  before: string;
+  after: string;
+}
+
+const show = (v: unknown): string =>
+  v === null || v === undefined ? "—" : typeof v === "object" ? JSON.stringify(v) : String(v);
+
+/** Fields whose value differs between two revisions of a receipt; lines are compared as a whole. */
+export function diffRevisions(a: object, b: object): FieldChange[] {
+  const x = a as Record<string, unknown>;
+  const y = b as Record<string, unknown>;
+  const changes: FieldChange[] = [];
+  for (const field of Array.from(new Set([...Object.keys(x), ...Object.keys(y)]))) {
+    if (field === "line_items") {
+      const la = (x[field] as unknown[]) ?? [];
+      const lb = (y[field] as unknown[]) ?? [];
+      if (JSON.stringify(la) !== JSON.stringify(lb)) {
+        changes.push({
+          field: "line_items",
+          before: `${la.length} line${la.length === 1 ? "" : "s"}`,
+          after: `${lb.length} line${lb.length === 1 ? "" : "s"}, changed`,
+        });
+      }
+      continue;
+    }
+    if (show(x[field]) !== show(y[field])) changes.push({ field, before: show(x[field]), after: show(y[field]) });
+  }
+  return changes;
+}

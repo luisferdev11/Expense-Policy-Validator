@@ -1,25 +1,33 @@
 {
-  "status": "no-measurements",
-  "note": "No measurements are loaded. This file is read by the Evaluation screen. Fill `metrics` for each model with figures from committed outputs, each with its N, and set `status` to \"measured\". See frontend/FINDINGS.md F-03.",
-  "dataset": { "name": "Synthetic dev set", "n": null },
-  "models": [
-    {
-      "id": "openai/gpt-oss-120b",
-      "label": "gpt-oss-120b",
-      "role": "Reference classifier (ADR 0005)",
-      "metrics": []
-    },
-    {
-      "id": "openai/gpt-oss-20b",
-      "label": "gpt-oss-20b",
-      "role": "Smaller comparison",
-      "metrics": []
-    },
-    {
-      "id": "jev-1.13",
-      "label": "jev-1.13",
-      "role": "Decision model, category only",
-      "metrics": []
-    }
-  ]
+  "release": "v0.2.0",
+  "provenance": "Figures copied from the Ledgerline design canvas (board 5, Evaluation), which cites outputs/eval/metrics.json and experiments.json of release v0.2.0. They were not re-read from the repository when the front end was built (FINDINGS.md F-03). Check them against the committed outputs before delivery.",
+  "scored": {
+    "title": "On the 28 scored receipts",
+    "cards": [
+      { "label": "Dispositions correct", "value": "28 of 28", "detail": "95 % CI 87.9–100 % · keyword baselines 20 and 16" },
+      { "label": "Missed violations", "value": "0 of 16", "detail": "receipts that should be flagged · CI 0–19.4 %" },
+      { "label": "False positives", "value": "0 of 9", "detail": "receipts that should pass · CI 0–29.9 %" },
+      { "label": "Line categories, macro F1", "value": "1.000", "detail": "N = 65 scored lines" }
+    ]
+  },
+  "classifiers": {
+    "title": "Three classifiers on the frozen dev set",
+    "note": "Demonstration only: the registered rule (E14) keeps the reference unless a challenger is shown no more than 2 points worse. N = 130 items reviewed blind.",
+    "models": [
+      { "id": "openai/gpt-oss-120b", "label": "gpt-oss-120b", "kind": "Generative", "accuracy": "123 / 130", "accuracyDetail": "89.3–97.4 %", "restrictedF1": "0.991", "subtypeWrong": "2 / 29", "usdPer1000": "0.061", "role": "In use · the reference", "highlight": true },
+      { "id": "openai/gpt-oss-20b", "label": "gpt-oss-20b", "kind": "Generative", "accuracy": "122 / 130", "accuracyDetail": "88.3–96.9 %", "restrictedF1": "0.983", "subtypeWrong": "3 / 29", "usdPer1000": "0.026", "role": "Best generative challenger; half the cost, one item behind; non-inferiority not shown at N = 130" },
+      { "id": "jev-1.13", "label": "jev-1.13", "kind": "Decision model", "accuracy": null, "accuracyDetail": "draft set: 109 / 109", "restrictedF1": null, "subtypeWrong": "not returned", "usdPer1000": "0.043", "role": "Best decision model in E13; category only, so it cannot drive ENT-01, TECH-03 or the gift rules alone. Not run on the frozen dev set yet: that run needs model calls." }
+    ]
+  },
+  "decisions": {
+    "title": "Decisions taken on the dev set",
+    "note": "Each rule was registered and approved before its run (ADR 0005).",
+    "rows": [
+      { "question": "Which classifier?", "chosen": "gpt-oss-120b", "evidence": "123/130; challengers not shown non-inferior, one excluded for schema violations" },
+      { "question": "When is a line uncertain?", "chosen": "Self-reported confidence below 0.97", "evidence": "Brier 0.036 vs 0.0625 for agreement; fires on 7 of 128 items" },
+      { "question": "Translate before classifying?", "chosen": "No", "evidence": "55/56 original vs 54/56 translated" },
+      { "question": "Accept a null subtype?", "chosen": "No, strict parser", "evidence": "2 nulls in 520 answers, 0 fixed" },
+      { "question": "Which rules to run?", "chosen": "Trigger map", "evidence": "0 differences against every rule on 47 receipts" }
+    ]
+  }
 }

@@ -17,13 +17,6 @@ const ICON: Record<Action, IconName> = {
   escalate: "triangle",
   "correct-category": "edit",
 };
-const VARIANT: Record<Action, string> = {
-  approve: "primary",
-  reject: "secondary",
-  "request-info": "secondary",
-  escalate: "secondary",
-  "correct-category": "secondary",
-};
 
 const ORDER: Action[] = ["approve", "reject", "request-info", "escalate", "correct-category"];
 
@@ -31,6 +24,19 @@ export function decisionKeys(): Record<string, Action> {
   const map: Record<string, Action> = {};
   for (const [action, key] of Object.entries(KEY)) map[key.toLowerCase()] = action as Action;
   return map;
+}
+
+/** The action that agrees with the proposal leads: reject for a flag, approve for pass or review. */
+function variant(a: Action, d: ReceiptDetail["disposition"]): string {
+  if (a === "reject" && d === "flag") return "critical";
+  if (a === "approve" && d !== "flag") return "primary";
+  return "secondary";
+}
+
+function label(a: Action, d: ReceiptDetail["disposition"]): string {
+  if (a === "approve") return d === "flag" ? "Approve anyway" : "Approve";
+  if (a === "reject") return "Reject expense";
+  return ACTION_LABEL[a];
 }
 
 export function DecisionBar({
@@ -45,7 +51,7 @@ export function DecisionBar({
     if (allowed.length > 0) {
       if (detail.state === "auto_approved") return "The engine passed this receipt on its own. You can reject it as an override.";
       if (detail.state === "needs_info") return "Waiting for the employee. Submit the corrected receipt with the same ID to answer, or reject it if nobody answers.";
-      return "The engine proposes; you decide.";
+      return "Saves and opens the next receipt.";
     }
     switch (detail.state) {
       case "approved":
@@ -64,9 +70,9 @@ export function DecisionBar({
   return (
     <div className="ll-decision decision-bar" role="group" aria-label="Decision">
       {allowed.map((a) => (
-        <button key={a} type="button" className={`ll-btn ll-btn--${VARIANT[a]}`} onClick={() => onAction(a)}>
+        <button key={a} type="button" className={`ll-btn ll-btn--${variant(a, detail.disposition)}`} onClick={() => onAction(a)}>
           <Icon name={ICON[a]} />
-          {ACTION_LABEL[a]}
+          {label(a, detail.disposition)}
           <span className="ll-kbd">{KEY[a]}</span>
         </button>
       ))}

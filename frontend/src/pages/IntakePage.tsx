@@ -2,12 +2,13 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import type { DragEvent } from "react";
 import { Link, useSearchParams } from "react-router-dom";
 import { ApiError, api } from "../api/client";
-import type { BatchResponse, RowOutcome, State, SubmitResponse } from "../api/types";
-import { StateChip } from "../components/Badges";
+import type { BatchResponse, ReceiptDetail, RowOutcome, State, SubmitResponse } from "../api/types";
+import { DispositionBadge, StateChip } from "../components/Badges";
 import { Icon } from "../components/Icon";
-import { STATES, STATE_LABEL, isInProgress } from "../lib/domain";
-import { usePolling, useToast } from "../lib/hooks";
-import { planIntake } from "../lib/intake";
+import { STATES, STATE_LABEL, isInProgress, sortFindings } from "../lib/domain";
+import { usd } from "../lib/format";
+import { useDetails, usePolling, useToast } from "../lib/hooks";
+import { planIntake, refusedRowsText, sourceRows } from "../lib/intake";
 import { useReceipts } from "../lib/receipts";
 import { SAMPLE_BATCH, SAMPLE_RECEIPT } from "../samples/samples";
 
@@ -15,30 +16,58 @@ const OUTCOME_TEXT: Record<RowOutcome, string> = {
   accepted: "Accepted",
   existing: "Already known",
   revision: "New revision",
-  invalid: "Refused",
+  invalid: "Rejected, not saved",
   duplicate_in_batch: "Repeated in this batch",
 };
 
 const OUTCOME_HELP: Record<string, string> = {
   accepted: "A new receipt. The engine is reading it now.",
   existing: "The system already has exactly this receipt, so nothing was started.",
-  revision: "The same receipt ID with different content. It replaces the earlier one, which stays in the trail, and the check starts again.",
+  revision: "The same receipt ID with different content. It replaces the earlier one, which stays in its history, and the check starts again.",
 };
+
+const STATE_NOTE: Partial<Record<State, string>> = {
+  submitted: "Received, waiting for the engine",
+  classifying: "Reading the items",
+  in_review: "In review with an auditor",
+  compliance: "Sent to Compliance: critical finding or escalation, never the audit queue",
+  auto_approved: "Approved automatically",
+  needs_info: "Waiting for information from the employee",
+};
+
+type Mode = "single" | "batch";
+
+function download(name: string, text: string) {
+  const url = URL.createObjectURL(new Blob([text], { type: "application/x-ndjson" }));
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = name;
+  a.click();
+  URL.revokeObjectURL(url);
+}
 
 export function IntakePage() {
   const [params, setParams] = useSearchParams();
   const { reload } = useReceipts();
   const { toast } = useToast();
+  const [mode, setMode] = useState<Mode>("batch");
   const [text, setText] = useState("");
+  const [fileName, setFileName] = useState<string | null>(null);
   const [key, setKey] = useState("");
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; fields?: string[] } | null>(null);
   const [single, setSingle] = useState<SubmitResponse | null>(null);
-  const [batch, setBatch] = useState<BatchResponse | null>(null);
+  const [batch, setBatch] = useState<{ response: BatchResponse; rows: string[]; sentAt: Date; fileName: string | null } | null>(null);
   const [dragging, setDragging] = useState(false);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const plan = useMemo(() => planIntake(text), [text]);
+
+  // The mode follows what was pasted or loaded; with nothing there, the person's choice stands.
+  useEffect(() => {
+    if (plan.kind === "single") setMode("single");
+    else if (plan.kind === "batch") setMode("batch");
+  }, [plan.kind]);
 
   // "Submit a corrected revision": prefill with the current stripped receipt.
   const revise = params.get("revise");
@@ -73,7 +102,7 @@ export function IntakePage() {
         toast(`${res.receipt_id}: ${OUTCOME_TEXT[res.outcome].toLowerCase()}.`);
       } else {
         const res = await api.submitBatch(plan.body, plan.contentType);
-        setBatch(res);
+        setBatch({ response: res, rows: sourceRows(plan), sentAt: new Date(), fileName });
         toast(`Batch ${res.batch_id}: ${res.total} row${res.total === 1 ? "" : "s"} processed.`);
       }
       void reload();
@@ -82,7 +111,6 @@ export function IntakePage() {
         const fields = (e.body.details as { fields?: string[] }).fields;
         const messages: Record<string, string> = {
           idempotency_key_reuse: "This idempotency key was already used with different content. Use a new key, or leave it empty.",
-          invalid_batch: e.message,
         };
         setError({ message: messages[e.code] ?? e.message, fields });
       } else {
@@ -95,6 +123,7 @@ export function IntakePage() {
 
   async function readFile(file: File) {
     reset();
+    setFileName(file.name);
     setText(await file.text());
     if (params.get("revise")) setParams({});
   }
@@ -113,22 +142,36 @@ export function IntakePage() {
         ? `A batch of ${plan.rows} row${plan.rows === 1 ? "" : "s"} (${plan.contentType === "application/json" ? "JSON array" : "JSON Lines"})`
         : plan.kind === "invalid"
           ? plan.message
-          : "Paste a receipt or a batch, or drop a file here.";
+          : "";
+
+  const showDrop = mode === "batch" && text.trim() === "";
+  const mismatch =
+    (mode === "single" && plan.kind === "batch") || (mode === "batch" && plan.kind === "single");
 
   return (
     <div className="page">
-      <h1 className="ll-display">Submit receipts</h1>
-      <p className="muted lead">
-        Send one receipt (JSON) or a batch (a JSON array, or one JSON receipt per line). The engine reads each item, checks the nine policies and proposes a verdict. A
-        person decides.
-      </p>
+      <div>
+        <h1 className="ll-display">Intake</h1>
+        <p className="muted lead">
+          Send one receipt or a batch. Each receipt is saved before any work starts, so a dropped connection never loses it, and sending it again finds the one we already have.
+        </p>
+      </div>
 
-      <div className="two-col">
-        <section className="ll-panel">
-          <h2 className="ll-heading">Receipt data</h2>
+      <div className="intake-grid">
+        <section className="ll-panel" aria-labelledby="send-h">
+          <h2 className="ll-heading" id="send-h">
+            Send receipts
+          </h2>
+          <div role="group" aria-label="What to send" className="row gap" style={{ marginTop: 0 }}>
+            {(["single", "batch"] as const).map((m) => (
+              <button key={m} type="button" className={`chip${mode === m ? " is-on" : ""}`} aria-pressed={mode === m} onClick={() => setMode(m)}>
+                {m === "single" ? "One receipt" : "A batch"}
+              </button>
+            ))}
+          </div>
           {revise && (
             <p className="callout callout--accent">
-              Editing a copy of <strong className="ll-num">{revise}</strong>. Change what is wrong and submit: it becomes a new revision of the same receipt.
+              Editing a copy of <strong className="ll-num">{revise}</strong>. Change what is wrong and send it: it becomes a new revision of the same receipt.
             </p>
           )}
           <div
@@ -140,47 +183,63 @@ export function IntakePage() {
             onDragLeave={() => setDragging(false)}
             onDrop={onDrop}
           >
+            {showDrop && (
+              <button type="button" className="dropzone" onClick={() => fileRef.current?.click()}>
+                <Icon name="upload" size={24} />
+                <span className="dropzone__lead">Drop a .jsonl or .json file, or choose one</span>
+                <span className="muted dropzone__hint">One receipt per line, or a JSON array. Up to 1,000 receipts per batch. Or paste below.</span>
+              </button>
+            )}
+            <label htmlFor="intake-text" className="ll-label">
+              {mode === "single" ? "Receipt JSON" : "Batch (JSON Lines or a JSON array)"}
+              {fileName && text ? ` · ${fileName}` : ""}
+            </label>
             <textarea
+              id="intake-text"
               className="ll-input textarea mono"
               aria-label="Receipt JSON or batch"
-              rows={16}
+              rows={showDrop ? 5 : 14}
               wrap="off"
               spellCheck={false}
               value={text}
-              placeholder='{"receipt_id": "R-1", ...}'
+              placeholder={mode === "single" ? '{ "receipt_id": "R-1", "employee_id": "E-1001", … }' : '{"receipt_id": "R-1", …}\n{"receipt_id": "R-2", …}'}
               onChange={(e) => {
                 reset();
+                setFileName(null);
                 setText(e.target.value);
               }}
             />
           </div>
-          <div className="row gap">
+          <input
+            ref={fileRef}
+            type="file"
+            accept=".json,.jsonl,.ndjson,application/json,text/plain"
+            hidden
+            data-testid="file-input"
+            onChange={(e) => {
+              const f = e.target.files?.[0];
+              if (f) void readFile(f);
+              e.target.value = "";
+            }}
+          />
+          <div className="row gap" style={{ marginTop: 0 }}>
             <button type="button" className="ll-btn ll-btn--secondary" onClick={() => fileRef.current?.click()}>
               <Icon name="upload" />
               Choose a file
             </button>
-            <input
-              ref={fileRef}
-              type="file"
-              accept=".json,.jsonl,.ndjson,application/json,text/plain"
-              hidden
-              data-testid="file-input"
-              onChange={(e) => {
-                const f = e.target.files?.[0];
-                if (f) void readFile(f);
-                e.target.value = "";
-              }}
-            />
-            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setText(SAMPLE_RECEIPT))}>
+            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
               Load a sample receipt
             </button>
-            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setText(SAMPLE_BATCH))}>
+            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("batch"), setText(SAMPLE_BATCH))}>
               Load a sample batch
             </button>
           </div>
-          <p className={`intake-summary${plan.kind === "invalid" ? " is-bad" : ""}`} aria-live="polite">
-            {summary}
-          </p>
+          {summary && (
+            <p className={`intake-summary${plan.kind === "invalid" ? " is-bad" : ""}`} aria-live="polite">
+              {summary}
+              {mismatch ? ` — switched to ${plan.kind === "batch" ? "“A batch”" : "“One receipt”"}.` : ""}
+            </p>
+          )}
           {plan.kind === "single" && (
             <div className="ll-field">
               <label htmlFor="idem">Idempotency key (optional)</label>
@@ -190,8 +249,9 @@ export function IntakePage() {
           )}
           <div className="row">
             <button type="button" className="ll-btn ll-btn--primary" disabled={busy || plan.kind === "empty" || plan.kind === "invalid"} onClick={submit}>
-              {busy ? "Submitting…" : plan.kind === "batch" ? "Submit batch" : "Submit receipt"}
+              {busy ? "Validating…" : "Validate"}
             </button>
+            <span className="hint">Answer fields such as labels are ignored if present.</span>
           </div>
           {error && (
             <div role="alert" className="callout callout--error">
@@ -205,122 +265,221 @@ export function IntakePage() {
               </div>
             </div>
           )}
+          <div className="retry-help">
+            <h3 className="ll-heading">What a retry does</h3>
+            <ul>
+              <li>
+                <strong>Same receipt, sent again:</strong> you get the one we have, with its current state. Nothing runs twice.
+              </li>
+              <li>
+                <strong>Same ID, changed content:</strong> saved as a new revision and evaluated; the earlier revision stays in its history.
+              </li>
+              <li>
+                <strong>Connection lost mid-batch:</strong> finished receipts keep their state; the rest resume where they stopped.
+              </li>
+            </ul>
+          </div>
         </section>
 
-        <section className="ll-panel how">
-          <h2 className="ll-heading">What happens next</h2>
-          <ol>
-            <li>
-              <strong>Accepted.</strong> Each receipt gets a state and the engine starts. Answer keys, if present, are discarded.
-            </li>
-            <li>
-              <strong>Read and checked.</strong> Items are read, policies applied, and the verdict is proposed: Flag, Review or Pass.
-            </li>
-            <li>
-              <strong>Decided.</strong> Passes close on their own. Everything else waits in the <Link to="/queue">review queue</Link>; critical cases go to{" "}
-              <Link to="/compliance">Compliance</Link>.
-            </li>
-            <li>
-              <strong>Same receipt ID, different content</strong> is a new revision: it replaces the earlier one and starts the check again. The earlier decision stays in the trail.
-            </li>
-          </ol>
-        </section>
+        <div className="stack-col">
+          {!single && !batch && (
+            <section className="ll-panel result-empty" aria-label="Results">
+              <h2 className="ll-heading">Results appear here</h2>
+              <p className="muted">After you validate, each row shows what happened to it and moves through its states live: received, reading the items, evaluated, then approved automatically, in review or with Compliance.</p>
+            </section>
+          )}
+          {single && (
+            <section className="ll-panel result" aria-label="Submission result">
+              <h2 className="ll-heading">Result</h2>
+              <p>
+                <strong>{OUTCOME_TEXT[single.outcome]}.</strong> {OUTCOME_HELP[single.outcome]}
+                {single.superseded ? " This key belongs to a revision that a newer one has replaced." : ""}
+              </p>
+              <p>
+                <Link to={`/all/${encodeURIComponent(single.receipt_id)}`} className="ll-num">
+                  {single.receipt_id}
+                </Link>{" "}
+                · revision {single.revision} · <StateChip state={single.state} />
+              </p>
+            </section>
+          )}
+          {batch && <BatchResult key={batch.response.batch_id} initial={batch.response} rows={batch.rows} sentAt={batch.sentAt} fileName={batch.fileName} />}
+          <section className="ll-panel" aria-labelledby="states-h">
+            <h2 className="ll-heading" id="states-h">
+              Each row moves through these states, live
+            </h2>
+            <ol className="flow" aria-label="Receipt states">
+              <li>Received</li>
+              <li aria-hidden="true">→</li>
+              <li>Reading the items</li>
+              <li aria-hidden="true">→</li>
+              <li>Evaluated</li>
+              <li aria-hidden="true">→</li>
+              <li className="flow--pass">Approved automatically</li>
+              <li className="muted">or</li>
+              <li className="flow--low">In review</li>
+              <li className="muted">or</li>
+              <li className="flow--critical">Compliance</li>
+            </ol>
+            <p className="muted">
+              A stage that fails is retried from that stage; nothing failed is ever passed. <Link to="/how-it-works">How it works</Link>
+            </p>
+          </section>
+        </div>
       </div>
-
-      {single && (
-        <section className="ll-panel result" aria-label="Submission result">
-          <h2 className="ll-heading">Result</h2>
-          <p>
-            <strong>{OUTCOME_TEXT[single.outcome]}.</strong> {OUTCOME_HELP[single.outcome]}
-            {single.superseded ? " This key belongs to a revision that a newer one has replaced." : ""}
-          </p>
-          <p>
-            <Link to={`/all/${encodeURIComponent(single.receipt_id)}`} className="ll-num">
-              {single.receipt_id}
-            </Link>{" "}
-            · revision {single.revision} · <StateChip state={single.state} />
-          </p>
-        </section>
-      )}
-      {batch && <BatchResult initial={batch} />}
     </div>
   );
 }
 
-function BatchResult({ initial }: { initial: BatchResponse }) {
+function BatchResult({
+  initial,
+  rows,
+  sentAt,
+  fileName,
+}: {
+  initial: BatchResponse;
+  rows: string[];
+  sentAt: Date;
+  fileName: string | null;
+}) {
   const poll = usePolling<BatchResponse>(() => api.getBatch(initial.batch_id), [initial.batch_id], 2000);
+  const list = usePolling(() => api.listReceipts({ batch_id: initial.batch_id, limit: 500 }), [initial.batch_id], 2000);
   const batch = poll.data ?? initial;
+  const summaries = list.data?.items ?? [];
+  const details = useDetails(summaries);
   const { reload } = useReceipts();
   const { toast } = useToast();
   const working = batch.items.some((i) => i.state !== null && isInProgress(i.state));
-  const stateOf = (i: BatchResponse["items"][number]): State | null => i.state;
+  const failed = batch.items.filter((i) => i.state === "failed" && i.receipt_id);
+  const refused = refusedRowsText(batch.items, rows);
 
-  async function retry(id: string) {
-    try {
-      await api.retry(id);
-      toast(`Retry started for ${id}.`);
-      void poll.reload();
-      void reload();
-    } catch (e) {
-      toast((e as Error).message, "error");
+  async function retryAll() {
+    let ok = 0;
+    for (const i of failed) {
+      try {
+        await api.retry(i.receipt_id!);
+        ok += 1;
+      } catch (e) {
+        toast(`${i.receipt_id}: ${(e as Error).message}`, "error");
+      }
     }
+    if (ok > 0) toast(`Retry started for ${ok} receipt${ok === 1 ? "" : "s"}.`);
+    void poll.reload();
+    void reload();
   }
 
   const countsOrder = [...STATES.map((s) => s as string), "invalid", "duplicate_in_batch"];
   const counts = countsOrder.filter((k) => batch.counts[k]);
+  const detailOf = (id: string | null): ReceiptDetail | undefined => (id ? details.get(id) : undefined);
 
   return (
     <section className="ll-panel result" aria-label="Batch result">
-      <h2 className="ll-heading">
-        Batch <span className="ll-num">{batch.batch_id}</span> · {batch.total} row{batch.total === 1 ? "" : "s"}
-      </h2>
+      <div className="batch-head">
+        <h2 className="ll-heading">
+          Batch <span className="ll-num">{batch.batch_id}</span>
+        </h2>
+        <span className="muted">
+          {fileName ? `${fileName} · ` : ""}
+          {batch.total} row{batch.total === 1 ? "" : "s"} · sent <span className="ll-num">{sentAt.toLocaleString()}</span>
+        </span>
+      </div>
       <div className="chips">
         {counts.map((k) => (
           <span key={k} className="count-chip">
             <strong className="ll-num">{batch.counts[k]}</strong>{" "}
-            {k === "invalid" ? "refused" : k === "duplicate_in_batch" ? "repeated" : STATE_LABEL[k as State]}
+            {k === "invalid" ? "refused" : k === "duplicate_in_batch" ? "repeated" : STATE_LABEL[k as State].toLowerCase()}
           </span>
         ))}
         {working && <span className="muted">Working… this updates by itself.</span>}
         {!working && counts.length > 0 && <span className="muted">Done.</span>}
       </div>
       <div className="table-scroll">
-        <table className="ll-table ll-table--compact">
+        <table className="ll-table">
           <thead>
             <tr>
               <th className="is-num">Row</th>
               <th>Receipt</th>
-              <th>Outcome</th>
-              <th>State now</th>
-              <th>Detail</th>
+              <th className="is-num">USD</th>
+              <th>State</th>
+              <th>Proposed</th>
             </tr>
           </thead>
           <tbody>
-            {batch.items.map((i) => (
-              <tr key={i.row}>
-                <td className="is-num">{i.row}</td>
-                <td>{i.receipt_id ? <Link to={`/all/${encodeURIComponent(i.receipt_id)}`}>{i.receipt_id}</Link> : <span className="muted">—</span>}</td>
-                <td>
-                  <span className={`outcome outcome--${i.outcome}`}>{OUTCOME_TEXT[i.outcome]}</span>
-                </td>
-                <td>{stateOf(i) ? <StateChip state={stateOf(i)!} /> : ""}</td>
-                <td className="wrap">
-                  {i.error ?? ""}
-                  {i.state === "failed" && i.receipt_id && (
-                    <button type="button" className="ll-btn ll-btn--secondary" onClick={() => retry(i.receipt_id!)}>
-                      <Icon name="refresh" />
-                      Retry
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {batch.items.map((i) => {
+              const d = detailOf(i.receipt_id);
+              const findings = sortFindings(d?.result?.exceptions ?? []);
+              const bad = i.outcome === "invalid" || i.outcome === "duplicate_in_batch";
+              return (
+                <tr key={i.row} className={bad ? "row-bad" : ""}>
+                  <td className="is-num">{i.row}</td>
+                  <td className="wrap">
+                    {i.receipt_id ? <Link to={`/all/${encodeURIComponent(i.receipt_id)}`}>{i.receipt_id}</Link> : <span className="muted">—</span>}
+                    {d && (
+                      <div className="sub">
+                        {d.receipt.merchant_name ?? "—"} · {d.receipt.employee_id}
+                      </div>
+                    )}
+                  </td>
+                  <td className="is-num">{d ? usd(d.receipt.total_amount_usd) : "—"}</td>
+                  <td className="wrap">
+                    {bad ? (
+                      <>
+                        <span className="outcome outcome--invalid">{OUTCOME_TEXT[i.outcome]}</span>
+                        <div className="sub">{i.error ?? "Fix the row and send it again."}</div>
+                      </>
+                    ) : (
+                      <>
+                        {i.state ? <StateChip state={i.state} /> : null}
+                        {i.outcome !== "accepted" && <span className="tag">{OUTCOME_TEXT[i.outcome].toLowerCase()}</span>}
+                        <div className="sub">
+                          {i.state === "failed" ? (
+                            <>
+                              Failed at “{d?.failed?.stage ?? "a stage"}”.{" "}
+                              <button type="button" className="link-btn" onClick={() => api.retry(i.receipt_id!).then(() => (void poll.reload(), void reload()), (e: Error) => toast(e.message, "error"))}>
+                                Retry
+                              </button>
+                            </>
+                          ) : i.state ? (
+                            STATE_NOTE[i.state] ?? ""
+                          ) : (
+                            ""
+                          )}
+                        </div>
+                      </>
+                    )}
+                  </td>
+                  <td>
+                    {!bad && d ? (
+                      <>
+                        <DispositionBadge disposition={d.disposition} />
+                        {findings.slice(0, 3).map((f) => (
+                          <span key={f.rule_id + f.line_ids.join()} className={`ll-chip ll-chip--${f.severity} chip-gap ll-num`}>
+                            {f.rule_id}
+                          </span>
+                        ))}
+                      </>
+                    ) : (
+                      ""
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      <p className="muted">
-        Refused rows stored nothing: fix them and submit them again. The rest are already in the system. Submitting this same batch again starts no new work.
-      </p>
+      <div className="row gap">
+        <Link className="ll-btn ll-btn--primary" to={`/all?batch=${encodeURIComponent(batch.batch_id)}`}>
+          Open in the review queue
+        </Link>
+        <button type="button" className="ll-btn ll-btn--secondary" disabled={!refused} onClick={() => download(`${batch.batch_id}-refused.jsonl`, refused)}>
+          Download rejected rows
+        </button>
+        <button type="button" className="ll-btn ll-btn--secondary" disabled={failed.length === 0} onClick={retryAll}>
+          Retry failed ({failed.length})
+        </button>
+      </div>
+      <p className="muted">Refused rows stored nothing. Submitting this same batch again starts no new work: receipts that exist are reported as already known.</p>
     </section>
   );
 }

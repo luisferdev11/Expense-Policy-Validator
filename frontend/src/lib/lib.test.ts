@@ -5,13 +5,14 @@ import {
   ageOf,
   confidenceWord,
   describeEvent,
+  diffRevisions,
   findingTitle,
   overrides,
   sortFindings,
   verdictLine,
 } from "./domain";
 import { money, recordedDate, usd } from "./format";
-import { planIntake } from "./intake";
+import { planIntake, refusedRowsText, sourceRows } from "./intake";
 
 const finding = (over: Partial<Finding>): Finding => ({
   rule_id: "REG-01",
@@ -74,6 +75,27 @@ describe("domain", () => {
     expect(
       describeEvent({ seq: 1, revision: 1, type: "ReceiptEvaluated", actor: "system", at: "", payload: { version: 2, disposition: "flag", changed: true } }),
     ).toContain("version 2");
+  });
+});
+
+describe("diffRevisions", () => {
+  it("lists changed fields and treats lines as a whole", () => {
+    const a = { receipt_id: "R", attendee_count: null, merchant_name: "A", line_items: [{ line_id: "L1" }] };
+    const b = { receipt_id: "R", attendee_count: 2, merchant_name: "A", line_items: [{ line_id: "L1" }, { line_id: "L2" }] };
+    expect(diffRevisions(a, b)).toEqual([
+      { field: "attendee_count", before: "—", after: "2" },
+      { field: "line_items", before: "1 line", after: "2 lines, changed" },
+    ]);
+    expect(diffRevisions(a, a)).toEqual([]);
+  });
+});
+
+describe("refused rows", () => {
+  it("returns the source text of the rows the server refused", () => {
+    const plan = planIntake('{"a":1}\nnot json\n{"a":3}');
+    const rows = sourceRows(plan);
+    expect(rows).toHaveLength(3);
+    expect(refusedRowsText([{ row: 1, outcome: "accepted" }, { row: 2, outcome: "invalid" }], rows)).toBe("not json");
   });
 });
 

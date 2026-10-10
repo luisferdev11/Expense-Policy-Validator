@@ -22,7 +22,16 @@ function Fact({ label, children }: { label: string; children: React.ReactNode })
   );
 }
 
-export function ReceiptPane({ id, onChanged }: { id: string; onChanged?: () => void }) {
+export function ReceiptPane({
+  id,
+  onChanged,
+  onDecided,
+}: {
+  id: string;
+  onChanged?: () => void;
+  /** Called after a decision that closes or routes the receipt, so the list can open the next one. */
+  onDecided?: (id: string) => void;
+}) {
   const { toast } = useToast();
   const [dialog, setDialog] = useState<{ action: Action; lineId?: string } | null>(null);
   const [retrying, setRetrying] = useState(false);
@@ -97,12 +106,11 @@ export function ReceiptPane({ id, onChanged }: { id: string; onChanged?: () => v
       "correct-category": "Category corrected, policy check run again",
     };
     const last = dialog?.action ?? "approve";
-    toast(
-      `${label[last]}: ${updated.receipt_id}. ${updated.agreement === 1 ? "Matches" : "Differs from"} the engine's proposal.`,
-    );
+    toast(`${label[last]}: ${updated.receipt_id}.`);
     void detailQ.reload();
     void eventsQ.reload();
     onChanged?.();
+    if (last !== "correct-category") onDecided?.(updated.receipt_id);
   }
 
   return (
@@ -241,7 +249,12 @@ export function ReceiptPane({ id, onChanged }: { id: string; onChanged?: () => v
           </>
         )}
 
-        <h3 className="ll-heading">Audit trail</h3>
+        <h3 className="ll-heading">
+          Audit trail{" "}
+          <Link className="ll-heading__link" to={`/history/${encodeURIComponent(detail.receipt_id)}`}>
+            History and versions
+          </Link>
+        </h3>
         <Timeline events={eventsQ.data ?? []} currentRevision={detail.revision} />
         {result && (
           <p className="versions ll-num">

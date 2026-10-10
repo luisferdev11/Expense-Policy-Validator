@@ -101,6 +101,8 @@ export function ActionDialog({
   }
 
   const title = ACTION_LABEL[action];
+  const submitLabel =
+    action === "request-info" ? "Send and hold" : action === "correct-category" ? "Re-run the rules" : action === "reject" ? "Reject expense" : action === "approve" && detail.disposition === "flag" ? "Approve anyway" : title;
   return (
     <dialog ref={ref} className="dialog" onClose={onClose} aria-labelledby="dlg-title">
       <form onSubmit={submit} className="dialog__body">
@@ -142,9 +144,9 @@ export function ActionDialog({
 
         {action === "request-info" && (
           <div className="ll-field">
-            <label htmlFor="question">Question for the employee</label>
+            <label htmlFor="question">Message to {detail.receipt.employee_id}</label>
             <textarea id="question" className="ll-input textarea" rows={3} value={text} onChange={(e) => setText(e.target.value)} autoFocus />
-            <span className="hint">The receipt waits for information. A new submission with the same receipt ID is the answer.</span>
+            <span className="hint">The receipt waits in “Waiting for information”; the employee's answer arrives as a new revision of the same receipt.</span>
           </div>
         )}
 
@@ -211,7 +213,7 @@ export function ActionDialog({
             {stale ? "Close and read the new result" : "Cancel"}
           </button>
           <button type="submit" className={`ll-btn ${action === "reject" ? "ll-btn--critical" : "ll-btn--primary"}`} disabled={busy || stale}>
-            {busy ? "Saving…" : title}
+            {busy ? "Saving…" : submitLabel}
           </button>
         </footer>
       </form>

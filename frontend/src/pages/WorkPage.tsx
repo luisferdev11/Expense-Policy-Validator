@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useRef, useState } from "react";
-import { Link, useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams, useSearchParams } from "react-router-dom";
+import { api } from "../api/client";
 import type { Disposition, ReceiptSummary, State } from "../api/types";
 import { DispositionBadge, StateChip } from "../components/Badges";
 import { ReceiptPane } from "../components/ReceiptPane";
-import { QUEUE_VIEWS, STATES, STATE_LABEL, ageOf, findingCount } from "../lib/domain";
+import { QUEUE_VIEWS, STATES, STATE_LABEL, ageOf, findingCount, severityRank } from "../lib/domain";
 import type { QueueView } from "../lib/domain";
 import { usd } from "../lib/format";
-import { useDetails, useShortcuts } from "../lib/hooks";
+import { useDetails, usePolling, useShortcuts } from "../lib/hooks";
 import { useReceipts } from "../lib/receipts";
 
 export type WorkView = QueueView | "all";
@@ -17,7 +18,21 @@ const PAGE = 50;
 export function WorkPage({ view }: { view: WorkView }) {
   const { id } = useParams();
   const navigate = useNavigate();
-  const { summaries, loading, error, reload } = useReceipts();
+  const [params, setParams] = useSearchParams();
+  const batchId = params.get("batch");
+  const shared = useReceipts();
+  const batchList = usePolling(
+    () => (batchId ? api.listReceipts({ batch_id: batchId, limit: 500 }) : Promise.resolve(null)),
+    [batchId],
+    4000,
+  );
+  const summaries = batchId ? (batchList.data?.items ?? []) : shared.summaries;
+  const total = batchId ? (batchList.data?.total ?? 0) : shared.total;
+  const loading = batchId ? batchList.loading : shared.loading;
+  const error = batchId ? batchList.error : shared.error;
+  const reload = async () => {
+    await Promise.all([shared.reload(), batchId ? batchList.reload() : Promise.resolve()]);
+  };
   const [disp, setDisp] = useState<Disposition | "">("");
   const [stateFilter, setStateFilter] = useState<State | "">("");
   const [query, setQuery] = useState("");
@@ -46,6 +61,11 @@ export function WorkPage({ view }: { view: WorkView }) {
 
   const details = useDetails(filtered0.slice(0, shown + PAGE));
 
+  const worst = (id: string): number => {
+    const ex = details.get(id)?.result?.exceptions ?? [];
+    return ex.length === 0 ? 9 : Math.min(...ex.map((e) => severityRank(e.severity)));
+  };
+
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = q
@@ -59,12 +79,18 @@ export function WorkPage({ view }: { view: WorkView }) {
     return [...list].sort((a, b) =>
       view === "all"
         ? b.updated_at.localeCompare(a.updated_at)
-        : (DISP_ORDER[a.disposition ?? "pass"] ?? 3) - (DISP_ORDER[b.disposition ?? "pass"] ?? 3) ||
+        : worst(a.receipt_id) - worst(b.receipt_id) ||
+          (DISP_ORDER[a.disposition ?? "pass"] ?? 3) - (DISP_ORDER[b.disposition ?? "pass"] ?? 3) ||
           a.updated_at.localeCompare(b.updated_at),
     );
   }, [filtered0, query, details, view]);
 
   const visible = filtered.slice(0, shown);
+  const advance = (closedId: string) => {
+    const i = visible.findIndex((s) => s.receipt_id === closedId);
+    const next = visible.slice(i + 1).concat(visible.slice(0, Math.max(i, 0))).find((s) => s.receipt_id !== closedId && (cfg ? cfg.match(s) : true));
+    navigate(next ? `${base}/${encodeURIComponent(next.receipt_id)}` + (batchId ? `?batch=${batchId}` : "") : base);
+  };
   const index = visible.findIndex((s) => s.receipt_id === id);
 
   const move = (delta: number) => {
@@ -90,6 +116,26 @@ export function WorkPage({ view }: { view: WorkView }) {
           <p className="muted">
             {cfg ? cfg.hint : "Every receipt in the system, newest activity first."} · <span className="ll-num">{filtered.length}</span> shown
           </p>
+          {batchId && (
+            <div className="callout callout--accent">
+              <span>
+                Showing only batch <span className="ll-num">{batchId}</span>.
+              </span>
+              <button type="button" className="ll-btn ll-btn--secondary" onClick={() => setParams({})}>
+                Show everything
+              </button>
+            </div>
+          )}
+          {view === "sample" && (
+            <p className="callout callout--accent" role="note">
+              Reading a receipt here does not take it off this list: the system has no “checked, fine” action yet. Reject a receipt if the engine missed something.
+            </p>
+          )}
+          {total > summaries.length && (
+            <p className="callout callout--warm" role="status">
+              Showing {summaries.length} of {total} receipts: the most recent ones. Use a batch link or the filters to narrow the list.
+            </p>
+          )}
           <div className="filters">
             {(["", "flag", "review", "pass"] as const).map((d) => (
               <button
@@ -173,7 +219,7 @@ export function WorkPage({ view }: { view: WorkView }) {
                         )}
                       </td>
                       <td>
-                        <Link to={`${base}/${encodeURIComponent(s.receipt_id)}`} aria-current={s.receipt_id === id ? "true" : undefined}>
+                        <Link to={`${base}/${encodeURIComponent(s.receipt_id)}${batchId ? `?batch=${batchId}` : ""}`} aria-current={s.receipt_id === id ? "true" : undefined}>
                           {s.receipt_id}
                         </Link>
                       </td>
@@ -210,7 +256,7 @@ export function WorkPage({ view }: { view: WorkView }) {
             <Link className="back-link" to={base}>
               ← Back to the list
             </Link>
-            <ReceiptPane id={id} onChanged={() => void reload()} />
+            <ReceiptPane id={id} onChanged={() => void reload()} onDecided={view === "all" ? undefined : advance} />
           </>
         ) : (
           <div className="pane-empty muted">

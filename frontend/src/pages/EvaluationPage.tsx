@@ -1,26 +1,31 @@
 import { useEffect, useState } from "react";
 
-interface Metric {
-  name: string;
-  value: string;
-  n: number;
-}
-interface Model {
-  id: string;
-  label: string;
-  role: string;
-  metrics: Metric[];
-}
 interface Evaluation {
-  status: "measured" | "no-measurements";
-  note: string;
-  dataset: { name: string; n: number | null };
-  models: Model[];
+  release: string;
+  provenance: string;
+  scored: { title: string; cards: { label: string; value: string; detail: string }[] };
+  classifiers: {
+    title: string;
+    note: string;
+    models: {
+      id: string;
+      label: string;
+      kind: string;
+      accuracy: string | null;
+      accuracyDetail: string;
+      restrictedF1: string | null;
+      subtypeWrong: string;
+      usdPer1000: string;
+      role: string;
+      highlight?: boolean;
+    }[];
+  };
+  decisions: { title: string; note: string; rows: { question: string; chosen: string; evidence: string }[] };
 }
 
 /**
- * Demonstrative comparison of the classifier candidates. It shows only figures that a committed
- * file provides, each with its N; the engine that decides is code, never one of these models.
+ * The lead and developer area. It shows only figures that a committed file provides, each with its
+ * N. The engine that decides is code, never one of these models.
  */
 export function EvaluationPage() {
   const [data, setData] = useState<Evaluation | null>(null);
@@ -33,75 +38,109 @@ export function EvaluationPage() {
       .catch(() => setError(true));
   }, []);
 
-  const metricNames = Array.from(new Set((data?.models ?? []).flatMap((m) => m.metrics.map((x) => x.name))));
-  const measured = data?.status === "measured" && metricNames.length > 0;
-
   return (
     <div className="page">
-      <h1 className="ll-display">Evaluation</h1>
-      <p className="muted lead">
-        How the models that read the items compare. The model only reads each line item into a category; the policy engine that raises findings and proposes the verdict is plain code,
-        so the same input always gives the same output.
-      </p>
-
-      <section className="ll-panel">
-        <h2 className="ll-heading">Classifier comparison</h2>
-        {error && <p className="callout callout--error">The evaluation file could not be loaded.</p>}
-        {data && !measured && (
-          <p className="callout callout--accent" role="status">
-            <strong>No measurements loaded yet.</strong> The three candidates are listed below; their figures appear here once they are provided with their N.
+      <div className="history-head">
+        <div>
+          <h1 className="ll-display">Evaluation</h1>
+          <p className="muted lead">
+            How well the system decides, and why it runs the way it does. Auditors never need this area; every number shows its N, and every choice was made on the synthetic dev set, never on the 28 scored receipts. The model only reads each item into a category; the policy engine that raises findings and proposes the verdict is plain code.
           </p>
-        )}
-        {data && (
-          <div className="table-scroll">
-            <table className="ll-table">
-              <thead>
-                <tr>
-                  <th>Model</th>
-                  <th>Role</th>
-                  {measured ? metricNames.map((n) => <th key={n} className="is-num">{n}</th>) : <th>Measured figures</th>}
-                </tr>
-              </thead>
-              <tbody>
-                {data.models.map((m) => (
-                  <tr key={m.id}>
-                    <td className="ll-num">{m.label}</td>
-                    <td>{m.role}</td>
-                    {measured ? (
-                      metricNames.map((n) => {
-                        const x = m.metrics.find((v) => v.name === n);
-                        return (
-                          <td key={n} className="is-num">
-                            {x ? (
-                              <>
-                                {x.value} <span className="muted">N={x.n}</span>
-                              </>
-                            ) : (
-                              <span className="muted">not measured</span>
-                            )}
-                          </td>
-                        );
-                      })
-                    ) : (
-                      <td className="muted">not measured</td>
-                    )}
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-        {data && <p className="muted">{data.dataset.name}{data.dataset.n !== null ? `, N = ${data.dataset.n}` : ""}. {data.note}</p>}
-      </section>
+        </div>
+        {data && <span className="muted">Release {data.release}</span>}
+      </div>
 
-      <section className="ll-panel">
-        <h2 className="ll-heading">How to read this</h2>
-        <ul className="plain">
-          <li>Every figure carries the number of items or receipts behind it. A difference of one item on a small set is not a difference.</li>
-          <li>Models are compared on a synthetic dev set; the real receipts are scored once per finalist and reported separately.</li>
-          <li>Per-call detail (prompts, tokens, cost, latency) lives in Langfuse, not in this product.</li>
-        </ul>
-      </section>
+      {error && <p className="callout callout--error">The evaluation file could not be loaded.</p>}
+      {data && (
+        <>
+          <section aria-labelledby="score-h" className="stack-col">
+            <h2 className="ll-heading" id="score-h">
+              {data.scored.title}
+            </h2>
+            <div className="kpis kpis--wide">
+              {data.scored.cards.map((c) => (
+                <div key={c.label} className="ll-panel kpi">
+                  <span className="ll-label">{c.label}</span>
+                  <strong className="kpi__n ll-num">{c.value}</strong>
+                  <span className="hint">{c.detail}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+
+          <section className="ll-panel" aria-labelledby="models-h">
+            <div>
+              <h2 className="ll-heading" id="models-h">
+                {data.classifiers.title}
+              </h2>
+              <p className="muted">{data.classifiers.note}</p>
+            </div>
+            <div className="table-scroll">
+              <table className="ll-table">
+                <thead>
+                  <tr>
+                    <th>Model</th>
+                    <th>Kind</th>
+                    <th className="is-num">Category accuracy</th>
+                    <th className="is-num">Restricted F1</th>
+                    <th className="is-num">Subtype or recipient wrong</th>
+                    <th className="is-num">USD per 1,000 items</th>
+                    <th>Role</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.classifiers.models.map((m) => (
+                    <tr key={m.id} className={m.highlight ? "is-selected" : ""}>
+                      <th scope="row" className="ll-num">
+                        {m.label}
+                      </th>
+                      <td>{m.kind}</td>
+                      <td className="is-num">
+                        {m.accuracy ?? <span className="muted">not run</span>}
+                        <div className="sub">{m.accuracyDetail}</div>
+                      </td>
+                      <td className="is-num">{m.restrictedF1 ?? <span className="muted">not run</span>}</td>
+                      <td className="is-num">{m.subtypeWrong}</td>
+                      <td className="is-num">{m.usdPer1000}</td>
+                      <td className="wrap">{m.role}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+
+          <section className="ll-panel" aria-labelledby="exp-h">
+            <div>
+              <h2 className="ll-heading" id="exp-h">
+                {data.decisions.title}
+              </h2>
+              <p className="muted">{data.decisions.note}</p>
+            </div>
+            <div className="table-scroll">
+              <table className="ll-table">
+                <thead>
+                  <tr>
+                    <th>Question</th>
+                    <th>Chosen</th>
+                    <th>Evidence</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {data.decisions.rows.map((r) => (
+                    <tr key={r.question}>
+                      <td className="wrap">{r.question}</td>
+                      <td className="wrap">{r.chosen}</td>
+                      <td className="wrap">{r.evidence}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+          <p className="hint">{data.provenance}</p>
+        </>
+      )}
     </div>
   );
 }

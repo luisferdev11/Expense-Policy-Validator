@@ -43,3 +43,26 @@ export function planIntake(text: string): IntakePlan {
   if (!startsLikeJson) return { kind: "invalid", message: "No line looks like a JSON object." };
   return { kind: "batch", body: lines.join("\n"), contentType: "application/x-ndjson", rows: lines.length };
 }
+
+/** The source text of each batch row, in the server's row order (1-based rows). */
+export function sourceRows(plan: IntakePlan): string[] {
+  if (plan.kind !== "batch") return [];
+  if (plan.contentType === "application/x-ndjson") return plan.body.split("\n");
+  try {
+    return (JSON.parse(plan.body) as unknown[]).map((r) => JSON.stringify(r));
+  } catch {
+    return [];
+  }
+}
+
+/** The rows a batch refused, as JSON Lines, so they can be fixed and sent again. */
+export function refusedRowsText(
+  items: { row: number; outcome: string }[],
+  rows: string[],
+): string {
+  return items
+    .filter((i) => i.outcome === "invalid" || i.outcome === "duplicate_in_batch")
+    .map((i) => rows[i.row - 1])
+    .filter((r): r is string => typeof r === "string")
+    .join("\n");
+}

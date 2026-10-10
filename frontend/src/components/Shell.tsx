@@ -76,11 +76,11 @@ export function Shell() {
       <header className="nav">
         <span className="nav__brand">Expense Policy Validator</span>
         <nav className="nav__links" aria-label="Main">
-          {link("/queue", "Queue", count("queue"))}
+          {link("/intake", "Intake")}
+          {link("/queue", "Review queue", count("queue"))}
           {link("/compliance", "Compliance", count("compliance"))}
           {link("/sample", "Quality sample", count("sample"))}
           {link("/all", "All receipts")}
-          {link("/intake", "Submit")}
           {link("/insights", "Insights")}
           {link("/evaluation", "Evaluation")}
         </nav>

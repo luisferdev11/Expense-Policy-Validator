@@ -6,10 +6,9 @@ Two stages per receipt revision.
   transaction; its answer and the event commit together afterwards. A crash before the commit
   leaves the item leased, the lease expires, and the stage is repeated; the classification cache
   answers a repeated call for free and identically, so no extra billed call is made.
-- `evaluate`: pure. It reads the receipt and the classified receipts that share an employee-day
-  or a trip with it, builds the cross-receipt context with the engine's own `build_context`,
-  decides, and stores a new evaluation version only if the result changed. The whole stage is one
-  transaction, so a change that lands meanwhile cannot slip between the read and the write.
+- `evaluate`: pure (see `app/evaluation.py`). The whole stage is one transaction, so a change
+  that lands meanwhile cannot slip between the read and the write, and a new evaluation version
+  is stored only if the result changed.
 
 When a receipt is classified, an `evaluate` is queued for it and for every classified receipt
 that shares a key with it, so the result at rest does not depend on arrival order (D6).
@@ -23,17 +22,17 @@ from dataclasses import replace
 from datetime import timedelta
 
 from expense_validator.adapters.config_files import PipelineConfig
-from expense_validator.adapters.tracing import NoopTracer
 from expense_validator.app.decide import decide_receipt
+from expense_validator.app.evaluation import (
+    build_evaluation,
+    queue_neighbours,
+    record_evaluation,
+)
 from expense_validator.app.pipeline import classify_receipt, run_metadata
-from expense_validator.domain.cascade import sharing_keys
-from expense_validator.domain.engine.context import build_context
 from expense_validator.domain.engine.settings import Settings
-from expense_validator.domain.evaluation import result_hash
 from expense_validator.domain.events import (
     NoticeRaised,
     ReceiptClassified,
-    ReceiptEvaluated,
     StageFailed,
 )
 from expense_validator.domain.lifecycle import (
@@ -41,10 +40,8 @@ from expense_validator.domain.lifecycle import (
     reevaluation_outcome,
     state_for_evaluation,
 )
-from expense_validator.domain.models import ClassifiedReceipt, ReceiptResult
-from expense_validator.domain.review import qa_sampled
 from expense_validator.ports.classifier import ItemClassifier
-from expense_validator.ports.store import Clock, ReceiptStore, StoreTx, WorkItem
+from expense_validator.ports.store import Clock, ReceiptStore, WorkItem
 from expense_validator.ports.tracer import Tracer
 
 WORKER = "worker"
@@ -161,113 +158,47 @@ class Worker:
             )
             tx.complete_work(item.id)
             tx.enqueue(rid, revision, "evaluate", now)
-            for other_id in self._affected(tx, rid):
-                other = tx.get_receipt(other_id)
-                if other is not None and tx.load_classifications(other_id, other.current_revision):
-                    tx.enqueue(other_id, other.current_revision, "evaluate", now)
-
-    def _affected(self, tx: StoreTx, receipt_id: str) -> list[str]:
-        """Receipts that share a key with any revision of this one, old keys included, so a
-        revision that moved to another day or trip also refreshes the group it left."""
-        return [
-            r
-            for r in tx.current_receipts_sharing(tx.keys_of_receipt(receipt_id))
-            if r != receipt_id
-        ]
+            queue_neighbours(tx, rid, now)
 
     def _evaluate(self, item: WorkItem) -> None:
         rid, revision = item.receipt_id, item.revision
         now = self.clock()
-        traced: tuple[ClassifiedReceipt, str] | None = None
+        traced = None
         with self.store.transaction() as tx:
             record = tx.get_receipt(rid)
             if record is None or record.current_revision != revision:
                 tx.complete_work(item.id)
                 return
-            own = self._classified(tx, rid, revision)
-            if own is None:
-                raise LookupError("the receipt has no classifications to evaluate")
-            group = [own]
-            for other_id in tx.current_receipts_sharing(sharing_keys(own.receipt)):
-                other = tx.get_receipt(other_id)
-                if other_id == rid or other is None:
-                    continue
-                neighbour = self._classified(tx, other_id, other.current_revision)
-                if neighbour is not None:
-                    group.append(neighbour)
-            context = build_context(group, self.settings)
-            result = decide_receipt(own, context, self.meta, self.settings, NoopTracer(), "")
-            digest = result_hash(result)
+            evaluation = build_evaluation(tx, self.settings, self.meta, rid, revision)
             latest = tx.latest_evaluation(rid, revision)
             tx.complete_work(item.id)
-            if latest is not None and latest.result_hash == digest:
+            if latest is not None and latest.result_hash == evaluation.digest:
                 return
-            version = tx.add_evaluation(rid, revision, result, digest, now)
-            self._apply_evaluation(
-                tx, rid, revision, version, result, digest, latest.result if latest else None
-            )
-            traced = (own, f"app-r{revision}-v{version}")
+            result = evaluation.result
+            critical = any(e.severity == "critical" for e in result.exceptions)
+            proposed = state_for_evaluation(result.disposition, critical)
+            notice = record.notice
+            raised: str | None = None
+            if latest is None:
+                state = proposed
+            else:
+                state, flag = reevaluation_outcome(record.state, record.human_acted, proposed)
+                if flag:
+                    after = "your decision" if record.human_acted else "a re-evaluation"
+                    raised = (
+                        f"The result changed after {after}: "
+                        f"{latest.result.disposition} became {result.disposition}."
+                    )
+                    notice = raised
+            version = record_evaluation(tx, record, evaluation, state, notice, WORKER, now)
+            if raised is not None:
+                tx.append_event(rid, revision, NoticeRaised(text=raised), WORKER, now)
+            traced = (evaluation, f"app-r{revision}-v{version}")
         if traced is not None:
-            decide_receipt(traced[0], context, self.meta, self.settings, self.tracer, traced[1])
-
-    def _classified(self, tx: StoreTx, receipt_id: str, revision: int) -> ClassifiedReceipt | None:
-        found = tx.get_revision(receipt_id, revision)
-        classifications = tx.load_classifications(receipt_id, revision)
-        if found is None or classifications is None:
-            return None
-        return ClassifiedReceipt(receipt=found.receipt, classifications=classifications)
-
-    def _apply_evaluation(
-        self,
-        tx: StoreTx,
-        rid: str,
-        revision: int,
-        version: int,
-        result: ReceiptResult,
-        digest: str,
-        previous: ReceiptResult | None,
-    ) -> None:
-        now = self.clock()
-        record = tx.get_receipt(rid)
-        assert record is not None
-        critical = any(e.severity == "critical" for e in result.exceptions)
-        proposed = state_for_evaluation(result.disposition, critical)
-        notice = record.notice
-        raised: str | None = None
-        if previous is None:
-            state = proposed
-        else:
-            state, flag = reevaluation_outcome(record.state, record.human_acted, proposed)
-            if flag:
-                raised = (
-                    f"The result changed after a re-evaluation: "
-                    f"{previous.disposition} became {result.disposition}."
-                )
-                notice = raised
-        tx.put_receipt(
-            replace(
-                record,
-                state=state,
-                disposition=result.disposition,
-                evaluation_version=version,
-                notice=notice,
-                qa_sample=state == "auto_approved" and qa_sampled(rid, revision),
-                failed_stage=None,
-                failed_reason=None,
-                updated_at=now.isoformat(),
+            decided, label = traced
+            decide_receipt(
+                decided.classified, decided.context, self.meta, self.settings, self.tracer, label
             )
-        )
-        tx.append_event(
-            rid,
-            revision,
-            ReceiptEvaluated(
-                version=version, disposition=result.disposition, changed=True, result_hash=digest
-            ),
-            WORKER,
-            now,
-        )
-        if raised is not None:
-            tx.append_event(rid, revision, NoticeRaised(text=raised), WORKER, now)
 
     # Failure
 

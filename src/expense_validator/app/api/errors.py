@@ -17,6 +17,7 @@ STATUS_BY_CODE: dict[str, int] = {
     "idempotency_key_reuse": 422,
     "reason_required": 422,
     "unknown_category": 422,
+    "invalid_action": 422,
     "not_found": 404,
     "action_not_allowed": 409,
     "stale_evaluation": 409,

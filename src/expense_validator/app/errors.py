@@ -44,3 +44,7 @@ class ReasonRequiredError(AppError):
 
 class UnknownCategoryError(AppError):
     code = "unknown_category"
+
+
+class InvalidActionError(AppError):
+    code = "invalid_action"

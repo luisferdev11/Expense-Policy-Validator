@@ -26,7 +26,9 @@ def test_serve_builds_the_app_and_hands_it_to_uvicorn(
 
     seen: dict[str, Any] = {}
     monkeypatch.setattr(uvicorn, "run", lambda app, **kwargs: seen.update(app=app, **kwargs))
-    code = cli.main(["serve", "--port", "8123", "--db", str(tmp_path / "epv.sqlite3")])
+    code = cli.main(
+        ["serve", "--port", "8123", "--no-trace", "--db", str(tmp_path / "epv.sqlite3")]
+    )
     assert code == 0
     assert isinstance(seen["app"], FastAPI)
     assert (seen["host"], seen["port"]) == ("127.0.0.1", 8123)

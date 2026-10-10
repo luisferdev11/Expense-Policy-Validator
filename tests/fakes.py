@@ -30,6 +30,7 @@ class RecordingTracer:
 
     def __init__(self) -> None:
         self.observations: list[Recorded] = []
+        self.scores: list[dict[str, Any]] = []
 
     @contextmanager
     def _record(self, kind: str, name: str, **fields: Any) -> Iterator[Recorded]:
@@ -47,6 +48,19 @@ class RecordingTracer:
 
     def generation(self, name: str, model: str, input: Any, **fields: Any) -> Any:
         return self._record("generation", name, model=model, input=input, **fields)
+
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        self.scores.append(
+            {
+                "run_label": run_label,
+                "receipt_id": receipt_id,
+                "name": name,
+                "value": value,
+                "comment": comment,
+            }
+        )
 
     def flush(self, timeout_s: float = 5.0) -> None:
         return None
@@ -97,8 +111,10 @@ class BillingClassifier:
         fail_with: Exception | None = None,
         on_classify: Callable[[], None] | None = None,
         confidence: float = 0.99,
+        recipients: dict[str, tuple[str, str | None]] | None = None,
     ) -> None:
         self.categories = categories
+        self.recipients = recipients or {}
         self.cache = cache if cache is not None else {}
         self.crash_after = crash_after
         self.fail_with = fail_with
@@ -118,7 +134,14 @@ class BillingClassifier:
             if self.crash_after is not None and self.calls_made >= self.crash_after:
                 raise SimulatedCrash
             self.calls_made += 1
-            found = cls(line_id, self.categories[request.description_clean], self.confidence)
+            kind, name = self.recipients.get(request.description_clean, ("none", None))
+            found = cls(
+                line_id,
+                self.categories[request.description_clean],
+                self.confidence,
+                recipient_kind=kind,
+                recipient_name=name,
+            )
             self.cache[key] = found
         else:
             self.cache_hits += 1

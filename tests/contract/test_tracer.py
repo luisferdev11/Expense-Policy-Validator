@@ -96,3 +96,49 @@ def test_flush_is_bounded_by_its_timeout() -> None:
         guarded.flush(timeout_s=0.2)
     assert time.monotonic() - start < 2.0
     inner.release.set()
+
+
+class _RecordingClient:
+    def __init__(self) -> None:
+        self.scores: list[dict[str, Any]] = []
+
+    def create_score(self, **fields: Any) -> None:
+        self.scores.append(fields)
+
+
+def test_noop_tracer_accepts_a_score() -> None:
+    NoopTracer().score("app-r1-v1", "SYN-1", "auditor_agreement", 1.0, "approve")
+
+
+def test_the_langfuse_tracer_posts_a_numeric_score_on_the_deterministic_trace() -> None:
+    from expense_validator.adapters.tracing import LangfuseTracer, trace_id_for
+
+    client = _RecordingClient()
+    LangfuseTracer(client).score("app-r2-v3", "SYN-1", "auditor_agreement", 0.0, "reject")
+    assert client.scores == [
+        {
+            "name": "auditor_agreement",
+            "value": 0.0,
+            "trace_id": trace_id_for("app-r2-v3", "SYN-1"),
+            "comment": "reject",
+            "data_type": "NUMERIC",
+        }
+    ]
+
+
+class _ExplodingScore(NoopTracer):
+    enabled = True
+
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        raise RuntimeError("server gone")
+
+
+def test_a_failing_score_never_raises_and_disables_tracing_once() -> None:
+    guarded = GuardedTracer(_ExplodingScore())
+    with pytest.warns(TracingWarning) as record:
+        guarded.score("app-r1-v1", "SYN-1", "auditor_agreement", 1.0, "approve")
+        guarded.score("app-r1-v1", "SYN-1", "auditor_agreement", 1.0, "approve")
+    assert len(record) == 1
+    assert not guarded.enabled

@@ -8,6 +8,8 @@ from fastapi import APIRouter, Header, Query, Request, Response
 from starlette.concurrency import run_in_threadpool
 
 from expense_validator.app.api.schemas import (
+    ActionBody,
+    ActionResponse,
     EventItem,
     EventList,
     Health,
@@ -17,7 +19,10 @@ from expense_validator.app.api.schemas import (
     RevisionDetail,
     SubmitResponse,
 )
+from expense_validator.app.errors import NotFoundError
+from expense_validator.app.reviewing import ActionRequest, ReviewService
 from expense_validator.app.service import ReceiptService
+from expense_validator.domain.lifecycle import ACTIONS
 
 # The body is read raw, not through a model: money must keep its written precision, and a
 # float parsed by the framework would lose it.
@@ -29,7 +34,7 @@ _RECEIPT_BODY = {
 }
 
 
-def build_router(service: ReceiptService) -> APIRouter:
+def build_router(service: ReceiptService, review: ReviewService) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health", response_model=Health, tags=["operations"])
@@ -79,6 +84,19 @@ def build_router(service: ReceiptService) -> APIRouter:
     )
     def retry_receipt(receipt_id: str) -> ReceiptSummary:
         return ReceiptSummary.of(service.retry(receipt_id))
+
+    @router.post(
+        "/receipts/{receipt_id}/actions/{action}",
+        response_model=ActionResponse,
+        tags=["review"],
+        summary="A reviewer's action: " + ", ".join(ACTIONS),
+    )
+    def review_action(receipt_id: str, action: str, body: ActionBody) -> ActionResponse:
+        chosen = next((a for a in ACTIONS if a == action), None)
+        if chosen is None:
+            raise NotFoundError(f"no action {action!r}", {"actions": list(ACTIONS)})
+        result = review.act(receipt_id, chosen, ActionRequest(**body.model_dump()))
+        return ActionResponse.from_result(result)
 
     @router.get("/receipts/{receipt_id}/events", response_model=EventList, tags=["receipts"])
     def get_events(receipt_id: str) -> EventList:

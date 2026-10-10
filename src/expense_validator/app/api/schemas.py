@@ -8,8 +8,9 @@ from __future__ import annotations
 
 from typing import Any
 
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 
+from expense_validator.app.reviewing import ActionResult
 from expense_validator.app.service import ReceiptView, RevisionView, SubmitOutcome
 from expense_validator.ports.store import EventRecord, ReceiptRecord
 
@@ -82,6 +83,30 @@ class ReceiptDetail(ReceiptSummary):
             result=view.result.model_dump(mode="json") if view.result else None,
             allowed_actions=list(view.allowed_actions),
         )
+
+
+class ActionBody(BaseModel):
+    """What a reviewer sends; unknown fields are refused."""
+
+    model_config = ConfigDict(extra="forbid")
+
+    actor: str
+    evaluation_version: int
+    note: str | None = None
+    reason_code: str | None = None
+    line_id: str | None = None
+    category: str | None = None
+    question: str | None = None
+    reason: str | None = None
+
+
+class ActionResponse(ReceiptDetail):
+    agreement: int
+
+    @classmethod
+    def from_result(cls, result: ActionResult) -> ActionResponse:
+        detail = ReceiptDetail.from_view(result.view)
+        return cls(**detail.model_dump(), agreement=result.agreement)
 
 
 class ReceiptList(BaseModel):

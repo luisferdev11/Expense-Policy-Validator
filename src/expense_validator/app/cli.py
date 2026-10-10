@@ -171,18 +171,31 @@ def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
     )
 
 
-def serve_command(host: str, port: int, db: str | None, worker: WorkerOptions | None = None) -> int:
+def serve_command(
+    host: str,
+    port: int,
+    db: str | None,
+    worker: WorkerOptions | None = None,
+    no_trace: bool = False,
+) -> int:
     """Run the API; with `worker` options, a worker thread runs beside it (for demos)."""
     import threading
 
     import uvicorn
 
     from expense_validator.app.api import create_app
-    from expense_validator.app.composition import build_service, db_path, open_store
+    from expense_validator.app.composition import (
+        build_review,
+        build_service,
+        db_path,
+        open_store,
+    )
 
+    load_env()
     path = db_path(db)
     store = open_store(path)
-    app = create_app(build_service(store))
+    service = build_service(store)
+    app = create_app(service, build_review(store, service, no_trace=no_trace))
     stop = threading.Event()
     if worker is not None:
         in_process = _build_worker(store, worker)
@@ -224,7 +237,11 @@ def _options(args: argparse.Namespace) -> WorkerOptions:
 
 def _cmd_serve(args: argparse.Namespace) -> int:
     return serve_command(
-        args.host, args.port, args.db, _options(args) if args.with_worker else None
+        args.host,
+        args.port,
+        args.db,
+        _options(args) if args.with_worker else None,
+        no_trace=args.no_trace,
     )
 
 

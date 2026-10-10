@@ -45,6 +45,11 @@ class NoopTracer:
     ) -> AbstractContextManager[Observation]:
         return nullcontext(_NOOP_OBSERVATION)
 
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        return None
+
     def flush(self, timeout_s: float = 5.0) -> None:
         return None
 
@@ -90,6 +95,17 @@ class LangfuseTracer:
             name=name, as_type="generation", model=model, input=input, **fields
         )
         return cm
+
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        self.client.create_score(
+            name=name,
+            value=value,
+            trace_id=trace_id_for(run_label, receipt_id),
+            comment=comment,
+            data_type="NUMERIC",
+        )
 
     def flush(self, timeout_s: float = 5.0) -> None:
         self.client.flush()
@@ -171,6 +187,16 @@ class GuardedTracer:
         self, name: str, model: str, input: Any, **fields: Any
     ) -> AbstractContextManager[Observation]:
         return self._guard(lambda: self._inner.generation(name, model, input, **fields))
+
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        if not self._inner.enabled:
+            return
+        try:
+            self._inner.score(run_label, receipt_id, name, value, comment)
+        except Exception as exc:
+            self.fail(exc)
 
     def flush(self, timeout_s: float = 5.0) -> None:
         if not self._inner.enabled:

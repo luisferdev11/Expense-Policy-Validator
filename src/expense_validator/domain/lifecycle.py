@@ -68,6 +68,12 @@ def state_for_evaluation(disposition: Disposition, critical: bool) -> State:
     return "auto_approved" if disposition == "pass" else "in_review"
 
 
+def state_after_correction(proposed: State) -> State:
+    """After a reviewer's correction the receipt still waits for a human decision, even if it
+    would now pass; a critical finding keeps it with Compliance."""
+    return "in_review" if proposed == "auto_approved" else proposed
+
+
 def reevaluation_outcome(
     previous: State, human_acted: bool, new_state: State
 ) -> tuple[State, bool]:

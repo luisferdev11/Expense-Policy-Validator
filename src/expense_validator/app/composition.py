@@ -16,6 +16,7 @@ from expense_validator.adapters.persisting_classifier import PersistingClassifie
 from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
 from expense_validator.adapters.tracing import make_tracer
 from expense_validator.app.intake import default_classifier
+from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
 from expense_validator.app.worker import Worker
 from expense_validator.paths import APP_CLASSIFICATION_CACHE, DEFAULT_DB_FILE
@@ -34,6 +35,15 @@ def open_store(path: Path) -> SqliteStore:
 
 def build_service(store: SqliteStore) -> ReceiptService:
     return ReceiptService(store, utc_now)
+
+
+def build_review(
+    store: SqliteStore, service: ReceiptService, *, no_trace: bool = False
+) -> ReviewService:
+    """Reviewer actions, scored in Langfuse when it is reachable (best effort)."""
+    return ReviewService(
+        store, utc_now, service, tracer=make_tracer(disabled=no_trace), settings=load_settings()
+    )
 
 
 def build_worker(

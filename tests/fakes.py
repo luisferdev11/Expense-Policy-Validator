@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from expense_validator.domain.models import Classification, ClassifierRequest
@@ -51,6 +52,22 @@ class RecordingTracer:
 
     def named(self, name: str) -> list[Recorded]:
         return [o for o in self.observations if o.name == name]
+
+
+class StepClock:
+    """A controllable clock: each reading advances by `step`; `advance` jumps ahead."""
+
+    def __init__(self, start: datetime | None = None, step: timedelta | None = None) -> None:
+        self.now = start or datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+        self.step = step if step is not None else timedelta(milliseconds=1)
+
+    def __call__(self) -> datetime:
+        current = self.now
+        self.now += self.step
+        return current
+
+    def advance(self, by: timedelta) -> None:
+        self.now += by
 
 
 class FakeClassifier:

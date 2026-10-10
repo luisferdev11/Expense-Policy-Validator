@@ -149,6 +149,23 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+def serve_command(host: str, port: int, db: str | None) -> int:
+    import uvicorn
+
+    from expense_validator.app.api import create_app
+    from expense_validator.app.composition import build_service, db_path, open_store
+
+    path = db_path(db)
+    app = create_app(build_service(open_store(path)))
+    print(f"epv serve: http://{host}:{port} (database {path})", file=sys.stderr)
+    uvicorn.run(app, host=host, port=port, log_level="info")
+    return 0
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    return serve_command(args.host, args.port, args.db)
+
+
 def _cmd_view(args: argparse.Namespace) -> int:
     app = REPO_ROOT / "viewer" / "app.py"
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
@@ -165,6 +182,11 @@ def main(argv: list[str] | None = None) -> int:
     run.set_defaults(func=_cmd_run)
     sub.add_parser("eval", help="score committed results").set_defaults(func=_cmd_eval)
     sub.add_parser("view", help="launch the Streamlit viewer").set_defaults(func=_cmd_view)
+    serve = sub.add_parser("serve", help="run the HTTP API")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    serve.set_defaults(func=_cmd_serve)
     args = parser.parse_args(argv)
     code: int = args.func(args)
     return code

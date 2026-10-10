@@ -1,0 +1,25 @@
+{
+  "status": "no-measurements",
+  "note": "No measurements are loaded. This file is read by the Evaluation screen. Fill `metrics` for each model with figures from committed outputs, each with its N, and set `status` to \"measured\". See frontend/FINDINGS.md F-03.",
+  "dataset": { "name": "Synthetic dev set", "n": null },
+  "models": [
+    {
+      "id": "openai/gpt-oss-120b",
+      "label": "gpt-oss-120b",
+      "role": "Reference classifier (ADR 0005)",
+      "metrics": []
+    },
+    {
+      "id": "openai/gpt-oss-20b",
+      "label": "gpt-oss-20b",
+      "role": "Smaller comparison",
+      "metrics": []
+    },
+    {
+      "id": "jev-1.13",
+      "label": "jev-1.13",
+      "role": "Decision model, category only",
+      "metrics": []
+    }
+  ]
+}

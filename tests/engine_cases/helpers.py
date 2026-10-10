@@ -5,6 +5,8 @@ Hand classifications are written from each line's description only, never from a
 
 from __future__ import annotations
 
+from dataclasses import replace
+from decimal import Decimal
 from functools import cache
 
 from expense_validator.adapters.config_files import load_settings
@@ -26,9 +28,17 @@ from tests.factories import classified
 ALL_RULES = RuleSet(rule_ids=tuple(sorted(REGISTRY)))
 
 
+REVIEWED_THRESHOLD = Decimal("0.5")
+
+
 @cache
 def settings() -> Settings:
-    return load_settings()
+    """The real settings, at the EXC-03 threshold the engine cases were reviewed under.
+
+    The cases test rule logic; their hand-written confidences were set against 0.5. The chosen
+    threshold (ADR 0005) is tested on its own in tests/unit/test_uncertainty.py.
+    """
+    return replace(load_settings(), exc03_threshold=REVIEWED_THRESHOLD)
 
 
 @cache

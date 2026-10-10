@@ -1,6 +1,10 @@
 """EXC-03: uncertain items become a review signal and leave every calculation (T064)."""
 
-from tests.factories import cls, item, unclassified
+from expense_validator.adapters.config_files import load_settings
+from expense_validator.domain.engine.context import build_context
+from expense_validator.domain.engine.evaluate import evaluate
+from tests.engine_cases.helpers import ALL_RULES
+from tests.factories import classified, cls, item, receipt, unclassified
 from tests.unit.rule_helpers import engine, ids, one, signals
 
 
@@ -15,6 +19,15 @@ def test_low_confidence_gives_one_exc_03_citing_the_line() -> None:
 def test_threshold_is_inclusive_at_0_5() -> None:
     f = one([cls("SYN-1-L1", "office_supplies", confidence=0.5)])
     assert "EXC-03" not in signals(f)
+
+
+def test_the_chosen_threshold_is_inclusive_at_0_97() -> None:
+    real = load_settings()
+    r = receipt([item(1)])
+    for confidence, fires in ((0.97, False), (0.96, True)):
+        cr = classified(r, cls("SYN-1-L1", "office_supplies", confidence=confidence))
+        f = evaluate(cr, build_context([cr], real), ALL_RULES, real)
+        assert ("EXC-03" in signals(f)) is fires
 
 
 def test_unclassified_item_gives_exc_03_and_never_pass() -> None:

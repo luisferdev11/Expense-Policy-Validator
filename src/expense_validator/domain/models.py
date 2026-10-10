@@ -93,6 +93,7 @@ class ClassificationSource(_Frozen):
     prompt_tokens: int | None
     completion_tokens: int | None
     cache_hit: bool
+    served_by: str | None = None
 
 
 class Classification(_Frozen):
@@ -138,6 +139,7 @@ class CacheEntry(_Frozen):
     prompt_tokens: int | None
     completion_tokens: int | None
     reasoning: str | None
+    served_by: str | None = None
 
 
 class ClassifiedReceipt(_Frozen):
@@ -223,6 +225,8 @@ class RunMetadata(_Frozen):
     rules_version: str
     exc03_threshold: float
     exc03_threshold_status: Literal["provisional", "chosen_on_dev"]
+    confidence_source: str = "self_reported"
+    pipeline_config_version: str | None = None
 
 
 class ReceiptResult(_Frozen):

@@ -79,3 +79,22 @@ def test_valid_answer_parses() -> None:
 def test_schema_violations_are_rejected(content: str | None) -> None:
     with pytest.raises(ParseError):
         parse(content)
+
+
+def test_null_subtype_is_a_violation_by_default() -> None:
+    with pytest.raises(ParseError):
+        parse(answer(subtype=None))
+
+
+def test_null_subtype_reads_as_none_when_tolerated_e15() -> None:
+    parsed = parse(answer(subtype=None), null_subtype_as_none=True)
+    assert parsed.subtype == "none"
+
+
+@pytest.mark.parametrize(
+    "content",
+    [answer(category="beer"), answer(confidence=2), answer(subtype="event_ticket"), "not json"],
+)
+def test_tolerance_changes_nothing_else(content: str) -> None:
+    with pytest.raises(ParseError):
+        parse(content, null_subtype_as_none=True)

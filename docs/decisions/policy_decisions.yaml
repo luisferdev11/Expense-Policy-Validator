@@ -31,7 +31,8 @@ decisions:
       28-receipt run; report how often it fired and its cost; argue a higher production threshold.
       Applied to the cached response so re-runs decide identically.
     config:
-      exc03.threshold: 0.5  # provisional for iteration 1 (spec clarification); chosen on dev in iteration 2
+      exc03.threshold: 0.97  # E7 winner on the frozen dev set without CoreWeave (ADR 0005); 0.5 was provisional
+      exc03.threshold_status: chosen_on_dev
     status: decided
   - id: A4
     rule_ids: [HEALTH-01]
@@ -53,6 +54,8 @@ decisions:
     decision: >-
       For category other, the classifier returns a closed subtype (event_ticket, mobile_handset,
       prescription_medication, none). The engine reads only that field, never free text.
+      Interpretation (Luis, 2026-10-09): registration to a professional event such as a
+      conference or summit is an event_ticket, a "similar venue" under ENT-01.
     status: decided
   - id: A7
     rule_ids: [GIFT-01]
@@ -85,3 +88,12 @@ open_questions:
     question: >-
       Will production expense records carry a VAT number field, in what format, and should its
       validity be checked or only its presence?
+  - id: Q3
+    for: review session, and production design
+    question: >-
+      Does "for a client" with no proper name count as naming who a gift is for (A7)? Recipient
+      text is employee-written and can be gamed (Luis, 2026-10-09): a personal item under $50 on
+      a receipt declared Client Gifts with a made-up name passes. Candidate strategies (none
+      built): stricter A7 reading, recipient verification against a CRM, a review signal for
+      restricted items justified only by recipient text, per-employee patterns over time, and
+      sampling of approved gifts. Until decided, the engine keeps the literal A7 reading.

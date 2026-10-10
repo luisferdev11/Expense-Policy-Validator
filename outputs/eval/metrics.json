@@ -1,42 +1,300 @@
 {
   "base_rate": {
     "detection_rate": 1.0,
-    "false_positive_rate": 0.1111111111111111,
+    "false_positive_rate": 0.0,
     "n_flag": 16,
     "n_pass": 9,
     "receipts": 10000,
     "rows": [
       {
-        "false_flags": 1100.0,
-        "false_share": 0.9166666666666666,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.01,
         "true_flags": 100.0,
         "violations": 100.0
       },
       {
-        "false_flags": 1077.7777777777778,
-        "false_share": 0.782258064516129,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.03,
         "true_flags": 300.0,
         "violations": 300.0
       },
       {
-        "false_flags": 1055.5555555555554,
-        "false_share": 0.6785714285714285,
+        "false_flags": 0.0,
+        "false_share": 0.0,
         "prevalence": 0.05,
         "true_flags": 500.0,
         "violations": 500.0
       }
     ]
   },
+  "experiments": [
+    {
+      "evidence": "accuracy 123/130 (95 % CI 0.893-0.974), restricted F1 0.9912",
+      "experiment": "E14",
+      "factor": "item classifier model",
+      "why_others_lost": "gemma-3-12b: non-inferiority not shown: bootstrap lower bound -0.1231 < -0.02; gpt-oss-20b: non-inferiority not shown: bootstrap lower bound -0.0615 < -0.02; qwen3.5-9b: excluded: 4/130 schema violations, over 2 %",
+      "winner": "gpt-oss-120b"
+    },
+    {
+      "evidence": "threshold 0.97, Brier 0.03649, fires on 7/128 (95 % CI 0.027-0.109)",
+      "experiment": "E7",
+      "factor": "EXC-03 confidence source and threshold",
+      "why_others_lost": "agreement_120b_20b: higher Brier (0.0625)",
+      "winner": "self_reported"
+    },
+    {
+      "evidence": "original 55/56 (95 % CI 0.905-0.997), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0",
+      "experiment": "E5",
+      "factor": "translation before classification",
+      "why_others_lost": "translate: no evidence of a gain at this N",
+      "winner": "original"
+    },
+    {
+      "evidence": "2 null subtypes in 520 answers, 0 fixed",
+      "experiment": "E15",
+      "factor": "reading \"subtype\": null as \"none\"",
+      "why_others_lost": "null_as_none: no net fix",
+      "winner": "strict"
+    },
+    {
+      "evidence": "0 differences on 47 receipts",
+      "experiment": "RET",
+      "factor": "policy retriever",
+      "why_others_lost": "all_rules: same findings, harder to explain",
+      "winner": "trigger_map"
+    }
+  ],
+  "oracle": {
+    "limitation": "The answers label category and restricted flag only. The oracle sets subtype and recipient to none, so ENT-01, TECH-03, the HEALTH-01 prescription carve-out and GIFT-01/03/04 cannot fire on the oracle side.",
+    "oracle_accuracy": {
+      "interval": [
+        0.8229,
+        0.9937
+      ],
+      "n": 28,
+      "rate": 0.9642857142857143,
+      "value": 27
+    },
+    "pipeline_accuracy": {
+      "interval": [
+        0.8794,
+        1.0
+      ],
+      "n": 28,
+      "rate": 1.0,
+      "value": 28
+    },
+    "rows": [
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-001",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-002",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-003",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-004",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-005",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-006",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-007",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-008",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "pass",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "pass",
+        "receipt_id": "RCP-009",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-010",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-011",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-012",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-013",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-014",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-015",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-016",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-017",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-018",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-019",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "pass",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-022",
+        "stage": "oracle_limitation"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-023",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-024",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-025",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-026",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "flag",
+        "oracle_disposition": "flag",
+        "pipeline_disposition": "flag",
+        "receipt_id": "RCP-027",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-028",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-031",
+        "stage": "none"
+      },
+      {
+        "answer_disposition": "review",
+        "oracle_disposition": "review",
+        "pipeline_disposition": "review",
+        "receipt_id": "RCP-032",
+        "stage": "none"
+      }
+    ]
+  },
   "run": {
     "classifier": "openrouter",
-    "exc03_threshold": 0.5,
-    "exc03_threshold_status": "provisional",
+    "confidence_source": "self_reported",
+    "exc03_threshold": 0.97,
+    "exc03_threshold_status": "chosen_on_dev",
     "model_id": "openai/gpt-oss-120b",
+    "pipeline_config_version": "259bda8937cd",
     "prompt_version": "cls-v2",
-    "provider_endpoint": "deepinfra/bf16",
-    "rules_version": "951312dbdc78"
+    "provider_endpoint": "openrouter",
+    "rules_version": "3dd5e8498c09"
   },
   "systems": {
     "keyword-classifier": {
@@ -514,12 +772,12 @@
     "pipeline": {
       "disposition_accuracy": {
         "interval": [
-          0.8229,
-          0.9937
+          0.8794,
+          1.0
         ],
         "n": 28,
-        "rate": 0.9642857142857143,
-        "value": 27
+        "rate": 1.0,
+        "value": 28
       },
       "disposition_confusion": {
         "labels": [
@@ -540,43 +798,43 @@
           ],
           [
             0,
-            1,
-            8
+            0,
+            9
           ]
         ],
         "n": 28
       },
       "evidence_correctness": {
         "interval": [
-          0.8668,
+          0.8713,
           1.0
         ],
-        "n": 25,
+        "n": 26,
         "rate": 1.0,
-        "value": 25
+        "value": 26
       },
       "exc03": {
-        "dispositions_changed": 1,
-        "receipts": 2,
-        "signals": 2
+        "dispositions_changed": 0,
+        "receipts": 0,
+        "signals": 0
       },
       "false_positives": {
         "interval": [
-          0.0199,
-          0.435
+          0.0,
+          0.2991
         ],
         "n": 9,
-        "rate": 0.1111111111111111,
-        "value": 1
+        "rate": 0.0,
+        "value": 0
       },
       "macro_f1": {
         "categories": 19,
         "n": 65,
         "per_category": {
-          "alcohol": 0.9231,
+          "alcohol": 1.0,
           "clothing": 1.0,
           "computer_accessory": 1.0,
-          "food_beverage": 0.9767,
+          "food_beverage": 1.0,
           "gift": 1.0,
           "gift_card": 1.0,
           "ground_transport": 1.0,
@@ -593,7 +851,7 @@
           "software_subscription": 1.0,
           "tobacco": 1.0
         },
-        "value": 0.9947274267959701
+        "value": 1.0
       },
       "missed_violations": {
         "interval": [
@@ -620,11 +878,11 @@
           "tp": 1
         },
         "ALC-03": {
-          "fn": 1,
+          "fn": 0,
           "fp": 0,
           "precision": 1.0,
-          "recall": 0.5,
-          "tp": 1
+          "recall": 1.0,
+          "tp": 2
         },
         "DOC-01": {
           "fn": 0,
@@ -744,16 +1002,16 @@
         "value": 0
       },
       "restricted_f1": {
-        "fn": 1,
+        "fn": 0,
         "fp": 0,
         "n": 65,
-        "tp": 20,
-        "value": 0.975609756097561
+        "tp": 21,
+        "value": 1.0
       },
       "review_signals": {
         "fn": 0,
-        "fp": 2,
-        "n": 9,
+        "fp": 0,
+        "n": 7,
         "tp": 7
       }
     }

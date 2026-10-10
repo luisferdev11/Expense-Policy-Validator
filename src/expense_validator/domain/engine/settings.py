@@ -19,5 +19,6 @@ class Settings:
     exc03_threshold: Decimal
     reference_prefixes: dict[str, str]
     decision_ids: tuple[str, ...]
+    exc03_threshold_status: str = "provisional"
     home_currency: dict[str, str] = field(default_factory=dict)
     eur_to_usd: dict[date, Decimal] = field(default_factory=dict)

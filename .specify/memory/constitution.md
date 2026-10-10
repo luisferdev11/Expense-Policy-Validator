@@ -65,8 +65,8 @@ relies on (EXC-04). An exception without evidence MUST NOT be emitted.
 
 ### VII. Reproducibility
 
-- Temperature 0 wherever the pinned endpoint supports it.
-- Every result MUST record the model ID, the pinned provider and the prompt version.
+- Temperature 0 wherever the serving provider supports it. Requests go through OpenRouter's routing (ADR 0004).
+- Every result MUST record the model ID, the provider that served it and the prompt version.
 - Prompts MUST be versioned.
 - Model responses MUST be cached under a key built from the normalised input, the model ID and
   the prompt version, so that a re-run makes no paid call and the same decision.
@@ -181,4 +181,4 @@ shown.
 - Complexity that a principle does not require MUST be justified in the plan's Complexity
   Tracking table.
 
-**Version**: 1.1.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-08
+**Version**: 1.2.0 | **Ratified**: 2026-10-08 | **Last Amended**: 2026-10-09 (ADR 0004: OpenRouter routing replaces the provider pin)

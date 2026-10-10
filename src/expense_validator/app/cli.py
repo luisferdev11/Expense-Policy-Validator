@@ -15,9 +15,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 from expense_validator.adapters.classification_cache import ClassificationCache
-from expense_validator.adapters.config_files import load_settings
+from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.keyword_classifier import KeywordClassifier
 from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
+from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
@@ -73,6 +74,7 @@ def run_command(
 ) -> RunSummary:
     load_env()
     settings = load_settings()
+    config = load_pipeline_config()
     receipts = load_receipts()
     if only:
         wanted = set(only)
@@ -83,12 +85,19 @@ def run_command(
     clf: ItemClassifier
     if classifier == "openrouter":
         prompt_link = None if offline else sync_prompt(tracer)
-        clf = OpenRouterClassifier(cache, tracer, offline=offline, prompt_link=prompt_link)
+        clf = OpenRouterClassifier(
+            cache,
+            tracer,
+            offline=offline,
+            prompt_link=prompt_link,
+            pin=PINS[config.classifier_model],
+            null_subtype_as_none=config.null_subtype_as_none,
+        )
     elif classifier == "keyword":
         clf = KeywordClassifier()
     else:
         raise SystemExit(f"unknown classifier: {classifier}")
-    results = run_pipeline(receipts, clf, tracer, settings, run_label)
+    results = run_pipeline(receipts, clf, tracer, settings, run_label, config)
     path = results_path or default_results_path(classifier, only)
     write_results(path, results)
     if cache.dirty:

@@ -1,0 +1,4 @@
+classifier_model: gpt-oss-120b  # E14 winner (ADR 0005)
+confidence_source: self_reported  # E7 winner; threshold in policy_decisions.yaml A3
+translate: false  # E5 winner: classify the original text
+null_subtype_as_none: false  # E15 winner: strict parser

@@ -38,6 +38,11 @@ def load_metrics(path: Path = EVAL_DIR / "metrics.json") -> dict[str, Any]:
     return data
 
 
+def load_experiments(path: Path = EVAL_DIR / "experiments.json") -> dict[str, Any]:
+    """The iteration 2 decisions written by eval/experiments/decide.py, or {} before they exist."""
+    return load_metrics(path)
+
+
 def write_results(path: Path, results: Sequence[ReceiptResult]) -> None:
     """Canonical JSONL: model field order, one receipt per line, sorted by the caller."""
     path.parent.mkdir(parents=True, exist_ok=True)

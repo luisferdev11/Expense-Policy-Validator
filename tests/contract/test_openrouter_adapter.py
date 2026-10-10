@@ -76,9 +76,21 @@ def test_request_is_pinned_and_deterministic(tmp_path: Path) -> None:
     assert payload["temperature"] == 0
     assert payload["response_format"]["json_schema"]["strict"] is True
     provider = payload["extra_body"]["provider"]
-    assert provider["order"] == [ENDPOINT] == ["deepinfra/bf16"]
-    assert provider["allow_fallbacks"] is False
-    assert provider["require_parameters"] is True
+    assert ENDPOINT == "openrouter"
+    assert "order" not in provider and "allow_fallbacks" not in provider
+    assert provider == {
+        "require_parameters": True,
+        "data_collection": "deny",
+        "ignore": ["coreweave"],
+    }
+
+
+def test_the_serving_provider_is_recorded_on_the_source_and_the_cache(tmp_path: Path) -> None:
+    clf, _ = make(tmp_path, FakeTransport())
+    c = clf.classify("L1", REQ)
+    assert c.source.served_by == "DeepInfra"
+    assert clf.cache.get(c.source.cache_key).served_by == "DeepInfra"  # type: ignore[union-attr]
+    assert clf.classify("L2", REQ).source.served_by == "DeepInfra"
 
 
 def test_success_records_cost_and_request_id(tmp_path: Path) -> None:

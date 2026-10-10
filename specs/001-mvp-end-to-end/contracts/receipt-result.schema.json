@@ -262,6 +262,23 @@
           ],
           "title": "Exc03 Threshold Status",
           "type": "string"
+        },
+        "confidence_source": {
+          "default": "self_reported",
+          "title": "Confidence Source",
+          "type": "string"
+        },
+        "pipeline_config_version": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Pipeline Config Version"
         }
       },
       "required": [

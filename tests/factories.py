@@ -91,7 +91,7 @@ SOURCE = ClassificationSource(
 def cls(
     line_id: str,
     category: str,
-    confidence: float = 0.95,
+    confidence: float = 0.99,
     subtype: str = "none",
     recipient_kind: str = "none",
     recipient_name: str | None = None,

@@ -13,7 +13,12 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
-from expense_validator.adapters.results_files import load_comparison, load_metrics, load_results
+from expense_validator.adapters.results_files import (
+    load_comparison,
+    load_experiments,
+    load_metrics,
+    load_results,
+)
 from expense_validator.paths import EVAL_DIR
 
 st.set_page_config(page_title="Expense Policy Validator", layout="wide")
@@ -27,7 +32,7 @@ if not results:
     st.info("No results yet. Run `uv run epv run`, then `uv run epv eval`.")
     st.stop()
 
-view = st.sidebar.radio("View", ["Receipt list", "Receipt detail", "Metrics"])
+view = st.sidebar.radio("View", ["Receipt list", "Receipt detail", "Metrics", "Experiments"])
 run = results[0].run
 st.sidebar.caption(
     f"Model `{run.model_id}` · prompt `{run.prompt_version}` · rules `{run.rules_version}` · "
@@ -129,6 +134,18 @@ elif view == "Receipt detail":
         st.markdown(f"**{signal['rule_id']}** (signal) · {signal.get('reason', '')}")
     if row.get("answer_notes"):
         st.caption(row["answer_notes"])
+
+elif view == "Experiments":
+    st.subheader("Experiments, decided on the synthetic dev set")
+    experiments = load_experiments()
+    if not experiments:
+        st.info("No experiments yet. Run `uv run python -I eval/experiments/decide.py`.")
+        st.stop()
+    st.caption(
+        f"Frozen dev set `{experiments['dev_set_sha256'][:12]}` · rules registered and approved "
+        "before any run (ADR 0005). None of the 28 scored receipts informed a choice."
+    )
+    st.dataframe(pd.DataFrame(experiments["table"]), hide_index=True, width="stretch")
 
 else:
     st.subheader("Metrics")

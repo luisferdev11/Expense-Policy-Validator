@@ -80,7 +80,9 @@ each against a decision rule registered before its run (principle V).
 
 - Make these comparisons:
   - retriever variants (trigger map against passing every rule);
-  - template reporter against an LLM-drafted reporter;
+  - ~~template reporter against an LLM-drafted reporter~~: cut on 2026-10-09 (clarification).
+    The template stays ("the explanation is the computation"). An LLM-drafted reporter judged for
+    faithfulness is future work;
   - the oracle-classifier ablation, which attributes every error to its stage.
 - Run the 28 receipts once per finalist.
 
@@ -89,12 +91,21 @@ each against a decision rule registered before its run (principle V).
   and why the others lost.
 - The pipeline runs with the chosen settings, and the report and viewer are updated.
 
+**Status: done on 2026-10-09** (release `v0.2.0`). ADR 0004 replaced the provider pin with
+OpenRouter routing; ADR 0005 records the winners: gpt-oss-120b, self-reported confidence with
+EXC-03 at 0.97, original text, strict parser, trigger map. The finalist run scores 28/28
+dispositions. Its first pass scored 27/28: malformed CoreWeave answers with confidence 0 sent
+RCP-012 to review, which led to ignoring CoreWeave (ADR 0004, amendment); iteration 3 writes it
+up as a failure case of the provider stage. Carried forward: a larger dev set to separate
+gpt-oss-20b (half the cost, one item behind) from the reference.
+
 ## Iteration 3: delivery package
 
 **Scope.**
 - The README, at most 2 pages, with the brief's sections.
 - The AWS one-page design, with the monthly cost worked out by hand at 50,000 receipts a day.
-  It also answers candidates L1 to L7 for production.
+  It also answers candidates L1 to L8 for production. Its "before production" list must include
+  the recipient-abuse risk (Q3, L8).
 - The two failure cases, each with its stage.
 - The base-rate paragraph with the real numbers.
 - `AI_NOTES.md` closed out.
@@ -117,6 +128,7 @@ explains how each would be handled in production.
 | L5 | Versioned policies: a new policy is a deployment with tests | The first policy change | Every result already records `rules_version` | S |
 | L6 | Timing rules TIME-01 to TIME-04, and receipts RCP-020, RCP-021, RCP-029 and RCP-030 (a stretch goal in the brief) | Time left, or the panel asks | The same cross-receipt context as L1 | M |
 | L7 | Observability of the parts that call no model (engine, retriever, viewer, infrastructure), the ADR that CLAUDE.md rule 11 defers | Running as a service | Each component already has its own span in the receipt's trace | S |
+| L8 | Recipient abuse controls (ADR 0001, Q3): verify named recipients against a CRM, add a review signal for restricted items justified only by recipient text, track per-employee gift patterns, sample approved gifts | The panel's answer to Q3, or real employees' receipts | The recipient fields are closed classifier outputs (A9). The engine reads them in one place per rule (`domain/engine/rules/gifts.py`) | M |
 
 **Why they wait.** None of them is needed for the brief's tests or for the evaluation, and the
 calendar leaves about two working days. Building them early would mean speculative abstractions

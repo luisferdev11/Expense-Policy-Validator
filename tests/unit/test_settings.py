@@ -12,8 +12,9 @@ def test_fx_defaults_follow_a1() -> None:
     assert s.fx_missing_rate_disposition == "review"
 
 
-def test_exc03_threshold_is_the_provisional_value() -> None:
-    assert load_settings().exc03_threshold == Decimal("0.5")
+def test_exc03_threshold_is_the_value_chosen_on_dev() -> None:
+    s = load_settings()
+    assert (s.exc03_threshold, s.exc03_threshold_status) == (Decimal("0.97"), "chosen_on_dev")
 
 
 def test_reference_prefixes_follow_a5() -> None:

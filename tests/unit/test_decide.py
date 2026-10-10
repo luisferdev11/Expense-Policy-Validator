@@ -133,6 +133,13 @@ def test_e5_keeps_the_original_without_evidence() -> None:
     assert out["n"] == 20
 
 
+def test_e5_refuses_while_a_translation_failed() -> None:
+    translated = [{**r, "translation": "text"} for r in rows({1})]
+    translated[3] = {**translated[3], "translation": None}
+    with pytest.raises(IncompleteRunError, match="translation"):
+        e5(rows({1}), translated, items())
+
+
 def test_e7_picks_lower_brier_and_a_threshold_by_the_rule() -> None:
     winner = rows({1, 2}, confidence=0.9)
     for r in winner:

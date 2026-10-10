@@ -216,6 +216,15 @@ def e7(
 
 def e5(original: Rows, translate: Rows, items: Sequence[dict[str, Any]]) -> dict[str, Any]:
     subset = [i for i in items if i["language"] != "en"]
+    _complete({"original": original, "translate": translate})
+    ids = {i["item_id"] for i in subset}
+    failed = [
+        r["item_id"]
+        for r in translate
+        if r["item_id"] in ids and "translation" in r and r["translation"] is None
+    ]
+    if failed:
+        raise IncompleteRunError(f"translate: {len(failed)} translation failures, re-run it first")
     orig = _correct(original, subset)
     trans = _correct(translate, subset)
     b = sum(1 for x, y in zip(trans, orig, strict=True) if x and not y)

@@ -10,6 +10,7 @@ from starlette.concurrency import run_in_threadpool
 from expense_validator.app.api.schemas import (
     ActionBody,
     ActionResponse,
+    BatchResponse,
     EventItem,
     EventList,
     Health,
@@ -19,6 +20,7 @@ from expense_validator.app.api.schemas import (
     RevisionDetail,
     SubmitResponse,
 )
+from expense_validator.app.batching import BatchService
 from expense_validator.app.errors import NotFoundError
 from expense_validator.app.reviewing import ActionRequest, ReviewService
 from expense_validator.app.service import ReceiptService
@@ -34,7 +36,9 @@ _RECEIPT_BODY = {
 }
 
 
-def build_router(service: ReceiptService, review: ReviewService) -> APIRouter:
+def build_router(
+    service: ReceiptService, review: ReviewService, batches: BatchService
+) -> APIRouter:
     router = APIRouter()
 
     @router.get("/health", response_model=Health, tags=["operations"])
@@ -58,6 +62,33 @@ def build_router(service: ReceiptService, review: ReviewService) -> APIRouter:
         if outcome.outcome == "existing":
             response.status_code = 200
         return SubmitResponse.of(outcome)
+
+    @router.post(
+        "/batches",
+        response_model=BatchResponse,
+        status_code=202,
+        tags=["batches"],
+        summary="Submit JSONL or a JSON array; 207 when some rows were not accepted",
+        openapi_extra={
+            "requestBody": {
+                "required": True,
+                "content": {
+                    "application/x-ndjson": {"schema": {"type": "string"}},
+                    "application/json": {"schema": {"type": "array", "items": {"type": "object"}}},
+                },
+            }
+        },
+    )
+    async def submit_batch(request: Request, response: Response) -> BatchResponse:
+        text = (await request.body()).decode("utf-8", errors="replace")
+        view = await run_in_threadpool(batches.submit, text)
+        if view.has_problems:
+            response.status_code = 207
+        return BatchResponse.of(view)
+
+    @router.get("/batches/{batch_id}", response_model=BatchResponse, tags=["batches"])
+    def get_batch(batch_id: str) -> BatchResponse:
+        return BatchResponse.of(batches.get(batch_id))
 
     @router.get("/receipts", response_model=ReceiptList, tags=["receipts"])
     def list_receipts(

@@ -10,6 +10,7 @@ from typing import Any
 
 from pydantic import BaseModel, ConfigDict
 
+from expense_validator.app.batching import BatchView
 from expense_validator.app.reviewing import ActionResult
 from expense_validator.app.service import ReceiptView, RevisionView, SubmitOutcome
 from expense_validator.ports.store import EventRecord, ReceiptRecord
@@ -168,6 +169,39 @@ class RevisionDetail(BaseModel):
                     result=e.result.model_dump(mode="json"),
                 )
                 for e in view.evaluations
+            ],
+        )
+
+
+class BatchItem(BaseModel):
+    row: int
+    receipt_id: str | None
+    outcome: str
+    error: str | None
+    state: str | None
+
+
+class BatchResponse(BaseModel):
+    batch_id: str
+    total: int
+    counts: dict[str, int]
+    items: list[BatchItem]
+
+    @classmethod
+    def of(cls, view: BatchView) -> BatchResponse:
+        return cls(
+            batch_id=view.batch_id,
+            total=view.total,
+            counts=view.counts,
+            items=[
+                BatchItem(
+                    row=i.row,
+                    receipt_id=i.receipt_id,
+                    outcome=i.outcome,
+                    error=i.error,
+                    state=i.state,
+                )
+                for i in view.items
             ],
         )
 

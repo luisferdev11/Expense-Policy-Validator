@@ -515,10 +515,16 @@ class SqliteTx:
         )
 
     def batch_state_counts(self, batch_id: str) -> dict[str, int]:
+        """Rows by the state of their receipt; rows that stored nothing (invalid, duplicate within
+        the batch) are counted under their outcome, so no receipt is counted twice."""
+        label = (
+            "CASE WHEN b.outcome IN ('accepted', 'existing', 'revision')"
+            " THEN COALESCE(r.state, 'unknown') ELSE b.outcome END"
+        )
         cur = self._c.execute(
-            "SELECT COALESCE(r.state, 'invalid') AS state, COUNT(*) AS n FROM batch_items b"
+            f"SELECT {label} AS state, COUNT(*) AS n FROM batch_items b"
             " LEFT JOIN receipts r ON r.receipt_id = b.receipt_id"
-            " WHERE b.batch_id = ? GROUP BY COALESCE(r.state, 'invalid') ORDER BY state",
+            f" WHERE b.batch_id = ? GROUP BY {label} ORDER BY state",
             (batch_id,),
         )
         return {row["state"]: row["n"] for row in cur.fetchall()}

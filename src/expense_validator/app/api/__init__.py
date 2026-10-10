@@ -10,11 +10,16 @@ from fastapi import FastAPI
 
 from expense_validator.app.api.errors import install_error_handlers
 from expense_validator.app.api.routes import build_router
+from expense_validator.app.batching import BatchService
 from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
 
 
-def create_app(service: ReceiptService, review: ReviewService | None = None) -> FastAPI:
+def create_app(
+    service: ReceiptService,
+    review: ReviewService | None = None,
+    batches: BatchService | None = None,
+) -> FastAPI:
     """The application. Without a review service, one without tracing is built over `service`."""
     review = review or ReviewService(service.store, service.clock, service)
     app = FastAPI(
@@ -23,7 +28,7 @@ def create_app(service: ReceiptService, review: ReviewService | None = None) -> 
         description="Intake and lifecycle of expense receipts (ADR 0006, ADR 0007).",
     )
     install_error_handlers(app)
-    app.include_router(build_router(service, review))
+    app.include_router(build_router(service, review, batches or BatchService(service)))
     return app
 
 

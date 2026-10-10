@@ -48,3 +48,7 @@ class UnknownCategoryError(AppError):
 
 class InvalidActionError(AppError):
     code = "invalid_action"
+
+
+class InvalidBatchError(AppError):
+    code = "invalid_batch"

@@ -12,7 +12,8 @@ from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.app.api import create_app
 from expense_validator.app.service import ReceiptService
 from tests.fakes import StepClock
-from tests.unit.test_service_submit import FIXTURE, raw
+from tests.support import FIXTURE
+from tests.support import receipt_json as raw
 
 
 @pytest.fixture

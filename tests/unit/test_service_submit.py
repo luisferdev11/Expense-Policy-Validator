@@ -7,7 +7,6 @@ from concurrent.futures import ThreadPoolExecutor
 from datetime import UTC, datetime
 from decimal import Decimal
 from pathlib import Path
-from typing import Any
 
 import pytest
 
@@ -20,44 +19,8 @@ from expense_validator.app.errors import (
 from expense_validator.app.service import ReceiptService
 from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded
 from tests.fakes import StepClock
-
-FIXTURE = Path(__file__).resolve().parents[1] / "fixtures" / "receipt_with_answers.json"
-
-
-def raw(receipt_id: str = "SYN-1", amount: str = "12.50", **overrides: Any) -> str:
-    body: dict[str, Any] = {
-        "receipt_id": receipt_id,
-        "employee_id": "E-1",
-        "employee_country": "US",
-        "entity": "GLOBAL",
-        "submitted_expense_type": "Office Supplies",
-        "merchant_name": "Synthetic Merchant",
-        "mcc": 5943,
-        "mcc_description": "Office and stationery supply",
-        "transaction_datetime": "2026-05-01T12:00:00",
-        "currency": "USD",
-        "fx_rate_to_usd": 1.0,
-        "total_amount": amount,
-        "total_amount_usd": amount,
-        "attendee_count": None,
-        "trip_id": None,
-        "trip_nights": None,
-        "pre_approval_ref": None,
-        "itemized": True,
-        "line_items": [
-            {
-                "line_id": f"{receipt_id}-L1",
-                "description_raw": "Spiral notebook",
-                "language": "en",
-                "quantity": 1,
-                "unit_price": amount,
-                "amount": amount,
-                "amount_usd": amount,
-            }
-        ],
-    }
-    body.update(overrides)
-    return json.dumps(body)
+from tests.support import FIXTURE
+from tests.support import receipt_json as raw
 
 
 @pytest.fixture

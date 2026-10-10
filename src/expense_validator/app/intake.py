@@ -14,6 +14,7 @@ import json
 import shutil
 from dataclasses import dataclass, field
 from pathlib import Path
+from typing import Any
 
 from pydantic import ValidationError
 
@@ -91,7 +92,12 @@ def run_id(receipts: list[ReceiptInput]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
 
-def default_classifier(tracer: Tracer, cache_path: Path = UPLOAD_CACHE) -> OpenRouterClassifier:
+def default_classifier(
+    tracer: Tracer,
+    cache_path: Path = UPLOAD_CACHE,
+    offline: bool = False,
+    prompt_link: Any = None,
+) -> OpenRouterClassifier:
     """The configured classifier on a gitignored cache, seeded from the committed one, so
     uploads never change committed outputs and known lines cost nothing."""
     if not cache_path.exists() and CLASSIFICATIONS_FILE.exists():
@@ -101,6 +107,8 @@ def default_classifier(tracer: Tracer, cache_path: Path = UPLOAD_CACHE) -> OpenR
     return OpenRouterClassifier(
         ClassificationCache(cache_path),
         tracer,
+        offline=offline,
+        prompt_link=prompt_link,
         pin=PINS[config.classifier_model],
         null_subtype_as_none=config.null_subtype_as_none,
     )

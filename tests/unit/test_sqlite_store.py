@@ -155,12 +155,22 @@ def test_a_superseded_revision_no_longer_shares_its_old_keys(store: SqliteStore)
         assert tx.get_revision("R-1", 1).status == "superseded"  # type: ignore[union-attr]
 
 
-def test_the_outbox_holds_at_most_one_open_item_per_stage(store: SqliteStore) -> None:
+def test_the_outbox_holds_at_most_one_pending_item_per_stage(store: SqliteStore) -> None:
     with store.transaction() as tx:
         assert tx.enqueue("R-1", 1, "classify", T0) is True
         assert tx.enqueue("R-1", 1, "classify", T0) is False
         assert tx.enqueue("R-1", 1, "evaluate", T0) is True
         assert tx.open_work_count() == 2
+
+
+def test_work_can_be_queued_again_while_the_same_stage_is_running(store: SqliteStore) -> None:
+    """A change that lands while an evaluation runs must not be lost: the running evaluation may
+    have read the state before it, so a new one has to follow."""
+    with store.transaction() as tx:
+        tx.enqueue("R-1", 1, "evaluate", T0)
+        assert tx.claim_work(T0, T0 + timedelta(seconds=60)) is not None
+        assert tx.enqueue("R-1", 1, "evaluate", T0) is True
+        assert tx.enqueue("R-1", 1, "evaluate", T0) is False
 
 
 def test_a_claim_sets_a_lease_and_hands_each_item_out_once(store: SqliteStore) -> None:

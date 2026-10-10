@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterator
+from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from expense_validator.domain.models import Classification, ClassifierRequest
+from tests.factories import cls
 
 
 @dataclass
@@ -68,6 +69,60 @@ class StepClock:
 
     def advance(self, by: timedelta) -> None:
         self.now += by
+
+
+class SimulatedCrash(BaseException):
+    """The process dies: not an `Exception`, so no stage handler may catch it."""
+
+
+class BillingClassifier:
+    """A classifier with an in-memory answer cache that counts billed calls.
+
+    `cache` can be shared between instances to play the role of the cache file that survives a
+    restart. `categories` maps a cleaned description to a category. `crash_after` raises
+    `SimulatedCrash` when a billed call would be number `crash_after + 1`; `fail_with` raises it
+    as an ordinary error; `on_classify` runs before every call (to interleave other actions).
+    """
+
+    name = "billing-fake"
+    model_id = "fake-model"
+    provider_endpoint = "none"
+    prompt_version = "test"
+
+    def __init__(
+        self,
+        categories: dict[str, str],
+        cache: dict[tuple[str, str, int], Classification] | None = None,
+        crash_after: int | None = None,
+        fail_with: Exception | None = None,
+        on_classify: Callable[[], None] | None = None,
+        confidence: float = 0.99,
+    ) -> None:
+        self.categories = categories
+        self.cache = cache if cache is not None else {}
+        self.crash_after = crash_after
+        self.fail_with = fail_with
+        self.on_classify = on_classify
+        self.confidence = confidence
+        self.calls_made = 0
+        self.cache_hits = 0
+
+    def classify(self, line_id: str, request: ClassifierRequest) -> Classification:
+        if self.on_classify is not None:
+            self.on_classify()
+        if self.fail_with is not None:
+            raise self.fail_with
+        key = (request.description_clean, request.merchant_name, request.mcc)
+        found = self.cache.get(key)
+        if found is None:
+            if self.crash_after is not None and self.calls_made >= self.crash_after:
+                raise SimulatedCrash
+            self.calls_made += 1
+            found = cls(line_id, self.categories[request.description_clean], self.confidence)
+            self.cache[key] = found
+        else:
+            self.cache_hits += 1
+        return found.model_copy(update={"line_id": line_id})
 
 
 class FakeClassifier:

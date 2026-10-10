@@ -71,6 +71,15 @@ def build_router(service: ReceiptService) -> APIRouter:
     def get_receipt(receipt_id: str) -> ReceiptDetail:
         return ReceiptDetail.from_view(service.get_receipt(receipt_id))
 
+    @router.post(
+        "/receipts/{receipt_id}/retry",
+        response_model=ReceiptSummary,
+        status_code=202,
+        tags=["receipts"],
+    )
+    def retry_receipt(receipt_id: str) -> ReceiptSummary:
+        return ReceiptSummary.of(service.retry(receipt_id))
+
     @router.get("/receipts/{receipt_id}/events", response_model=EventList, tags=["receipts"])
     def get_events(receipt_id: str) -> EventList:
         return EventList(items=[EventItem.of(e) for e in service.list_events(receipt_id)])

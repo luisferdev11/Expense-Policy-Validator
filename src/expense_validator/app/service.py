@@ -9,7 +9,7 @@ the answer keys (rule 1); the stripped receipt is what is hashed, stored and ret
 from __future__ import annotations
 
 import json
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 from decimal import Decimal
 from typing import Literal
@@ -18,13 +18,14 @@ from pydantic import ValidationError
 
 from expense_validator.adapters.receipts_file import parse_receipt_line
 from expense_validator.app.errors import (
+    ActionNotAllowedError,
     IdempotencyKeyReuseError,
     InvalidIdempotencyKeyError,
     InvalidReceiptError,
     NotFoundError,
 )
 from expense_validator.domain.cascade import sharing_keys
-from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded
+from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded, StageRetried
 from expense_validator.domain.idempotency import content_hash, default_key, validate_client_key
 from expense_validator.domain.lifecycle import Action, allowed_actions
 from expense_validator.domain.models import ReceiptInput, ReceiptResult
@@ -112,6 +113,32 @@ class ReceiptService:
             if existing is not None:
                 return existing
             return self._store_revision(tx, receipt, used_key, digest, batch_id, now)
+
+    def retry(self, receipt_id: str) -> ReceiptRecord:
+        """Queue a failed receipt again at the stage that failed (FR-015)."""
+        now = self.clock()
+        with self.store.transaction() as tx:
+            record = tx.get_receipt(receipt_id)
+            if record is None:
+                raise NotFoundError(f"no receipt {receipt_id!r}")
+            if record.state != "failed" or record.failed_stage is None:
+                raise ActionNotAllowedError(
+                    f"the receipt is {record.state!r}; only a failed receipt can be retried"
+                )
+            stage = record.failed_stage
+            tx.enqueue(receipt_id, record.current_revision, stage, now)
+            updated = replace(
+                record,
+                state="submitted" if stage == "classify" else "classifying",
+                failed_stage=None,
+                failed_reason=None,
+                updated_at=now.isoformat(),
+            )
+            tx.put_receipt(updated)
+            tx.append_event(
+                receipt_id, record.current_revision, StageRetried(stage=stage), SYSTEM, now
+            )
+        return updated
 
     # Reads
 

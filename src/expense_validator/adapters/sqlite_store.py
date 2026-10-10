@@ -119,7 +119,7 @@ CREATE TABLE outbox (
     created_at TEXT NOT NULL
 );
 CREATE UNIQUE INDEX outbox_open ON outbox (receipt_id, revision, stage)
-    WHERE state IN ('pending', 'claimed');
+    WHERE state = 'pending';
 CREATE TABLE batches (
     batch_id TEXT PRIMARY KEY,
     total INTEGER NOT NULL,

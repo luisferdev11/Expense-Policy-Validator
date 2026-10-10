@@ -10,9 +10,15 @@ import os
 from collections.abc import Mapping
 from pathlib import Path
 
+from expense_validator.adapters.config_files import load_pipeline_config, load_settings
+from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
+from expense_validator.adapters.persisting_classifier import PersistingClassifier
 from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
+from expense_validator.adapters.tracing import make_tracer
+from expense_validator.app.intake import default_classifier
 from expense_validator.app.service import ReceiptService
-from expense_validator.paths import DEFAULT_DB_FILE
+from expense_validator.app.worker import Worker
+from expense_validator.paths import APP_CLASSIFICATION_CACHE, DEFAULT_DB_FILE
 
 
 def db_path(explicit: str | None = None, env: Mapping[str, str] | None = None) -> Path:
@@ -28,3 +34,23 @@ def open_store(path: Path) -> SqliteStore:
 
 def build_service(store: SqliteStore) -> ReceiptService:
     return ReceiptService(store, utc_now)
+
+
+def build_worker(
+    store: SqliteStore,
+    *,
+    offline: bool = False,
+    no_trace: bool = False,
+    cache_path: Path = APP_CLASSIFICATION_CACHE,
+) -> Worker:
+    """The worker with the configured classifier on the application's own answer cache.
+
+    The cache is gitignored and seeded from the committed one, so the application never changes
+    committed outputs, and it is saved after every billed call (see `PersistingClassifier`).
+    Langfuse is best effort: with no keys or no server the worker runs untraced.
+    """
+    tracer = make_tracer(disabled=no_trace)
+    prompt_link = None if offline else sync_prompt(tracer)
+    base = default_classifier(tracer, cache_path, offline=offline, prompt_link=prompt_link)
+    classifier = PersistingClassifier(base, base.cache.save)
+    return Worker(store, classifier, tracer, load_settings(), utc_now, load_pipeline_config())

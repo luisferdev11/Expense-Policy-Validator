@@ -20,8 +20,8 @@ from expense_validator.domain.events import (
     StageFailed,
     StageRetried,
 )
-from tests.fakes import RecordingTracer, SimulatedCrash
-from tests.support import Stack, build_stack, notebook_classifier, receipt_json
+from tests.fakes import BillingClassifier, RecordingTracer, SimulatedCrash
+from tests.support import DESCRIPTION, Stack, build_stack, notebook_classifier, receipt_json
 
 
 @pytest.fixture
@@ -68,6 +68,44 @@ def test_a_failing_stage_leaves_the_receipt_failed_with_its_stage_and_reason(
         "RuntimeError: gateway down",
     )
     assert events(stack)[-1] is StageFailed
+
+
+@pytest.mark.parametrize("reason", ["gateway_error", "budget_refused"])
+def test_an_outage_reported_as_an_answer_fails_the_stage_and_keeps_nothing(
+    stack: Stack, reason: str
+) -> None:
+    """The real adapter does not raise when the service is down or the budget is spent: it returns
+    an unclassified line. Saving that would send a never-classified receipt to a person, and
+    nothing would retry it (FR-015)."""
+    stack.service.submit(receipt_json())
+    outage = BillingClassifier(
+        {DESCRIPTION: "office_supplies"}, unclassified_reasons={DESCRIPTION: reason}
+    )
+    stack.worker(outage).run_once()
+    view = stack.service.get_receipt("SYN-1")
+    assert view.record.state == "failed" and view.record.failed_stage == "classify"
+    assert reason in (view.record.failed_reason or "")
+    with stack.store.transaction(write=False) as tx:
+        assert tx.load_classifications("SYN-1", 1) is None
+    assert ReceiptClassified not in events(stack)
+
+    stack.service.retry("SYN-1")
+    stack.worker(notebook_classifier()).run_once()
+    assert stack.service.get_receipt("SYN-1").record.state == "auto_approved"
+
+
+@pytest.mark.parametrize("reason", ["schema_violation", "offline_cache_miss"])
+def test_answers_that_are_final_stay_results_and_ask_for_review(stack: Stack, reason: str) -> None:
+    stack.service.submit(receipt_json())
+    final = BillingClassifier(
+        {DESCRIPTION: "office_supplies"}, unclassified_reasons={DESCRIPTION: reason}
+    )
+    stack.worker(final).run_once()
+    view = stack.service.get_receipt("SYN-1")
+    assert view.record.state == "in_review" and view.record.disposition == "review"
+    assert "EXC-03" in {s.rule_id for s in (view.result.review_signals if view.result else [])} | {
+        e.rule_id for e in (view.result.exceptions if view.result else [])
+    }
 
 
 def test_a_failed_receipt_is_retried_from_the_stage_that_failed(stack: Stack) -> None:

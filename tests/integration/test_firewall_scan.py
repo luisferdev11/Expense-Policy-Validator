@@ -1,8 +1,9 @@
 """No answer key reaches the store, an API response or a trace (rule 1, FR-010, SC-007).
 
-The dataset is submitted with its answer keys exactly as it arrives, so the keys are in the
-request body. After processing, the whole database, every endpoint's response and every trace
-input and output are scanned for the keys. The loader is the only reader of the answer file.
+The 32 receipts are submitted with answer keys in the request body, so the keys really arrive.
+The bodies are built from the stripping loader plus **invented** answer keys carrying a marker:
+no test reads the real answers (only `eval/` does). After processing, the whole database, every
+endpoint's response and every trace input and output are scanned for the keys and the marker.
 """
 
 from __future__ import annotations
@@ -18,18 +19,26 @@ from fastapi.testclient import TestClient
 from expense_validator.adapters.config_files import load_pipeline_config
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.app.api import create_app
-from expense_validator.paths import DATA_DIR
 from tests.fakes import RecordingTracer
 from tests.integration.test_api_parity import offline_classifier
 from tests.support import Stack, build_stack
 
-KEYS = ('"labels"', '"notes"', '"expected_exceptions"')
+MARKER = "INVENTED-ANSWER-KEY"
+KEYS = ('"labels"', '"notes"', '"expected_exceptions"', MARKER)
 
 
 def raw_lines() -> list[str]:
-    """The dataset lines as they arrive in a request: with their answer keys."""
-    path = DATA_DIR / "receipts.jsonl"  # tests may read it; the pipeline may not
-    return [line for line in path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    """The dataset as request bodies that carry answer keys: the receipts come from the
+    stripping loader, and the keys, which are invented, are added to every receipt and line."""
+    lines = []
+    for receipt in load_receipts():
+        body = receipt.model_dump(mode="json")
+        body["labels"] = {"disposition": MARKER}
+        body["notes"] = MARKER
+        for line in body["line_items"]:
+            line["labels"] = {"category": MARKER}
+        lines.append(json.dumps(body))
+    return lines
 
 
 @pytest.fixture(scope="module")

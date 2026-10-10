@@ -1,8 +1,12 @@
 # ADR 0007: Backend design for iteration 3
 
-- **Status:** accepted
+- **Status:** proposed, implemented in iteration 3, pending Luis's review in the pull request
 - **Date:** 2026-10-10
-- **Decided by:** Claude (proposal), for Luis's review in the iteration 3 pull request.
+- **Decided by:** Claude (proposal). Luis has not yet decided these. The technical choices follow
+  from ADR 0006 and the architecture. The **product decisions** below are Claude's proposals and
+  need Luis's confirmation: reopening a closed receipt when a new revision arrives (D5), the notice
+  rules (D7), the allowed actions and reason codes (D8), the agreement table (D10) and the
+  quality-review sample of one in ten (D12).
 - **Builds on:** ADR 0003 (layers), ADR 0006 (intake, idempotency and lifecycle)
 
 ## Context
@@ -230,7 +234,17 @@ Each one refines a decision above after the code or a test showed a gap. None ch
 10. **D13, `epv serve` runs the API; `--with-worker` also runs a worker thread.** Both accept
     `--offline`, `--no-trace` and `--cache`. `epv openapi` prints the API's OpenAPI document, which
     is committed as `docs/api/openapi.json` with a test against drift.
-11. **Failure reasons are scrubbed.** A stage failure stores the exception type and a message with
+11. **A classifier outage is a failure, not a result.** The OpenRouter adapter reports an outage
+    or a spent budget as an unclassified line (`gateway_error`, `budget_refused`) instead of
+    raising. The classify stage fails when a line comes back like that, before anything is saved,
+    so the receipt is `failed` at `classify` and a retry asks again (the answered lines are in the
+    cache and cost nothing). `schema_violation` and `offline_cache_miss` are final results: EXC-03
+    asks for a review.
+12. **A failed re-evaluation keeps the receipt's state.** A receipt that already has an evaluation
+    keeps its state (a decision does not disappear) and shows the failure; a retry runs the stage
+    again and changes no state by itself, and a later successful evaluation clears the failure.
+    Only a receipt that was never evaluated is `failed`.
+13. **Failure reasons are scrubbed.** A stage failure stores the exception type and a message with
     key-like tokens redacted and the length bounded, so a provider's error text cannot put a key
     in the store.
 

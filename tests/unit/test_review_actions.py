@@ -29,52 +29,9 @@ from expense_validator.domain.events import (
     ReceiptApproved,
     ReceiptRejected,
 )
-from tests.fakes import BillingClassifier, RecordingTracer
-from tests.support import DESCRIPTION, Stack, build_stack, receipt_json
-
-CATEGORIES = {
-    "Lunch A": "food_beverage",
-    "Lunch B": "food_beverage",
-    DESCRIPTION: "office_supplies",
-    "Gift basket": "gift",
-}
-RECIPIENTS = {"Gift basket": ("government_official", "Vice-Minister")}
-MEAL = {"submitted_expense_type": "Meals - Individual"}
-
-
-class Env:
-    def __init__(self, tmp_path: Path) -> None:
-        self.tracer = RecordingTracer()
-        self.stack: Stack = build_stack(tmp_path, self.tracer)
-        self.service = self.stack.service
-        self.review = ReviewService(
-            self.stack.store, self.stack.clock, self.service, tracer=self.tracer
-        )
-        self.worker = self.stack.worker(
-            BillingClassifier(CATEGORIES, recipients=RECIPIENTS), self.tracer
-        )
-
-    def submit(self, receipt_id: str, amount: str, description: str, **fields: object) -> None:
-        self.service.submit(receipt_json(receipt_id, amount, description, **fields))
-
-    def seed(self) -> None:
-        self.submit("SYN-A", "40", "Lunch A", **MEAL)
-        self.submit("SYN-B", "50", "Lunch B", **MEAL)
-        self.submit("SYN-U", "12.50", DESCRIPTION, employee_id="E-U")
-        self.submit("SYN-G", "30", "Gift basket", employee_id="E-G")
-        self.worker.run_once()
-
-    def act(self, receipt_id: str, action: Any, **fields: Any) -> Any:
-        view = self.service.get_receipt(receipt_id)
-        fields.setdefault("actor", "alice")
-        fields.setdefault("evaluation_version", view.record.evaluation_version)
-        return self.review.act(receipt_id, action, ActionRequest(**fields))
-
-    def state(self, receipt_id: str) -> str:
-        return self.service.get_receipt(receipt_id).record.state
-
-    def events(self, receipt_id: str) -> list[Any]:
-        return [e.event for e in self.service.list_events(receipt_id)]
+from tests.fakes import RecordingTracer
+from tests.support import DESCRIPTION, MEAL
+from tests.support import ReviewEnv as Env
 
 
 @pytest.fixture

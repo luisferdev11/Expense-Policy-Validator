@@ -121,15 +121,20 @@ class ReceiptService:
             record = tx.get_receipt(receipt_id)
             if record is None:
                 raise NotFoundError(f"no receipt {receipt_id!r}")
-            if record.state != "failed" or record.failed_stage is None:
+            if record.failed_stage is None:
                 raise ActionNotAllowedError(
-                    f"the receipt is {record.state!r}; only a failed receipt can be retried"
+                    f"the receipt is {record.state!r} and has no failure to retry"
                 )
             stage = record.failed_stage
             tx.enqueue(receipt_id, record.current_revision, stage, now)
+            # A receipt that never got an evaluation is `failed` and goes back into the
+            # pipeline; one that already has a state (a re-evaluation failed) keeps it.
+            state = record.state
+            if state == "failed":
+                state = "submitted" if stage == "classify" else "classifying"
             updated = replace(
                 record,
-                state="submitted" if stage == "classify" else "classifying",
+                state=state,
                 failed_stage=None,
                 failed_reason=None,
                 updated_at=now.isoformat(),

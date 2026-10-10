@@ -47,7 +47,15 @@ from expense_validator.ports.tracer import Tracer
 WORKER = "worker"
 LEASE = timedelta(seconds=60)
 MAX_ATTEMPTS = 3
+# Reasons a line comes back unclassified because the service could not answer, not because of
+# the answer itself. They are not results: the stage fails and is retried. `schema_violation`
+# and `offline_cache_miss` are final and stay results (EXC-03 asks for a review).
+TRANSIENT_REASONS = frozenset({"gateway_error", "budget_refused"})
 _SECRET = re.compile(r"(sk-|pk-|lf-)[A-Za-z0-9_\-.*]+")
+
+
+class ClassificationUnavailableError(Exception):
+    """The classifier could not answer for at least one line."""
 
 
 def scrub(message: str, limit: int = 300) -> str:
@@ -138,6 +146,19 @@ class Worker:
         classified = classify_receipt(
             found.receipt, self.classifier, self.tracer, f"app-r{revision}-c"
         )
+        unavailable = sorted(
+            {
+                c.unclassified_reason
+                for c in classified.classifications
+                if c.unclassified_reason in TRANSIENT_REASONS
+            }
+        )
+        if unavailable:
+            # The adapter reports an outage as an answer, not as an error. Saving it would send a
+            # receipt that was never classified to a person, and nothing would retry it.
+            raise ClassificationUnavailableError(
+                "the classifier could not answer: " + ", ".join(unavailable)
+            )
         now = self.clock()
         with self.store.transaction() as tx:
             record = tx.get_receipt(rid)
@@ -173,6 +194,15 @@ class Worker:
             latest = tx.latest_evaluation(rid, revision)
             tx.complete_work(item.id)
             if latest is not None and latest.result_hash == evaluation.digest:
+                if record.failed_stage is not None:  # the stage succeeded: the failure is over
+                    tx.put_receipt(
+                        replace(
+                            record,
+                            failed_stage=None,
+                            failed_reason=None,
+                            updated_at=now.isoformat(),
+                        )
+                    )
                 return
             result = evaluation.result
             critical = any(e.severity == "critical" for e in result.exceptions)
@@ -209,10 +239,14 @@ class Worker:
             tx.fail_work(item.id, reason)
             record = tx.get_receipt(item.receipt_id)
             if record is not None and record.current_revision == item.revision:
+                # A receipt that was already evaluated keeps its state (a decision must not
+                # disappear because a later re-evaluation failed); the failure is shown on it and
+                # a retry runs the stage again. Only a receipt with no evaluation is `failed`.
+                evaluated = record.evaluation_version is not None
                 tx.put_receipt(
                     replace(
                         record,
-                        state="failed",
+                        state=record.state if evaluated else "failed",
                         failed_stage=stage,
                         failed_reason=reason,
                         updated_at=now.isoformat(),

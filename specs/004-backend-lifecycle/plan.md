@@ -67,6 +67,15 @@ store.
 
 No violations, so no Complexity Tracking entries.
 
+**Deviation recorded after implementation (Principle X).** The constitution says one receipt is
+one trace. The backend produces two traces per receipt revision, because classification and
+decision happen at different times and in different processes: `app-r<revision>-c` for the
+classification (the only one with model calls) and `app-r<revision>-v<version>` for each stored
+evaluation version. Observation names are unchanged and verb-first, every model call is still a
+`classify-item` generation, and Langfuse still never gates a run (tested: SC-006). The split is
+what lets a re-evaluation or a reviewer's correction have its own trace without merging into the
+first. If Luis prefers one trace per revision, the trace id seed is the only thing to change.
+
 **Correction to ADR 0007 D2**: `adapters/` may not import `app/` (architecture test). The FastAPI
 routes call the use-case services, so they live in `app/api/`, as the CLI does. ADR 0007 is
 amended accordingly in the same change.

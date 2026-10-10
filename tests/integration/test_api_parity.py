@@ -22,7 +22,10 @@ from expense_validator.adapters.openrouter.classifier import OpenRouterClassifie
 from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
+from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.adapters.tracing import NoopTracer
+from expense_validator.app.composition import build_service, build_worker
+from expense_validator.app.service import ReceiptService
 from expense_validator.domain.models import ReceiptInput
 from expense_validator.paths import CLASSIFICATIONS_FILE, RESULTS_FILE
 from tests.support import Stack, build_stack
@@ -55,10 +58,10 @@ def run_in_order(
     return stack, classifier
 
 
-def written_results(stack: Stack, receipts: list[ReceiptInput], out: Path) -> bytes:
+def written_results(service: ReceiptService, receipts: list[ReceiptInput], out: Path) -> bytes:
     results = []
     for rid in sorted(r.receipt_id for r in receipts):
-        found = stack.service.get_receipt(rid).result
+        found = service.get_receipt(rid).result
         assert found is not None, rid
         results.append(found)
     write_results(out, results)
@@ -77,7 +80,31 @@ def test_the_dataset_through_the_backend_equals_the_batch_run(
     stack, classifier = run_in_order(tmp_path, receipts, drain_between)
 
     assert classifier.calls_made == 0  # every answer came from the committed cache
-    assert written_results(stack, receipts, tmp_path / "out.jsonl") == RESULTS_FILE.read_bytes()
+    assert (
+        written_results(stack.service, receipts, tmp_path / "out.jsonl")
+        == RESULTS_FILE.read_bytes()
+    )
+
+
+def test_the_wiring_that_ships_equals_the_batch_run(tmp_path: Path) -> None:
+    """The same proof through the composition root `epv worker` uses: its configured classifier
+    (with the config's flags), the persisting wrapper, and the answer cache seeded from the
+    committed one. Nothing is built by hand here."""
+    store = SqliteStore(tmp_path / "epv.sqlite3")
+    service = build_service(store)
+    worker = build_worker(
+        store, offline=True, no_trace=True, cache_path=tmp_path / "app_classifications.jsonl"
+    )
+    receipts = load_receipts()
+    random.Random(7).shuffle(receipts)
+    for r in receipts:
+        service.submit(r.model_dump_json())
+    worker.run_once()
+
+    assert written_results(service, receipts, tmp_path / "out.jsonl") == RESULTS_FILE.read_bytes()
+    assert (
+        tmp_path / "app_classifications.jsonl"
+    ).exists()  # seeded; the committed one is untouched
 
 
 def test_submitting_everything_again_starts_no_new_work(tmp_path: Path) -> None:

@@ -9,7 +9,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from expense_validator.domain.models import Classification, ClassifierRequest
-from tests.factories import cls
+from tests.factories import cls, unclassified
 
 
 @dataclass
@@ -112,9 +112,11 @@ class BillingClassifier:
         on_classify: Callable[[], None] | None = None,
         confidence: float = 0.99,
         recipients: dict[str, tuple[str, str | None]] | None = None,
+        unclassified_reasons: dict[str, str] | None = None,
     ) -> None:
         self.categories = categories
         self.recipients = recipients or {}
+        self.unclassified_reasons = unclassified_reasons or {}
         self.cache = cache if cache is not None else {}
         self.crash_after = crash_after
         self.fail_with = fail_with
@@ -128,6 +130,9 @@ class BillingClassifier:
             self.on_classify()
         if self.fail_with is not None:
             raise self.fail_with
+        reason = self.unclassified_reasons.get(request.description_clean)
+        if reason is not None:  # like the real adapter, which returns instead of raising
+            return unclassified(line_id, reason)
         key = (request.description_clean, request.merchant_name, request.mcc)
         found = self.cache.get(key)
         if found is None:

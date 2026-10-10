@@ -7,8 +7,10 @@ nothing else (ADR 0007 D13).
 from __future__ import annotations
 
 import os
+import tempfile
 from collections.abc import Mapping
 from pathlib import Path
+from typing import Any
 
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
@@ -35,6 +37,17 @@ def open_store(path: Path) -> SqliteStore:
 
 def build_service(store: SqliteStore) -> ReceiptService:
     return ReceiptService(store, utc_now)
+
+
+def openapi_document() -> dict[str, Any]:
+    """The API's OpenAPI document. It is built over a throwaway database, because the routes
+    need a service to be created, and nothing is written to the real one."""
+    from expense_validator.app.api import create_app
+
+    with tempfile.TemporaryDirectory() as directory:
+        store = open_store(Path(directory) / "openapi.sqlite3")
+        document: dict[str, Any] = create_app(build_service(store)).openapi()
+    return document
 
 
 def build_review(

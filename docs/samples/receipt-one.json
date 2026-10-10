@@ -4,9 +4,9 @@
   "employee_country": "US",
   "entity": "GLOBAL",
   "submitted_expense_type": "Office Supplies",
-  "merchant_name": "Demo Stationers",
+  "merchant_name": "Cornerstone Office Supply",
   "mcc": 5943,
-  "mcc_description": "Office and stationery supply",
+  "mcc_description": "Office supply stores",
   "transaction_datetime": "2026-10-01T10:30:00",
   "currency": "USD",
   "fx_rate_to_usd": 1.0,
@@ -20,7 +20,7 @@
   "line_items": [
     {
       "line_id": "DEMO-001-L1",
-      "description_raw": "Spiral notebook, pack of 5",
+      "description_raw": "Legal pads 3-pack",
       "language": "en",
       "quantity": 1,
       "unit_price": 12.5,
@@ -29,7 +29,7 @@
     },
     {
       "line_id": "DEMO-001-L2",
-      "description_raw": "Ballpoint pens, box of 50",
+      "description_raw": "Ballpoint pens box of 12",
       "language": "en",
       "quantity": 2,
       "unit_price": 15.0,

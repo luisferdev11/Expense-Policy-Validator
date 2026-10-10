@@ -1,0 +1,2226 @@
+{
+  "info": {
+    "name": "Expense Policy Validator: backend (iteration 3)",
+    "description": "Every endpoint and the edge cases of specs/004-backend-lifecycle. Start the API with a worker: `uv run epv serve --with-worker --offline --no-trace`, import this collection and the environment, and run the collection in order.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8000"
+    }
+  ],
+  "event": [
+    {
+      "listen": "prerequest",
+      "script": {
+        "type": "text/javascript",
+        "exec": [
+          "// One id per run, so the receipts of a run never join an earlier one.",
+          "if (!pm.collectionVariables.get(\"run\")) {",
+          "  pm.collectionVariables.set(\"run\", Date.now().toString(36));",
+          "}"
+        ]
+      }
+    }
+  ],
+  "item": [
+    {
+      "name": "0 Setup",
+      "description": "The server must run with a worker: `uv run epv serve --with-worker --offline --no-trace`.",
+      "item": [
+        {
+          "name": "Health",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/health",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"ok\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "1 Intake and idempotency",
+      "description": "Persist first, then work. The same receipt twice is one receipt.",
+      "item": [
+        {
+          "name": "Submit a clean receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{run}}-office"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));",
+                  "const body = pm.response.json();",
+                  "pm.test(\"accepted, revision 1, submitted\", () => {",
+                  "  pm.expect(body.outcome).to.eql(\"accepted\");",
+                  "  pm.expect(body.revision).to.eql(1);",
+                  "  pm.expect(body.state).to.eql(\"submitted\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat it with the same key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{run}}-office"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"existing, no second receipt\", () => {",
+                  "  pm.expect(pm.response.json().outcome).to.eql(\"existing\");",
+                  "  pm.expect(pm.response.json().revision).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Repeat it without a key",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"same content is the same receipt\", () =>",
+                  "  pm.expect(pm.response.json().outcome).to.eql(\"existing\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reuse the key with another body",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Idempotency-Key",
+                "value": "{{run}}-office"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is idempotency_key_reuse\", () => pm.expect(pm.response.json().error.code).to.eql(\"idempotency_key_reuse\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit an invalid receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-BAD\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is invalid_receipt\", () => pm.expect(pm.response.json().error.code).to.eql(\"invalid_receipt\"));",
+                  "pm.test(\"names the missing fields\", () =>",
+                  "  pm.expect(pm.response.json().error.details.fields).to.include(\"employee_id\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit a receipt that carries answer keys",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-FIREWALL\",\n  \"employee_id\": \"PM-{{run}}-EF\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 12.0,\n  \"total_amount_usd\": 12.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-FIREWALL-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 12.0,\n      \"amount\": 12.0,\n      \"amount_usd\": 12.0,\n      \"labels\": {\n        \"category\": \"gift\"\n      }\n    }\n  ],\n  \"labels\": {\n    \"disposition\": \"flag\"\n  },\n  \"notes\": \"invented answer key: it must never be stored\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            },
+            "description": "The body has invented labels and notes. They are discarded."
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read it back: the answer keys are gone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-FIREWALL",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-FIREWALL"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const text = pm.response.text();",
+                  "pm.test(\"no labels, no notes, no expected exceptions\", () => {",
+                  "  pm.expect(text).to.not.include(\"labels\");",
+                  "  pm.expect(text).to.not.include(\"notes\");",
+                  "  pm.expect(text).to.not.include(\"invented answer key\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for the clean receipt to be processed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"auto-approved with one evaluation\", () => {",
+                  "  pm.expect(body.state).to.eql(\"auto_approved\");",
+                  "  pm.expect(body.evaluation_version).to.eql(1);",
+                  "  pm.expect(body.disposition).to.eql(\"pass\");",
+                  "  pm.expect(body.allowed_actions).to.eql([\"reject\"]);",
+                  "});",
+                  "pm.test(\"the result is what the batch run produces\", () => {",
+                  "  pm.expect(body.result.receipt_id).to.eql(body.receipt_id);",
+                  "  pm.expect(body.result.run.model_id).to.be.a(\"string\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Read the event trail",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "events"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json().items.map(e => e.type);",
+                  "pm.test(\"submitted, classified, evaluated\", () =>",
+                  "  pm.expect(types).to.eql([\"ReceiptSubmitted\", \"ReceiptClassified\", \"ReceiptEvaluated\"]));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "2 Revisions",
+      "description": "The same receipt with different content is a new revision; the old one stays.",
+      "item": [
+        {
+          "name": "Submit the same receipt with another amount",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));",
+                  "pm.test(\"a new revision\", () => {",
+                  "  pm.expect(pm.response.json().outcome).to.eql(\"revision\");",
+                  "  pm.expect(pm.response.json().revision).to.eql(2);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Revision 1 is superseded and still readable",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/revisions/1",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "revisions",
+                "1"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"superseded, with its evaluation\", () => {",
+                  "  pm.expect(pm.response.json().status).to.eql(\"superseded\");",
+                  "  pm.expect(pm.response.json().evaluations.length).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for revision 2",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(body.revision === 2 && [\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"revision 2 is current and evaluated from scratch\", () => {",
+                  "  pm.expect(body.revision).to.eql(2);",
+                  "  pm.expect(body.evaluation_version).to.eql(1);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The trail records the superseded revision",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "events"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json().items.map(e => e.type);",
+                  "pm.test(\"RevisionSuperseded is in the trail\", () =>",
+                  "  pm.expect(types).to.include(\"RevisionSuperseded\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "3 Batches",
+      "description": "Partial success is normal: bad rows are reported, the others proceed.",
+      "item": [
+        {
+          "name": "Submit a batch with a bad row",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 207\", () => pm.response.to.have.status(207));",
+                  "const body = pm.response.json();",
+                  "pm.collectionVariables.set(\"batchId\", body.batch_id);",
+                  "pm.test(\"row 2 is invalid and named, the others are accepted\", () => {",
+                  "  pm.expect(body.items.map(i => i.outcome)).to.eql(",
+                  "    [\"accepted\", \"invalid\", \"accepted\"]);",
+                  "  pm.expect(body.items[1].row).to.eql(2);",
+                  "  pm.expect(body.items[1].error).to.include(\"not valid JSON\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit the same batch again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 207\", () => pm.response.to.have.status(207));",
+                  "pm.test(\"every good row already exists, no new work\", () =>",
+                  "  pm.expect(pm.response.json().items.map(i => i.outcome)).to.eql(",
+                  "    [\"existing\", \"invalid\", \"existing\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for the batch to be processed",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/batches/{{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches",
+                "{{batchId}}"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(!(\"submitted\" in body.counts) && !(\"classifying\" in body.counts));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"two receipts at rest and one invalid row\", () => {",
+                  "  pm.expect(body.total).to.eql(3);",
+                  "  pm.expect(body.counts.invalid).to.eql(1);",
+                  "  pm.expect(body.counts.auto_approved).to.eql(2);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List the receipts of the batch",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?batch_id={{batchId}}",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "batch_id",
+                  "value": "{{batchId}}"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"two receipts\", () => pm.expect(pm.response.json().total).to.eql(2));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "4 Cross-receipt re-evaluation",
+      "description": "Two meals for one employee-day break the daily cap only together (40 + 50 > 75, MEAL-01). The first receipt is evaluated again when the second lands.",
+      "item": [
+        {
+          "name": "Submit meal A (40.00)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-A\",\n  \"employee_id\": \"PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 40.0,\n  \"total_amount_usd\": 40.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-A-L1\",\n      \"description_raw\": \"Grilled salmon entree\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 40.0,\n      \"amount\": 40.0,\n      \"amount_usd\": 40.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for meal A alone",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"A alone passes\", () => {",
+                  "  pm.expect(body.state).to.eql(\"auto_approved\");",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.not.include(\"MEAL-01\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Submit meal B (50.00, same employee and day)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-B\",\n  \"employee_id\": \"PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-B-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for A to be evaluated again",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(body.evaluation_version === 2 && [\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"aEval\", body.evaluation_version);",
+                  "pm.test(\"MEAL-01 now appears on A, which returns to the queue with a notice\", () => {",
+                  "  pm.expect(body.state).to.eql(\"in_review\");",
+                  "  pm.expect(body.disposition).to.eql(\"flag\");",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.include(\"MEAL-01\");",
+                  "  pm.expect(body.notice).to.include(\"re-evaluation\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for B",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-B",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-B"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"bEval\", body.evaluation_version);",
+                  "pm.test(\"MEAL-01 appears on B too, as in the batch run\", () => {",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.include(\"MEAL-01\");",
+                  "  pm.expect(body.evaluation_version).to.eql(1);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A's trail shows the notice",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A",
+                "events"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json().items.map(e => e.type);",
+                  "pm.test(\"evaluated twice and a notice raised\", () => {",
+                  "  pm.expect(types.filter(t => t === \"ReceiptEvaluated\").length).to.eql(2);",
+                  "  pm.expect(types).to.include(\"NoticeRaised\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "5 Reviewer actions on the flagged pair",
+      "description": "Meals A and B (employee E1) are flagged together. Approve or reject, correct a category. Every action is an event and an auditor_agreement score.",
+      "item": [
+        {
+          "name": "Approve a flagged receipt without a reason is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{aEval}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A/actions/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A",
+                "actions",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is reason_required\", () => pm.expect(pm.response.json().error.code).to.eql(\"reason_required\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "A stale evaluation version is refused",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": 99\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A/actions/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A",
+                "actions",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error code is stale_evaluation\", () => pm.expect(pm.response.json().error.code).to.eql(\"stale_evaluation\"));",
+                  "pm.test(\"says which version is current\", () =>",
+                  "  pm.expect(pm.response.json().error.details.current_evaluation_version).to.eql(Number(pm.collectionVariables.get(\"aEval\"))));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Correct a category: the engine runs again",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{aEval}},\n  \"line_id\": \"PM-{{run}}-MEAL-A-L1\",\n  \"category\": \"lodging\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A/actions/correct-category",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A",
+                "actions",
+                "correct-category"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const body = pm.response.json();",
+                  "const before = Number(pm.collectionVariables.get(\"aEval\"));",
+                  "pm.test(\"new evaluation version with the human category\", () => {",
+                  "  pm.expect(body.evaluation_version).to.eql(before + 1);",
+                  "  pm.expect(body.result.line_items[0].category).to.eql(\"lodging\");",
+                  "  pm.expect(body.result.line_items[0].confidence).to.eql(1);",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.not.include(\"MEAL-01\");",
+                  "  pm.expect(body.agreement).to.eql(0);",
+                  "  pm.expect(body.notice).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The correction made the line a dev-set candidate",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-A/events",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-A",
+                "events"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "const types = pm.response.json().items.map(e => e.type);",
+                  "pm.test(\"corrected and marked\", () => {",
+                  "  pm.expect(types).to.include(\"LineCategoryCorrected\");",
+                  "  pm.expect(types).to.include(\"DevCandidateMarked\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for B to be evaluated again after the correction",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-B",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-B"
+              ]
+            },
+            "description": "The correction queued B's re-evaluation, because A and B share an employee-day."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(body.evaluation_version === 2);",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"B lost MEAL-01 and, untouched, follows the new proposal silently\", () => {",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.not.include(\"MEAL-01\");",
+                  "  pm.expect(body.state).to.eql(\"auto_approved\");",
+                  "  pm.expect(body.notice).to.eql(null);",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve is not allowed on an auto-approved receipt",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/actions/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "actions",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error code is action_not_allowed\", () => pm.expect(pm.response.json().error.code).to.eql(\"action_not_allowed\"));",
+                  "pm.test(\"lists what is allowed\", () =>",
+                  "  pm.expect(pm.response.json().error.details.allowed).to.eql([\"reject\"]));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Rejecting it overrides the engine: a reason is required",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": 1\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/actions/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "actions",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is reason_required\", () => pm.expect(pm.response.json().error.code).to.eql(\"reason_required\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Reject it with a reason code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": 1,\n  \"reason_code\": \"engine_missed_issue\",\n  \"note\": \"the merchant is not an approved vendor\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-OFFICE/actions/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-OFFICE",
+                "actions",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"rejected, and the override is counted as disagreement\", () => {",
+                  "  pm.expect(pm.response.json().state).to.eql(\"rejected\");",
+                  "  pm.expect(pm.response.json().agreement).to.eql(0);",
+                  "  pm.expect(pm.response.json().allowed_actions).to.eql([]);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "6 Escalation, information requests, and a decision that comes back",
+      "description": "Meals C and D (employee E2) are flagged together. C is escalated, D is asked for information. D's answer resolves the finding, and C, already acted on, returns to review.",
+      "item": [
+        {
+          "name": "Submit meals C and D as a batch",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receipt_id\": \"PM-{{run}}-MEAL-C\", \"employee_id\": \"PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 40.0, \"total_amount_usd\": 40.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-C-L1\", \"description_raw\": \"Grilled salmon entree\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 40.0, \"amount\": 40.0, \"amount_usd\": 40.0}]}\n{\"receipt_id\": \"PM-{{run}}-MEAL-D\", \"employee_id\": \"PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 50.0, \"total_amount_usd\": 50.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-D-L1\", \"description_raw\": \"Iced tea\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 50.0, \"amount\": 50.0, \"amount_usd\": 50.0}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for D",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-D",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-D"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"dEval\", body.evaluation_version);",
+                  "pm.test(\"D is in review with MEAL-01\", () => {",
+                  "  pm.expect(body.state).to.eql(\"in_review\");",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.include(\"MEAL-01\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for C",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-C",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-C"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"cEval\", body.evaluation_version);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escalate C to Compliance",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{cEval}},\n  \"reason\": \"possible split bill\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-C/actions/escalate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-C",
+                "actions",
+                "escalate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"with Compliance, in agreement with the engine\", () => {",
+                  "  pm.expect(pm.response.json().state).to.eql(\"compliance\");",
+                  "  pm.expect(pm.response.json().agreement).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Escalating again is not allowed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{cEval}},\n  \"reason\": \"again\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-C/actions/escalate",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-C",
+                "actions",
+                "escalate"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error code is action_not_allowed\", () => pm.expect(pm.response.json().error.code).to.eql(\"action_not_allowed\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Request information about D",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{dEval}},\n  \"question\": \"Who attended?\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-D/actions/request-info",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-D",
+                "actions",
+                "request-info"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"waiting for the employee\", () =>",
+                  "  pm.expect(pm.response.json().state).to.eql(\"needs_info\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "The employee answers: a new revision of D",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-D\",\n  \"employee_id\": \"PM-{{run}}-E2\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": 2,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-D-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));",
+                  "pm.test(\"revision 2, back to the start\", () => {",
+                  "  pm.expect(pm.response.json().outcome).to.eql(\"revision\");",
+                  "  pm.expect(pm.response.json().state).to.eql(\"submitted\");",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for D's answer to be evaluated",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-D",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-D"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(body.revision === 2 && [\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.test(\"two attendees: the daily total is within the cap\", () => {",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.not.include(\"MEAL-01\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for C to be evaluated again",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-C",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-C"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean(body.evaluation_version === 2);",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"cEval\", body.evaluation_version);",
+                  "pm.test(\"C acted on, so it returns to review with a notice\", () => {",
+                  "  pm.expect(body.state).to.eql(\"in_review\");",
+                  "  pm.expect(body.notice).to.include(\"after your decision\");",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.not.include(\"MEAL-01\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approve C: it now passes, so no reason is needed",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{cEval}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-MEAL-C/actions/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-MEAL-C",
+                "actions",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"approved in agreement, the notice is cleared\", () => {",
+                  "  pm.expect(pm.response.json().state).to.eql(\"approved\");",
+                  "  pm.expect(pm.response.json().agreement).to.eql(1);",
+                  "  pm.expect(pm.response.json().notice).to.eql(null);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "7 Critical findings and unknowns",
+      "description": "A critical finding goes straight to Compliance.",
+      "item": [
+        {
+          "name": "Submit two gifts to a government official",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/x-ndjson"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\"receipt_id\": \"PM-{{run}}-GIFT\", \"employee_id\": \"PM-{{run}}-E3\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 85.0, \"total_amount_usd\": 85.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 85.0, \"amount\": 85.0, \"amount_usd\": 85.0}]}\n{\"receipt_id\": \"PM-{{run}}-GIFT-2\", \"employee_id\": \"PM-{{run}}-E4\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 90.0, \"total_amount_usd\": 90.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-2-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 90.0, \"amount\": 90.0, \"amount_usd\": 90.0}]}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/batches",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "batches"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 202\", () => pm.response.to.have.status(202));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for the first gift",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"gEval\", body.evaluation_version);",
+                  "pm.test(\"GIFT-04 is critical, so the receipt is with Compliance\", () => {",
+                  "  pm.expect(body.state).to.eql(\"compliance\");",
+                  "  pm.expect(body.result.exceptions.map(e => e.rule_id)).to.include(\"GIFT-04\");",
+                  "  pm.expect(body.allowed_actions).to.not.include(\"escalate\");",
+                  "});",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Wait for the second gift",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT-2",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT-2"
+              ]
+            },
+            "description": "Polls until the worker has processed the receipt."
+          },
+          "event": [
+            {
+              "listen": "prerequest",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "setTimeout(function () {}, 1200);"
+                ]
+              }
+            },
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "const body = pm.response.json();",
+                  "const key = \"polls \" + pm.info.requestName;",
+                  "const polls = Number(pm.collectionVariables.get(key) || 0) + 1;",
+                  "const done = Boolean([\"auto_approved\", \"in_review\", \"compliance\"].includes(body.state));",
+                  "if (!done && polls < 40) {",
+                  "  pm.collectionVariables.set(key, polls);",
+                  "  postman.setNextRequest(pm.info.requestName);",
+                  "} else {",
+                  "  pm.collectionVariables.unset(key);",
+                  "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
+                  "pm.collectionVariables.set(\"g2Eval\", body.evaluation_version);",
+                  "}"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Approving the flagged gift needs a reason",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{gEval}}\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT/actions/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT",
+                "actions",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is reason_required\", () => pm.expect(pm.response.json().error.code).to.eql(\"reason_required\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compliance approves it with a reason code",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{gEval}},\n  \"reason_code\": \"policy_exception_granted\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT/actions/approve",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT",
+                "actions",
+                "approve"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"approved, an override of the engine\", () => {",
+                  "  pm.expect(pm.response.json().state).to.eql(\"approved\");",
+                  "  pm.expect(pm.response.json().agreement).to.eql(0);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Compliance rejects the second gift",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"actor\": \"alice\",\n  \"evaluation_version\": {{g2Eval}},\n  \"note\": \"anti-corruption policy\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT-2/actions/reject",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT-2",
+                "actions",
+                "reject"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"rejected, in agreement\", () => {",
+                  "  pm.expect(pm.response.json().state).to.eql(\"rejected\");",
+                  "  pm.expect(pm.response.json().agreement).to.eql(1);",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Retry a receipt that did not fail",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-GIFT/retry",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-GIFT",
+                "retry"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 409\", () => pm.response.to.have.status(409));",
+                  "pm.test(\"error code is action_not_allowed\", () => pm.expect(pm.response.json().error.code).to.eql(\"action_not_allowed\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "Unknown receipt",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts/PM-{{run}}-DOES-NOT-EXIST",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts",
+                "PM-{{run}}-DOES-NOT-EXIST"
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
+                  "pm.test(\"error code is not_found\", () => pm.expect(pm.response.json().error.code).to.eql(\"not_found\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List what is still waiting for a person",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?state=in_review&limit=5",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "state",
+                  "value": "in_review"
+                },
+                {
+                  "key": "limit",
+                  "value": "5"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"a list with a total\", () =>",
+                  "  pm.expect(pm.response.json().total).to.be.a(\"number\"));"
+                ]
+              }
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

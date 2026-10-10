@@ -56,8 +56,9 @@ when an evaluation is built.
 ### `evaluations`
 
 `(receipt_id, revision, version, result, result_hash, created_at)`; `result` is the
-`ReceiptResult` JSON the batch run would write; `result_hash` is the hash of
-`(disposition, exceptions, review_signals)` (R5). Versions count from 1 per revision.
+`ReceiptResult` JSON the batch run would write; `result_hash` is the hash of what a reviewer sees: the
+disposition, exceptions, review signals and how each line was classified (R5, ADR 0007 amendment 4);
+the run metadata is not part of it. Versions count from 1 per revision.
 
 ### `events` (append-only, source of truth)
 
@@ -77,20 +78,22 @@ when an evaluation is built.
 | `id` | autoincrement |
 | `receipt_id`, `revision` | |
 | `stage` | `classify` or `evaluate` |
-| `state` | `pending`, `claimed`, `done`, `cancelled` |
+| `state` | `pending`, `claimed`, `done`, `cancelled`, `failed` |
 | `lease_until` | nullable; set on claim |
 | `attempts` | incremented on claim |
 | `last_error` | nullable |
 | `created_at` | |
 
-A partial unique index on `(receipt_id, revision, stage) WHERE state IN ('pending','claimed')`
-keeps at most one open item per stage.
+A partial unique index on `(receipt_id, revision, stage) WHERE state = 'pending'`
+keeps at most one waiting item per stage. A new one may be queued while one runs, so a change that
+lands during an evaluation is never lost (ADR 0007 amendment 1).
 
 ### `batches` and `batch_items`
 
 `batches(batch_id, created_at, total)`; `batch_items(batch_id, row, receipt_id, outcome, error)`
 with `outcome` one of `accepted`, `existing`, `revision`, `invalid`, `duplicate_in_batch`. The
-batch summary joins `batch_items` to `receipts.state`.
+batch summary counts accepted rows by the state of their receipt, and the other rows under their
+outcome, so no receipt is counted twice.
 
 ## Lifecycle
 
@@ -100,7 +103,7 @@ submitted ──► classifying ──► (evaluated) ─┬─ pass ───�
     │                                       └─ critical ───────► compliance
     │                                                          │
   new revision                  in_review ─ approve ─► approved
-                                          ─ reject ──► rejected
+                                          ─ reject ──► rejected  (also from needs_info and auto_approved)
                                           ─ request-info ─► needs_info ──(revision)──► submitted
                                           ─ escalate ──► compliance
                                 compliance ─ approve / reject / request-info

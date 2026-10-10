@@ -193,6 +193,47 @@ The only entry to the store is `parse_receipt_line` (or its dict equivalent). Th
 submits the 32 receipts through the API using the same stripping path as `epv run`, then scans
 the database, every endpoint's response and the trace inputs for the answer keys.
 
+## Amendments made during implementation (2026-10-10)
+
+Each one refines a decision above after the code or a test showed a gap. None changes the engine.
+
+1. **D1, the outbox index covers only `pending` items.** With `pending` and `claimed` covered, a
+   cascade that queued an `evaluate` while that receipt's evaluation was running would have been
+   dropped as a duplicate, and the running evaluation might have read the state before the
+   change (a lost update). A new item may now be queued while one runs. The evaluate stage is one
+   transaction, so its read and its write cannot be separated by another writer.
+2. **D1, every billed classification is saved at once.** The answer cache is written after each
+   billed call (`PersistingClassifier`) and replaced atomically, because a worker can be killed at
+   any line of a receipt. Two workers must not share one cache file (the AWS design replaces the
+   file with a table).
+3. **D6, the cascade has two triggers**: a receipt finishing classification, and a reviewer's
+   category correction. Both queue an `evaluate` for every classified receipt that shares a key.
+4. **D7, the "changed result" signature also covers how each line was classified.** The
+   disposition, exceptions and review signals alone would let a category correction that happens to
+   leave the findings equal produce no new version, but FR-023 asks for one. The notice text says
+   "after your decision" when a reviewer had acted on the receipt, and "after a re-evaluation"
+   otherwise.
+5. **D8, a category correction re-runs the engine inside the action's own transaction**, not
+   through the outbox. The response already carries the new evaluation version, and no "result
+   changed" notice is raised for a change the reviewer caused. After a correction the receipt
+   stays with a human (`in_review`, or `compliance` if a critical finding remains) even if it
+   would now pass. The re-run reuses the run metadata of the receipt's latest evaluation.
+6. **D9, the ordinal in the human classification's cache key is the event's sequence number.**
+7. **D10, `request-info` and `escalate` are scored like the other actions**: 1 when the proposal was
+   `review` or `flag`, 0 when it was `pass`.
+8. **D11, only a stored evaluation version gets a decision trace.** An evaluation that leaves the
+   result unchanged records nothing, so it has nothing to observe. Labels are
+   `app-r<revision>-c` (classification) and `app-r<revision>-v<version>` (decision).
+9. **D3, batches have no key of their own.** Each valid row follows the receipt rules, so
+   resubmitting a batch is idempotent per receipt, and each submission is a new batch record. A
+   batch has at most 1000 rows. A row that is valid JSON but not an object is an invalid row.
+10. **D13, `epv serve` runs the API; `--with-worker` also runs a worker thread.** Both accept
+    `--offline`, `--no-trace` and `--cache`. `epv openapi` prints the API's OpenAPI document, which
+    is committed as `docs/api/openapi.json` with a test against drift.
+11. **Failure reasons are scrubbed.** A stage failure stores the exception type and a message with
+    key-like tokens redacted and the length bounded, so a provider's error text cannot put a key
+    in the store.
+
 ## Consequences
 
 - The engine, retriever and disposition logic are untouched; `outputs/results.jsonl` is unchanged

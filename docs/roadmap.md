@@ -107,7 +107,7 @@ application beyond Streamlit. ADR 0006 records the intake and lifecycle decision
 | Iteration | Release | Content |
 |---|---|---|
 | 2.1 · intake in the viewer | v0.2.1 | Streamlit page to upload one receipt (JSON) or a batch (JSONL), run the existing pipeline on it (traced, cached, answer keys stripped by the loader) and show the results. **Done 2026-10-10** (`specs/003-intake-viewer/spec.md`) |
-| 3 · intake and lifecycle backend | v0.3.0 | Event store, idempotent single and batch intake with revisions, worker that resumes after a crash, cross-receipt re-evaluation, reviewer actions, Langfuse `auditor_agreement` scores. Postman collection and environment under `docs/api/`. Tests: idempotency, crash-resume, cascade, parity with `epv run` |
+| 3 · intake and lifecycle backend | v0.3.0 | Event store, idempotent single and batch intake with revisions, worker that resumes after a crash, cross-receipt re-evaluation, reviewer actions, Langfuse `auditor_agreement` scores. Postman collection and environment under `docs/api/`. Tests: idempotency, crash-resume, cascade, parity with `epv run`. **Built 2026-10-10** (`specs/004-backend-lifecycle/`, ADR 0007): `epv serve`, `epv worker`, `epv openapi`; the 32 receipts through the API equal `epv run` byte for byte in 10 arrival orders; 51 Postman requests with 99 assertions pass against a live offline server |
 | 4 · application | v0.4.0 | React + Vite front on the API with the Ledgerline design: intake, queue and workbench, compliance, receipt timeline, insights, and an evaluation area with a demonstrative comparison of gpt-oss-120b, gpt-oss-20b and jev-1.13 |
 | 5 · delivery package | v1.0.0 | The scope below, plus the engine adjustments from Luis's review |
 

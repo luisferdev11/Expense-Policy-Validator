@@ -257,6 +257,13 @@ def _add_worker_options(parser: argparse.ArgumentParser) -> None:
     )
 
 
+def _cmd_openapi(args: argparse.Namespace) -> int:
+    from expense_validator.app.composition import openapi_document
+
+    print(json.dumps(openapi_document(), indent=2, sort_keys=True))
+    return 0
+
+
 def _cmd_view(args: argparse.Namespace) -> int:
     app = REPO_ROOT / "viewer" / "app.py"
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
@@ -273,6 +280,9 @@ def main(argv: list[str] | None = None) -> int:
     run.set_defaults(func=_cmd_run)
     sub.add_parser("eval", help="score committed results").set_defaults(func=_cmd_eval)
     sub.add_parser("view", help="launch the Streamlit viewer").set_defaults(func=_cmd_view)
+    sub.add_parser("openapi", help="print the API's OpenAPI document").set_defaults(
+        func=_cmd_openapi
+    )
     serve = sub.add_parser("serve", help="run the HTTP API")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)

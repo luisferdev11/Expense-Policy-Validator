@@ -31,7 +31,8 @@ decisions:
       28-receipt run; report how often it fired and its cost; argue a higher production threshold.
       Applied to the cached response so re-runs decide identically.
     config:
-      exc03.threshold: 0.5  # provisional for iteration 1 (spec clarification); chosen on dev in iteration 2
+      exc03.threshold: 0.95  # E7 winner on the frozen dev set (ADR 0005); 0.5 was provisional
+      exc03.threshold_status: chosen_on_dev
     status: decided
   - id: A4
     rule_ids: [HEALTH-01]

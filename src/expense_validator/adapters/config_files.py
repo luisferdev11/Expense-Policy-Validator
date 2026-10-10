@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import csv
 import hashlib
+from dataclasses import dataclass
 from datetime import date
 from decimal import Decimal
 from pathlib import Path
@@ -43,6 +44,7 @@ def load_settings(decisions_file: Path = DECISIONS_FILE, config_dir: Path = CONF
         fx_rate_kind=str(config["fx.rate_kind"]),
         fx_missing_rate_disposition=str(config["fx.missing_rate_disposition"]),
         exc03_threshold=Decimal(str(config["exc03.threshold"])),
+        exc03_threshold_status=str(config.get("exc03.threshold_status", "provisional")),
         reference_prefixes={str(k): str(v) for k, v in config["reference_prefixes"].items()},
         decision_ids=tuple(str(d["id"]) for d in decisions),
         home_currency={
@@ -53,6 +55,32 @@ def load_settings(decisions_file: Path = DECISIONS_FILE, config_dir: Path = CONF
             date.fromisoformat(row["date"]): Decimal(row["eur_to_usd"])
             for row in _rows(config_dir / "eur_rates.csv")
         },
+    )
+
+
+@dataclass(frozen=True)
+class PipelineConfig:
+    """The iteration 2 winners (ADR 0005): which pin classifies, and how its answers are read."""
+
+    classifier_model: str
+    confidence_source: str
+    translate: bool
+    null_subtype_as_none: bool
+    version: str
+
+
+PIPELINE_FILE = CONFIG_DIR / "pipeline.yaml"
+
+
+def load_pipeline_config(path: Path = PIPELINE_FILE) -> PipelineConfig:
+    raw = path.read_bytes()
+    data: dict[str, Any] = yaml.safe_load(raw)
+    return PipelineConfig(
+        classifier_model=str(data["classifier_model"]),
+        confidence_source=str(data["confidence_source"]),
+        translate=bool(data["translate"]),
+        null_subtype_as_none=bool(data["null_subtype_as_none"]),
+        version=hashlib.sha256(raw).hexdigest()[:12],
     )
 
 

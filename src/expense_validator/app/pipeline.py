@@ -11,7 +11,7 @@ from __future__ import annotations
 
 from collections.abc import Sequence
 
-from expense_validator.adapters.config_files import rules_version
+from expense_validator.adapters.config_files import PipelineConfig, rules_version
 from expense_validator.domain.engine.context import build_context
 from expense_validator.domain.engine.evaluate import evaluate
 from expense_validator.domain.engine.settings import Settings
@@ -28,7 +28,9 @@ from expense_validator.ports.classifier import ItemClassifier, build_request
 from expense_validator.ports.tracer import Tracer
 
 
-def run_metadata(classifier: ItemClassifier, settings: Settings) -> RunMetadata:
+def run_metadata(
+    classifier: ItemClassifier, settings: Settings, config: PipelineConfig | None = None
+) -> RunMetadata:
     return RunMetadata(
         classifier=classifier.name,
         model_id=classifier.model_id,
@@ -36,7 +38,11 @@ def run_metadata(classifier: ItemClassifier, settings: Settings) -> RunMetadata:
         prompt_version=classifier.prompt_version,
         rules_version=rules_version(),
         exc03_threshold=float(settings.exc03_threshold),
-        exc03_threshold_status="provisional",
+        exc03_threshold_status="chosen_on_dev"
+        if settings.exc03_threshold_status == "chosen_on_dev"
+        else "provisional",
+        confidence_source=config.confidence_source if config else "self_reported",
+        pipeline_config_version=config.version if config else None,
     )
 
 
@@ -78,11 +84,12 @@ def run_pipeline(
     tracer: Tracer,
     settings: Settings,
     run_label: str,
+    config: PipelineConfig | None = None,
 ) -> list[ReceiptResult]:
     ordered = sorted(receipts, key=lambda r: r.receipt_id)
     classified = [classify_receipt(r, classifier, tracer, run_label) for r in ordered]
     context = build_context(classified, settings)
-    meta = run_metadata(classifier, settings)
+    meta = run_metadata(classifier, settings, config)
     results: list[ReceiptResult] = []
     for cr in classified:
         with tracer.receipt_trace(

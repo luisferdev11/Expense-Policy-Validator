@@ -112,9 +112,9 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 6: User Story 4, Apply the winners and report once (P2)
 
-- [ ] T024 [US4] Write `docs/decisions/0005-iteration-2-decisions.md` from `outputs/eval/experiments.json`: each winner, its margin, and the configuration it sets
-- [ ] T025 [P] [US4] Write a test that `adapters/config_files.py` reads `config/pipeline.yaml` (`classifier_model`, `confidence_source`, `translate`, `null_subtype_as_none`). `RunMetadata` records `confidence_source`, `pipeline_config_version` and `exc03_threshold_status == "chosen_on_dev"`
-- [ ] T026 [US4] Implement `config/pipeline.yaml` and its reading. Wire the settings through `app/cli.py` and `app/pipeline.py`. Set `exc03.threshold` in `policy_decisions.yaml` to E7's value, with status `chosen_on_dev`.
+- [x] T024 [US4] Write `docs/decisions/0005-iteration-2-decisions.md` from `outputs/eval/experiments.json`: each winner, its margin, and the configuration it sets
+- [x] T025 [P] [US4] Write a test that `adapters/config_files.py` reads `config/pipeline.yaml` (`classifier_model`, `confidence_source`, `translate`, `null_subtype_as_none`). `RunMetadata` records `confidence_source`, `pipeline_config_version` and `exc03_threshold_status == "chosen_on_dev"`
+- [x] T026 [US4] Implement `config/pipeline.yaml` and its reading. Wire the settings through `app/cli.py` and `app/pipeline.py`. Set `exc03.threshold` in `policy_decisions.yaml` to E7's value, with status `chosen_on_dev`.
   - **Only if E5 won:** add a `Translator` port and the pipeline step.
   - **Only if agreement won E7:** add an `AgreementClassifier` adapter.
 

@@ -225,6 +225,8 @@ class RunMetadata(_Frozen):
     rules_version: str
     exc03_threshold: float
     exc03_threshold_status: Literal["provisional", "chosen_on_dev"]
+    confidence_source: str = "self_reported"
+    pipeline_config_version: str | None = None
 
 
 class ReceiptResult(_Frozen):

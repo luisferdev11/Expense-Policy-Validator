@@ -316,6 +316,25 @@ we are running out of time, don't get stuck on small things.
 Tags `v0.1.0` (iteration 1) and `v0.1.1` (iteration 1.1) were published as GitHub releases;
 T031 now ends with `v0.2.0`.
 
+## 2026-10-10: "Let us load new data, and think about what happens after a review"
+
+Luis, translated:
+
+```
+We have an artifact that was more or less the interface proposal; with Ledgerline we could get
+something very good, and it is not the last word. To show the application, let us allow loading
+new data, one by one or in batches. We need to know how we face this, it is a backend matter,
+the event-related idea we talked about: an order can be saved even though the user gets an error.
+If they retry, do we create another order? Do we show the existing one? Do we know where the
+operation stopped? Also: if receipts are sent to review, what does the user get, what happens
+after we classify, or after a review? Use this session to define these parts; another session
+starts from that plan.
+```
+
+The answers (revisions for a changed receipt, re-evaluation of affected receipts, four reviewer
+actions, Streamlit intake first, then the backend with Postman collections, then the front)
+are in ADR 0006 and `docs/plans/2026-10-10-product-plan.md`.
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

@@ -99,7 +99,19 @@ RCP-012 to review, which led to ignoring CoreWeave (ADR 0004, amendment); iterat
 up as a failure case of the provider stage. Carried forward: a larger dev set to separate
 gpt-oss-20b (half the cost, one item behind) from the reference.
 
-## Iteration 3: delivery package
+## Iterations 2.1 to 5 (planned 2026-10-10)
+
+Luis asked for a real product before delivery: loading new receipts, a review lifecycle, and an
+application beyond Streamlit. ADR 0006 records the intake and lifecycle decisions. Order of work:
+
+| Iteration | Release | Content |
+|---|---|---|
+| 2.1 · intake in the viewer | v0.2.1 | Streamlit page to upload one receipt (JSON) or a batch (JSONL), run the existing pipeline on it (traced, cached, answer keys stripped by the loader) and show the results |
+| 3 · intake and lifecycle backend | v0.3.0 | Event store, idempotent single and batch intake with revisions, worker that resumes after a crash, cross-receipt re-evaluation, reviewer actions, Langfuse `auditor_agreement` scores. Postman collection and environment under `docs/api/`. Tests: idempotency, crash-resume, cascade, parity with `epv run` |
+| 4 · application | v0.4.0 | React + Vite front on the API with the Ledgerline design: intake, queue and workbench, compliance, receipt timeline, insights, and an evaluation area with a demonstrative comparison of gpt-oss-120b, gpt-oss-20b and jev-1.13 |
+| 5 · delivery package | v1.0.0 | The scope below, plus the engine adjustments from Luis's review |
+
+## Iteration 5: delivery package
 
 **Scope.**
 - The README, at most 2 pages, with the brief's sections.

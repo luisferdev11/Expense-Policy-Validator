@@ -12,8 +12,8 @@ from __future__ import annotations
 from collections.abc import Sequence
 
 from expense_validator.adapters.config_files import PipelineConfig, rules_version
+from expense_validator.app.decide import decide_receipt
 from expense_validator.domain.engine.context import build_context
-from expense_validator.domain.engine.evaluate import evaluate
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.domain.models import (
     ClassifiedReceipt,
@@ -22,8 +22,6 @@ from expense_validator.domain.models import (
     RunMetadata,
 )
 from expense_validator.domain.normaliser import normalise
-from expense_validator.domain.reporter import report
-from expense_validator.domain.retriever import retrieve
 from expense_validator.ports.classifier import ItemClassifier, build_request
 from expense_validator.ports.tracer import Tracer
 
@@ -90,20 +88,4 @@ def run_pipeline(
     classified = [classify_receipt(r, classifier, tracer, run_label) for r in ordered]
     context = build_context(classified, settings)
     meta = run_metadata(classifier, settings, config)
-    results: list[ReceiptResult] = []
-    for cr in classified:
-        with tracer.receipt_trace(
-            cr.receipt.receipt_id, run_label, input=None, name="decide-receipt"
-        ) as root:
-            with tracer.span("retrieve-rules") as span:
-                ruleset = retrieve(cr)
-                span.update(output=list(ruleset.rule_ids))
-            with tracer.span("apply-rules", input=list(ruleset.rule_ids)) as span:
-                findings = evaluate(cr, context, ruleset, settings)
-                span.update(output=findings.model_dump(mode="json"))
-            with tracer.span("report-exceptions") as span:
-                result = report(cr, findings, meta)
-                span.update(output=[e.explanation for e in result.exceptions])
-            root.update(output=result.model_dump(mode="json"))
-        results.append(result)
-    return results
+    return [decide_receipt(cr, context, meta, settings, tracer, run_label) for cr in classified]

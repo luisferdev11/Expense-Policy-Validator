@@ -82,6 +82,18 @@ def _complete(results: Mapping[str, Rows]) -> None:
             raise IncompleteRunError(f"{name}: {len(missing)} gateway errors, re-run it first")
 
 
+def _loss(v: dict[str, Any]) -> str:
+    if v["status"] == "excluded":
+        sv = v["schema_violations"]
+        return f"excluded: {sv['k']}/{sv['n']} schema violations, over 2 %"
+    if v["status"] == "fails_a6a9_guard":
+        return f"more than 2 extra A6/A9 items wrong ({v['a6a9_wrong']}/{v['a6a9_n']})"
+    lo = v["difference"]["interval"][0]
+    if lo <= -0.02:
+        return f"non-inferiority not shown: bootstrap lower bound {lo} < -0.02"
+    return f"restricted F1 {v['restricted_f1']} below the reference's minus 0.01"
+
+
 def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
     _complete(results)
     ref = results[REFERENCE]
@@ -146,7 +158,7 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
         "variants": variants,
         "winner": winner,
         "why_others_lost": {
-            v["variant"]: v["status"] if v["variant"] not in qualifying else "more expensive"
+            v["variant"]: _loss(v) if v["variant"] not in qualifying else "more expensive"
             for v in variants
             if v["variant"] != winner
         },
@@ -311,6 +323,51 @@ def _load(path: Path) -> list[dict[str, Any]]:
     return [json.loads(x) for x in path.read_text(encoding="utf-8").splitlines() if x]
 
 
+def _frac(p: dict[str, Any]) -> str:
+    return f"{p['k']}/{p['n']}"
+
+
+def _evidence(o: dict[str, Any]) -> str:
+    if o["id"] == "E14":
+        (w,) = [v for v in o["variants"] if v["variant"] == o["winner"]]
+        return f"accuracy {_frac(w['accuracy'])}, restricted F1 {w['restricted_f1']}"
+    if o["id"] == "E7":
+        brier = o["sources"][o["winner"]]["brier"]
+        return f"threshold {o['threshold']}, Brier {brier}, fires on {_frac(o['fires_on_dev'])}"
+    if o["id"] == "E5":
+        orig, trans = (v["accuracy"] for v in o["variants"])
+        return f"original {_frac(orig)}, translate {_frac(trans)}, McNemar p {o['mcnemar']['p']}"
+    if o["id"] == "E15":
+        return f"{o['observed']} null subtypes in {o['n']} answers, {o['fixed']} fixed"
+    return f"{o['differences']} differences on {o['n']} receipts"
+
+
+def _why(o: dict[str, Any]) -> dict[str, str]:
+    if o["id"] == "E7":
+        return {
+            name: f"higher Brier ({s['brier']})"
+            for name, s in o["sources"].items()
+            if name != o["winner"]
+        }
+    if o["id"] == "RET":
+        return {"all_rules": "same findings, harder to explain"} if o["differences"] == 0 else {}
+    return dict(o.get("why_others_lost") or {})
+
+
+def table(outcomes: Sequence[dict[str, Any]]) -> list[dict[str, str]]:
+    """One row per experiment, for the report and the viewer."""
+    return [
+        {
+            "experiment": o["id"],
+            "factor": o["factor"],
+            "winner": str(o["winner"]),
+            "evidence": _evidence(o),
+            "why_others_lost": "; ".join(f"{k}: {v}" for k, v in sorted(_why(o).items())),
+        }
+        for o in outcomes
+    ]
+
+
 def main() -> int:
     items = load_frozen()
     e14_rows = {p.stem: _load(p) for p in sorted((RESULTS / "E14").glob("*.jsonl"))}
@@ -323,16 +380,13 @@ def main() -> int:
         e15(e14_rows, items),
         ret(json.loads((RESULTS / "RET" / "check.json").read_text(encoding="utf-8"))),
     ]
-    spend = sum(
-        json.loads(x).get("cost_usd") or 0.0
-        for p in sorted((RESULTS / "cache").glob("*.jsonl"))
-        for x in p.read_text(encoding="utf-8").splitlines()
-        if x
-    )
+    kept = [*e14_rows.values(), _load(RESULTS / "E5" / "translate.jsonl")]
+    spend = sum(r.get("cost_usd") or 0.0 for rows in kept for r in rows)
     doc = {
         "dev_set_sha256": frozen_hash(),
         "experiments": outcomes,
-        "spend_usd": round(spend, 6),
+        "table": table(outcomes),
+        "spend_usd_of_kept_answers": round(spend, 6),
     }
     EVAL_DIR.mkdir(parents=True, exist_ok=True)
     (EVAL_DIR / "experiments.json").write_text(

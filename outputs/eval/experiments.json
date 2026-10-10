@@ -149,9 +149,9 @@
         }
       ],
       "why_others_lost": {
-        "gemma-3-12b": "worse",
-        "gpt-oss-20b": "worse",
-        "qwen3.5-9b": "excluded"
+        "gemma-3-12b": "non-inferiority not shown: bootstrap lower bound -0.1231 < -0.02",
+        "gpt-oss-20b": "non-inferiority not shown: bootstrap lower bound -0.0615 < -0.02",
+        "qwen3.5-9b": "excluded: 4/130 schema violations, over 2 %"
       },
       "winner": "gpt-oss-120b"
     },
@@ -892,5 +892,42 @@
       "winner": "trigger_map"
     }
   ],
-  "spend_usd": 0.051358
+  "spend_usd_of_kept_answers": 0.032099,
+  "table": [
+    {
+      "evidence": "accuracy 123/130, restricted F1 0.9912",
+      "experiment": "E14",
+      "factor": "item classifier model",
+      "why_others_lost": "gemma-3-12b: non-inferiority not shown: bootstrap lower bound -0.1231 < -0.02; gpt-oss-20b: non-inferiority not shown: bootstrap lower bound -0.0615 < -0.02; qwen3.5-9b: excluded: 4/130 schema violations, over 2 %",
+      "winner": "gpt-oss-120b"
+    },
+    {
+      "evidence": "threshold 0.95, Brier 0.06014, fires on 6/128",
+      "experiment": "E7",
+      "factor": "EXC-03 confidence source and threshold",
+      "why_others_lost": "agreement_120b_20b: higher Brier (0.0625)",
+      "winner": "self_reported"
+    },
+    {
+      "evidence": "original 54/56, translate 54/56, McNemar p 1.0",
+      "experiment": "E5",
+      "factor": "translation before classification",
+      "why_others_lost": "translate: no evidence of a gain at this N",
+      "winner": "original"
+    },
+    {
+      "evidence": "2 null subtypes in 520 answers, 0 fixed",
+      "experiment": "E15",
+      "factor": "reading \"subtype\": null as \"none\"",
+      "why_others_lost": "null_as_none: no net fix",
+      "winner": "strict"
+    },
+    {
+      "evidence": "0 differences on 47 receipts",
+      "experiment": "RET",
+      "factor": "policy retriever",
+      "why_others_lost": "all_rules: same findings, harder to explain",
+      "winner": "trigger_map"
+    }
+  ]
 }

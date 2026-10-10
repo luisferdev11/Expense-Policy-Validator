@@ -17,7 +17,7 @@ from eval.compare import compare
 from eval.metrics import system_metrics
 from eval.oracle import attribute, oracle_rows
 from eval.scope import OUT_OF_SCOPE
-from expense_validator.adapters.results_files import load_results
+from expense_validator.adapters.results_files import load_experiments, load_results
 from expense_validator.paths import BASELINES_DIR
 
 KEYWORD_CLASSIFIER = BASELINES_DIR / "keyword_classifier" / "results.jsonl"
@@ -107,6 +107,24 @@ def _matrix(cm: dict[str, Any]) -> list[str]:
     for label, values in zip(cm["labels"], cm["matrix"], strict=True):
         out.append(f"| {label} | " + " | ".join(str(v) for v in values) + " |")
     return out
+
+
+def _experiments(rows: list[dict[str, str]]) -> list[str]:
+    lines = [
+        "## Experiments, decided on the synthetic dev set",
+        "",
+        "Each rule was registered and approved before its run; the 28 scored receipts informed "
+        "no choice (ADR 0005, `outputs/eval/experiments.json`).",
+        "",
+        "| Experiment | Factor | Winner | Evidence | Why the others lost |",
+        "|---|---|---|---|---|",
+    ]
+    for r in rows:
+        lines.append(
+            f"| {r['experiment']} | {r['factor']} | {r['winner']} | {r['evidence']} | "
+            f"{r['why_others_lost'] or '-'} |"
+        )
+    return [*lines, ""]
 
 
 def _oracle(o: dict[str, Any]) -> list[str]:
@@ -201,6 +219,7 @@ def _render(metrics: dict[str, Any]) -> str:
         f"{reg04['n']} REG-04 exceptions.",
         "",
         *(_oracle(metrics["oracle"]) if "oracle" in metrics else []),
+        *(_experiments(metrics["experiments"]) if metrics.get("experiments") else []),
         "## Base rate",
         "",
     ]
@@ -251,6 +270,7 @@ def run_eval(
         "run": results[0].run.model_dump(mode="json") if results else {},
         "systems": systems,
         "oracle": attribute(rows["pipeline"], oracle_rows()),
+        "experiments": load_experiments().get("table", []),
         "base_rate": base_rate_table(
             fp=p["false_positives"]["value"],
             n_pass=p["false_positives"]["n"],

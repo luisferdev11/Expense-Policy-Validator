@@ -7,7 +7,7 @@ from typing import Any
 
 import pytest
 
-from eval.experiments.decide import IncompleteRunError, e5, e7, e14, e15, ret
+from eval.experiments.decide import IncompleteRunError, e5, e7, e14, e15, ret, table
 
 N = 60
 
@@ -148,6 +148,19 @@ def test_e7_picks_lower_brier_and_a_threshold_by_the_rule() -> None:
     out = e7(winner, winner, rows({1, 2, 3}), items())
     assert out["winner"] == "self_reported"
     assert out["threshold"] == 0.9
+
+
+def test_the_table_has_one_row_per_experiment_with_winner_and_evidence() -> None:
+    outcomes = [
+        e14({"gpt-oss-120b": rows(set()), "gpt-oss-20b": rows({1, 2}, 0.0)}, items()),
+        e15({"gpt-oss-120b": rows(set())}, items()),
+        ret({"cases": 45, "differences": 0}),
+    ]
+    out = table(outcomes)
+    assert [r["experiment"] for r in out] == ["E14", "E15", "RET"]
+    assert out[0]["winner"] == "gpt-oss-120b" and "60/60" in out[0]["evidence"]
+    assert "gpt-oss-20b" in out[0]["why_others_lost"]
+    assert "0 differences on 45" in out[2]["evidence"]
 
 
 def test_ret_keeps_the_trigger_map_when_identical() -> None:

@@ -96,6 +96,18 @@ The same pipeline code, fed each line's answer category with confidence 1.0 (res
 | RCP-012 | flag | review | flag | classification |
 | RCP-022 | flag | flag | pass | oracle_limitation |
 
+## Experiments, decided on the synthetic dev set
+
+Each rule was registered and approved before its run; the 28 scored receipts informed no choice (ADR 0005, `outputs/eval/experiments.json`).
+
+| Experiment | Factor | Winner | Evidence | Why the others lost |
+|---|---|---|---|---|
+| E14 | item classifier model | gpt-oss-120b | accuracy 123/130, restricted F1 0.9912 | gemma-3-12b: non-inferiority not shown: bootstrap lower bound -0.1231 < -0.02; gpt-oss-20b: non-inferiority not shown: bootstrap lower bound -0.0615 < -0.02; qwen3.5-9b: excluded: 4/130 schema violations, over 2 % |
+| E7 | EXC-03 confidence source and threshold | self_reported | threshold 0.95, Brier 0.06014, fires on 6/128 | agreement_120b_20b: higher Brier (0.0625) |
+| E5 | translation before classification | original | original 54/56, translate 54/56, McNemar p 1.0 | translate: no evidence of a gain at this N |
+| E15 | reading "subtype": null as "none" | strict | 2 null subtypes in 520 answers, 0 fixed | null_as_none: no net fix |
+| RET | policy retriever | trigger_map | 0 differences on 47 receipts | all_rules: same findings, harder to explain |
+
 ## Base rate
 
 Measured on this dataset: false-positive rate 0.0 % (N = 9 should-pass receipts) and detection rate 93.8 % (N = 16 should-flag receipts). Per 10,000 receipts:

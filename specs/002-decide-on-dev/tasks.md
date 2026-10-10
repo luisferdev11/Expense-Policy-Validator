@@ -120,7 +120,7 @@ piece. Adapters get contract tests with fake transports.
 
   Each conditional piece comes with its own tests first.
 - [x] T027 [US4] Finalist run: `uv run epv run` (once), `uv run epv run --classifier keyword`, `uv run epv eval`. Commit the outputs with an `exp:` commit that records the model, config, spend and 28-receipt results
-- [ ] T028 [US4] Add the experiments table to `eval/report.py`, and an "Experiments" view to `viewer/app.py`, both from `experiments.json`. Extend `tests/smoke/test_viewer.py` to cover the new view
+- [x] T028 [US4] Add the experiments table to `eval/report.py`, and an "Experiments" view to `viewer/app.py`, both from `experiments.json`. Extend `tests/smoke/test_viewer.py` to cover the new view
 
 ## Phase 7: Polish and checkpoint
 

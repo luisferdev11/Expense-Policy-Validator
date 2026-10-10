@@ -294,6 +294,28 @@ Two follow-ups during the run:
 - The remaining plan is iteration 1.1 (the refactor), iteration 2 (decide on dev), iteration 3
   (delivery package), and Sunday for rehearsal only.
 
+## 2026-10-09: "No more DeepInfra; everything is plain OpenRouter"
+
+During the E14 runs, DeepInfra rate-limited gemma-3-12b (HTTP 429). Luis's instruction, translated:
+
+```
+Stop trying DeepInfra, everything is plain OpenRouter now. I'll leave the keys commented out.
+```
+
+Asked how to route, he chose OpenRouter's own routing with the serving provider recorded on every
+call, and a re-run of all four E14 models under it. Recorded in ADR 0004 and E14's `amendment_2`.
+
+## 2026-10-09: "A release per finished iteration"
+
+```
+I want a release for every finished iteration, so I can easily show how we progressed between
+versions, what each one included and how we reached the final product. Focus on real progress,
+we are running out of time, don't get stuck on small things.
+```
+
+Tags `v0.1.0` (iteration 1) and `v0.1.1` (iteration 1.1) were published as GitHub releases;
+T031 now ends with `v0.2.0`.
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

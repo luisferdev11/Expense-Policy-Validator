@@ -219,7 +219,11 @@ iteration_2:
     factor: item classifier model
     variants: [gpt-oss-120b, gpt-oss-20b, qwen3.5-9b, gemma-3-12b]
     reference: gpt-oss-120b
-    held_fixed: prompt cls-v2, deepinfra/bf16 pins, temperature 0, strict parser
+    held_fixed: prompt cls-v2, OpenRouter routing with the serving provider recorded, temperature 0, strict parser
+    amendment_2: >-
+      2026-10-09, before any accuracy was computed: DeepInfra rate-limited gemma-3-12b, so the
+      deepinfra/bf16 pin became OpenRouter routing (ADR 0004). All four models re-run under it;
+      the DeepInfra runs decide nothing. Approved by Luis.
     metrics: >-
       Category accuracy (primary) with Wilson intervals; restricted F1; subtype and recipient-kind
       accuracy on the items that exercise A6/A9; McNemar exact b/c; paired bootstrap of the

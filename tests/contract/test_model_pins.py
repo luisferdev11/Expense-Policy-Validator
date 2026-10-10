@@ -13,7 +13,7 @@ from expense_validator.adapters.openrouter.classifier import OpenRouterClassifie
 from expense_validator.adapters.openrouter.models import PINS, REFERENCE
 from expense_validator.adapters.openrouter.prompt import PROMPT_VERSION
 from expense_validator.domain.models import ClassifierRequest
-from expense_validator.paths import CLASSIFICATIONS_FILE
+from expense_validator.paths import CLASSIFICATIONS_FILE, RESULTS_FILE
 from tests.fakes import RecordingTracer
 
 REQ = ClassifierRequest(description_clean="Club sandwich", merchant_name="Diner", mcc=5812)
@@ -65,8 +65,8 @@ def test_each_pin_sends_its_model_endpoint_and_temperature(name: str, tmp_path: 
     payload = payload_for(name, tmp_path)
     assert payload["model"] == PINS[name].model_id
     assert payload["temperature"] == 0
-    assert payload["extra_body"]["provider"]["order"] == ["deepinfra/bf16"]
-    assert payload["extra_body"]["provider"]["allow_fallbacks"] is False
+    assert PINS[name].endpoint == "openrouter"
+    assert "order" not in payload["extra_body"]["provider"]
 
 
 def test_reasoning_settings_per_pin(tmp_path: Path) -> None:
@@ -76,9 +76,15 @@ def test_reasoning_settings_per_pin(tmp_path: Path) -> None:
     assert "reasoning" not in payload_for("gemma-3-12b", tmp_path)["extra_body"]
 
 
-def test_cache_keys_differ_per_pin_and_the_reference_keys_are_unchanged() -> None:
+def test_cache_keys_differ_per_pin_and_routing() -> None:
     keys = {cache_key(REQ, p.model_id, p.endpoint, PROMPT_VERSION) for p in PINS.values()}
     assert len(keys) == 4
+    pinned = cache_key(REQ, REFERENCE.model_id, "deepinfra/bf16", PROMPT_VERSION)
+    assert pinned not in keys
+
+
+def test_the_committed_cache_matches_the_committed_run() -> None:
     committed = [json.loads(x) for x in CLASSIFICATIONS_FILE.read_text().splitlines() if x]
-    assert all(row["model_id"] == REFERENCE.model_id for row in committed)
-    assert all(row["provider_endpoint"] == REFERENCE.endpoint for row in committed)
+    run = json.loads(RESULTS_FILE.read_text().splitlines()[0])["run"]
+    assert {row["model_id"] for row in committed} == {run["model_id"]}
+    assert {row["provider_endpoint"] for row in committed} == {run["provider_endpoint"]}

@@ -1,10 +1,10 @@
 """OpenRouter adapter for the ItemClassifier port (research R3, FR-025, FR-026).
 
-Ported from explorations/lib/budget.py: one pinned endpoint per ModelPin with no fallbacks,
-temperature 0, the pin's reasoning setting, the strict cls-v2 schema, the billed cost from
-`usage.cost`, and a spend cap checked before every billed call. Every billed call is one
-`classify-item` generation; a cache hit is not a call and produces none. The key is read from
-the environment and never logged.
+Ported from explorations/lib/budget.py: the pin's model through OpenRouter's routing (ADR 0004),
+the serving provider recorded on every answer, temperature 0, the pin's reasoning setting, the
+strict cls-v2 schema, the billed cost from `usage.cost`, and a spend cap checked before every
+billed call. Every billed call is one `classify-item` generation; a cache hit is not a call and
+produces none. The key is read from the environment and never logged.
 """
 
 from __future__ import annotations
@@ -44,13 +44,8 @@ KEY_ENV = "OPENROUTER_API_KEY"
 
 
 def provider(pin: ModelPin) -> dict[str, Any]:
-    """One endpoint, no fallbacks, only endpoints honouring every parameter, no data storage."""
-    return {
-        "order": [pin.endpoint],
-        "allow_fallbacks": False,
-        "require_parameters": True,
-        "data_collection": "deny",
-    }
+    """OpenRouter routes, among providers honouring every parameter and storing no data."""
+    return {"require_parameters": True, "data_collection": "deny"}
 
 
 Transport = Callable[[dict[str, Any]], tuple[dict[str, Any], str]]
@@ -141,6 +136,7 @@ class OpenRouterClassifier:
             prompt_tokens=entry.prompt_tokens if entry else None,
             completion_tokens=entry.completion_tokens if entry else None,
             cache_hit=cache_hit,
+            served_by=entry.served_by if entry else None,
         )
 
     def _unclassified(self, line_id: str, key: str, reason: str) -> Classification:
@@ -252,6 +248,7 @@ class OpenRouterClassifier:
             prompt_tokens=prompt_tokens,
             completion_tokens=completion_tokens,
             reasoning=reasoning,
+            served_by=body.get("provider"),
         )
         self.cache.put(entry)
         return self._from_entry(line_id, entry, cache_hit=False)

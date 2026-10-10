@@ -22,8 +22,9 @@ retriever, policy engine and exception reporter.
    decision rule written before running. The 28 in-scope receipts run once per finalist.
 6. **Honest measurement.** Every metric is reported with its N. Every number in the README is
    reproducible from committed outputs with one command and no model calls.
-7. **Reproducibility.** Temperature 0, pinned model ID and provider, versioned prompts. Every
-   result records the model ID and prompt version.
+7. **Reproducibility.** Temperature 0, pinned model ID, versioned prompts. Calls go through
+   OpenRouter's routing (ADR 0004). Every result records the model ID, the provider that served
+   it and the prompt version.
 8. **Separation of components.** Each component lives in its own module behind a typed
    interface. The package is layered (ADR 0003): `domain/` is pure and does no I/O, `ports/`
    holds the interfaces, `adapters/` touches the outside world, `app/` composes them. The classifier never sees the declared expense type or the attendee count.

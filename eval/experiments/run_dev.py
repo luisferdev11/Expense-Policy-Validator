@@ -100,6 +100,7 @@ def run_variant(
                 "cache_hit": c.source.cache_hit,
                 "translation": translation,
                 "unclassified_reason": c.unclassified_reason,
+                "served_by": c.source.served_by,
             }
             root.update(
                 output={"predicted": row["category"], "expected": item.get("category")},

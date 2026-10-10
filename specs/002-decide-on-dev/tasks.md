@@ -112,7 +112,7 @@ piece. Adapters get contract tests with fake transports.
 
 ## Phase 6: User Story 4, Apply the winners and report once (P2)
 
-- [ ] T024 [US4] Write `docs/decisions/0004-iteration-2-decisions.md` from `outputs/eval/experiments.json`: each winner, its margin, and the configuration it sets
+- [ ] T024 [US4] Write `docs/decisions/0005-iteration-2-decisions.md` from `outputs/eval/experiments.json`: each winner, its margin, and the configuration it sets
 - [ ] T025 [P] [US4] Write a test that `adapters/config_files.py` reads `config/pipeline.yaml` (`classifier_model`, `confidence_source`, `translate`, `null_subtype_as_none`). `RunMetadata` records `confidence_source`, `pipeline_config_version` and `exc03_threshold_status == "chosen_on_dev"`
 - [ ] T026 [US4] Implement `config/pipeline.yaml` and its reading. Wire the settings through `app/cli.py` and `app/pipeline.py`. Set `exc03.threshold` in `policy_decisions.yaml` to E7's value, with status `chosen_on_dev`.
   - **Only if E5 won:** add a `Translator` port and the pipeline step.
@@ -126,7 +126,7 @@ piece. Adapters get contract tests with fake transports.
 
 - [ ] T029 [P] Update `AI_NOTES.md` with this iteration's mistakes, and `docs/ai/prompt-log.md` with its prompts
 - [ ] T030 [P] Update `docs/roadmap.md`: iteration 2 exit criteria ticked, with evidence
-- [ ] T031 **Decide-on-dev done:** run every scenario in `specs/002-decide-on-dev/quickstart.md`, then run `uv run pre-commit run -a` and `uv run pytest`. Open the PR with a pass list per scenario, and merge it
+- [ ] T031 **Decide-on-dev done:** run every scenario in `specs/002-decide-on-dev/quickstart.md`, then run `uv run pre-commit run -a` and `uv run pytest`. Open the PR with a pass list per scenario, merge it, then tag `v0.2.0` on the merge commit and publish its GitHub release (what it includes, the results with N, what changed from v0.1.1)
 
 ## Dependencies
 

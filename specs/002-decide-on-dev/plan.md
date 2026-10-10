@@ -18,7 +18,7 @@ of 130 synthetic items. Each choice follows a decision rule registered before it
 - **the retriever.**
 
 An oracle ablation inside the evaluation attributes each error on the 28 receipts to a stage.
-The winners are applied through configuration (ADR 0004), the finalist runs once, and an
+The winners are applied through configuration (ADR 0005), the finalist runs once, and an
 experiments table joins the report and the viewer.
 
 ## Technical Context
@@ -60,7 +60,7 @@ dev-set freezing, the parser option, oracle attribution, the experiments table. 
 |---|---|---|---|
 | I. Labels evaluation-only | The dev set is synthetic. The oracle reads answers only inside `eval/`. Experiment code never touches the receipts' answers | ✅ | ✅ |
 | II. Deterministic decisions | The engine is unchanged. Each decision rule is deterministic code over committed results, with a seeded bootstrap | ✅ | ✅ |
-| III. Policy text is the source of truth | No rule changes. The configuration changes cite their experiments (ADR 0004) | ✅ | ✅ |
+| III. Policy text is the source of truth | No rule changes. The configuration changes cite their experiments (ADR 0005) | ✅ | ✅ |
 | IV. Evidence or nothing | Unchanged | ✅ | ✅ |
 | V. Decide on dev, report on test | The rules are registered and approved before any call. The 28 receipts run once per finalist | ✅ | ✅ |
 | VI. Honest measurement | N, Wilson intervals, bootstrap and McNemar on every metric. Partial or failed variants are reported as such | ✅ | ✅ |
@@ -109,7 +109,7 @@ explorations/
 
 config/pipeline.yaml                   # NEW (R11)
 viewer/app.py                          # an Experiments view
-docs/decisions/0004-iteration-2-decisions.md   # winners, written after the decisions
+docs/decisions/0005-iteration-2-decisions.md   # winners, written after the decisions
 ```
 
 **Structure decision.** The experiment scripts live in `eval/experiments/`. The session's
@@ -133,7 +133,7 @@ to `explorations/results/iter2/`. The domain does not change.
 2. **Draft the registrations** for Luis's approval.
 3. **Gate:** Luis finishes the label review. Then freeze the set and approve the rules.
 4. **Run** E14 (4 pins), then E5, then E15 and E7 offline, then the retriever check.
-5. **`decide.py`,** then ADR 0004, then apply the configuration.
+5. **`decide.py`,** then ADR 0005, then apply the configuration.
 6. **The finalist run** on the 28 receipts, then eval, then the viewer.
 
 ## Complexity Tracking

@@ -85,7 +85,7 @@ rationale and the alternatives considered.
 
   The variant classifies the translated text with cls-v2. It runs only on non-English items
   (clarification).
-  - **If E5 wins,** a `Translator` port is added and the pipeline gets the step (ADR 0004).
+  - **If E5 wins,** a `Translator` port is added and the pipeline gets the step (ADR 0005).
   - **If it loses,** no port is added. The constitution forbids unused interfaces.
 
 ## R7. E15, null subtype
@@ -133,7 +133,7 @@ rationale and the alternatives considered.
 
 ## R11. Applying the winners
 
-- **Decision:** ADR 0004 records each winner. Settings live in two places:
+- **Decision:** ADR 0005 records each winner. Settings live in two places:
   - **`config/pipeline.yaml`**, read by `adapters/config_files.py`: the classifier pin, the
     confidence source, translation on or off, and the null-subtype parsing;
   - **`policy_decisions.yaml`**: `exc03.threshold`, with its status `chosen_on_dev`, carried

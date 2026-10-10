@@ -86,7 +86,7 @@ def test_one_row_per_item_with_every_field_and_one_trace_each(tmp_path: Path) ->
     fields = {
         "item_id", "variant", "model_id", "prompt_version", "status", "category", "restricted",
         "confidence", "subtype", "recipient_kind", "recipient_name", "raw_content",
-        "request_id", "cost_usd", "cache_hit", "translation", "unclassified_reason",
+        "request_id", "cost_usd", "cache_hit", "translation", "unclassified_reason", "served_by",
     }  # fmt: skip
     assert set(rows[0]) == fields
     assert rows[0]["category"] == "alcohol" and rows[0]["raw_content"].startswith("{")

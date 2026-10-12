@@ -9,6 +9,7 @@ processes, share the file. The log of events is protected from update and delete
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sqlite3
 from collections.abc import Callable, Collection, Iterator, Sequence
@@ -29,10 +30,12 @@ from expense_validator.ports.store import (
     BatchRecord,
     EvaluationRecord,
     EventRecord,
+    ListOrder,
     ReceiptRecord,
     RevisionRecord,
     SubmissionRecord,
     WorkItem,
+    stamp,
 )
 
 SCHEMA_VERSION = 2
@@ -174,9 +177,54 @@ _V2_DDL = (
 Migration = Callable[[sqlite3.Connection], None]
 
 
+class MigrationError(RuntimeError):
+    """A migration step found data it cannot carry over; the file stays at its old schema."""
+
+
+log = logging.getLogger(__name__)
+
+
 def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
     for statement in _V2_DDL:
         conn.execute(statement)
+    _backfill_created_at(conn)
+    _normalise_updated_at(conn)
+
+
+def _backfill_created_at(conn: sqlite3.Connection) -> None:
+    """`created_at` is the earliest revision's time (data-model.md 3.3). A receipt with no
+    revision at all cannot exist, so one stops the migration; one whose revision 1 is gone takes
+    the earliest revision that remains, and is logged."""
+    orphans = conn.execute(
+        "SELECT receipt_id FROM receipts r WHERE NOT EXISTS"
+        " (SELECT 1 FROM revisions v WHERE v.receipt_id = r.receipt_id) ORDER BY receipt_id"
+    ).fetchall()
+    if orphans:
+        names = ", ".join(row[0] for row in orphans)
+        raise MigrationError(f"receipts with no revision, cannot date them: {names}")
+    for row in conn.execute(
+        "SELECT receipt_id FROM receipts r WHERE NOT EXISTS"
+        " (SELECT 1 FROM revisions v WHERE v.receipt_id = r.receipt_id AND v.revision = 1)"
+    ).fetchall():
+        log.warning("migration 1 to 2: %s has no revision 1; created_at uses its earliest", row[0])
+    conn.execute(
+        "UPDATE receipts SET created_at = (SELECT MIN(v.created_at) FROM revisions v"
+        " WHERE v.receipt_id = receipts.receipt_id)"
+    )
+
+
+def _normalise_updated_at(conn: sqlite3.Connection) -> None:
+    """Rewrite every `updated_at` in the one format of `stamp` (data-model.md 3.4). Done in
+    Python: SQLite's `strftime` cannot keep microseconds and the offset together."""
+    for receipt_id, text in conn.execute("SELECT receipt_id, updated_at FROM receipts").fetchall():
+        try:
+            fixed = stamp(datetime.fromisoformat(text))
+        except ValueError as exc:
+            raise MigrationError(f"{receipt_id}: updated_at {text!r} is not a timestamp") from exc
+        if fixed != text:
+            conn.execute(
+                "UPDATE receipts SET updated_at = ? WHERE receipt_id = ?", (fixed, receipt_id)
+            )
 
 
 # Steps in order: (the version a step produces, the step). A file at schema N runs every step
@@ -194,7 +242,7 @@ def utc_now() -> datetime:
 
 def _ts(moment: datetime) -> str:
     """Fixed-width UTC text, so comparisons in SQL are comparisons in time."""
-    return moment.astimezone(UTC).isoformat(timespec="microseconds")
+    return stamp(moment)
 
 
 def _receipt(row: sqlite3.Row) -> ReceiptRecord:
@@ -210,6 +258,7 @@ def _receipt(row: sqlite3.Row) -> ReceiptRecord:
         failed_stage=row["failed_stage"],
         failed_reason=row["failed_reason"],
         updated_at=row["updated_at"],
+        created_at=row["created_at"],
     )
 
 
@@ -222,6 +271,14 @@ def _evaluation(row: sqlite3.Row) -> EvaluationRecord:
         result_hash=row["result_hash"],
         created_at=row["created_at"],
     )
+
+
+# ORDER BY clauses by name: the only text that reaches the query, never the caller's value.
+_ORDERS: dict[str, str] = {
+    "receipt_id": "receipt_id",
+    "created_at": "created_at, receipt_id",
+    "updated_at": "updated_at, receipt_id",
+}
 
 
 class SqliteTx:
@@ -268,10 +325,11 @@ class SqliteTx:
         return None if found is None else _receipt(found)
 
     def put_receipt(self, record: ReceiptRecord) -> None:
+        # `created_at` is inserted and never updated: an upsert leaves it as it was.
         self._c.execute(
             "INSERT INTO receipts (receipt_id, current_revision, state, disposition,"
             " evaluation_version, human_acted, notice, qa_sample, failed_stage, failed_reason,"
-            " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            " updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             " ON CONFLICT (receipt_id) DO UPDATE SET current_revision = excluded.current_revision,"
             " state = excluded.state, disposition = excluded.disposition,"
             " evaluation_version = excluded.evaluation_version,"
@@ -290,6 +348,7 @@ class SqliteTx:
                 record.failed_stage,
                 record.failed_reason,
                 record.updated_at,
+                record.created_at,
             ),
         )
 
@@ -301,7 +360,10 @@ class SqliteTx:
         batch_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order: ListOrder = "receipt_id",
     ) -> tuple[list[ReceiptRecord], int]:
+        if order not in _ORDERS:
+            raise ValueError(f"order must be one of {', '.join(_ORDERS)}, got {order!r}")
         where: list[str] = []
         args: list[Any] = []
         if state is not None:
@@ -316,7 +378,7 @@ class SqliteTx:
         clause = f" WHERE {' AND '.join(where)}" if where else ""
         total = self._c.execute(f"SELECT COUNT(*) FROM receipts{clause}", args).fetchone()[0]
         rows = self._c.execute(
-            f"SELECT * FROM receipts{clause} ORDER BY receipt_id LIMIT ? OFFSET ?",
+            f"SELECT * FROM receipts{clause} ORDER BY {_ORDERS[order]} LIMIT ? OFFSET ?",
             [*args, limit, offset],
         ).fetchall()
         return [_receipt(r) for r in rows], int(total)

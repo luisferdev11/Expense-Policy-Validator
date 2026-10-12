@@ -26,7 +26,7 @@ from expense_validator.domain.models import (
     RunMetadata,
 )
 from expense_validator.domain.review import apply_corrections, qa_sampled
-from expense_validator.ports.store import ReceiptRecord, StoreTx
+from expense_validator.ports.store import ReceiptRecord, StoreTx, stamp
 
 
 @dataclass(frozen=True)
@@ -111,7 +111,7 @@ def record_evaluation(
             qa_sample=state == "auto_approved" and qa_sampled(rid, revision),
             failed_stage=None,
             failed_reason=None,
-            updated_at=now.isoformat(),
+            updated_at=stamp(now),
         )
     )
     tx.append_event(

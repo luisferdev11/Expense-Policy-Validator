@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -138,6 +139,55 @@ def test_the_list_filters_and_paginates(client: TestClient) -> None:
     assert page["total"] == 3 and [i["receipt_id"] for i in page["items"]] == ["SYN-2"]
     assert client.get("/receipts", params={"state": "approved"}).json()["total"] == 0
     assert client.get("/receipts", params={"limit": 0}).status_code == 422
+
+
+def test_summary_and_detail_carry_created_at_in_the_one_timestamp_format(
+    client: TestClient,
+) -> None:
+    post(client, raw())
+    summary = client.get("/receipts").json()["items"][0]
+    detail = client.get("/receipts/SYN-1").json()
+    assert summary["created_at"] == detail["created_at"]
+    assert len(summary["created_at"]) == len(summary["updated_at"]) == 32
+    assert summary["created_at"].endswith("+00:00")
+
+
+def test_created_at_stays_when_a_revision_arrives_and_updated_at_moves(
+    tmp_path: Path,
+) -> None:
+    clock = StepClock(step=timedelta(0))
+    app = create_app(ReceiptService(SqliteStore(tmp_path / "epv.sqlite3"), clock))
+    client = TestClient(app)
+    post(client, raw())
+    clock.advance(timedelta(seconds=60))
+    post(client, raw(amount="99.00"))
+    body = client.get("/receipts/SYN-1").json()
+    assert body["revision"] == 2
+    assert body["created_at"] == "2026-10-10T12:00:00.000000+00:00"
+    assert body["updated_at"] == "2026-10-10T12:01:00.000000+00:00"
+    assert client.get("/receipts/SYN-1/revisions/2").json()["created_at"] == body["updated_at"]
+
+
+def test_the_list_orders_by_created_at_or_updated_at(tmp_path: Path) -> None:
+    clock = StepClock(step=timedelta(seconds=1))
+    client = TestClient(create_app(ReceiptService(SqliteStore(tmp_path / "epv.sqlite3"), clock)))
+    for rid in ("SYN-B", "SYN-A", "SYN-C"):
+        post(client, raw(receipt_id=rid))
+    post(client, raw(receipt_id="SYN-B", amount="99.00"))  # B is updated last
+
+    def ids(order: str | None) -> list[str]:
+        params = {} if order is None else {"order": order}
+        return [i["receipt_id"] for i in client.get("/receipts", params=params).json()["items"]]
+
+    assert ids(None) == ids("receipt_id") == ["SYN-A", "SYN-B", "SYN-C"]
+    assert ids("created_at") == ["SYN-B", "SYN-A", "SYN-C"]
+    assert ids("updated_at") == ["SYN-A", "SYN-C", "SYN-B"]
+
+
+def test_an_unknown_order_is_a_422_in_the_error_shape(client: TestClient) -> None:
+    response = client.get("/receipts", params={"order": "bogus"})
+    assert response.status_code == 422
+    assert response.json()["error"]["code"] == "invalid_request"
 
 
 def test_unknown_routes_and_methods_use_the_error_shape(client: TestClient) -> None:

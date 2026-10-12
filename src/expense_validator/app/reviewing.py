@@ -55,7 +55,7 @@ from expense_validator.domain.lifecycle import (
 from expense_validator.domain.models import Disposition, RunMetadata
 from expense_validator.domain.review import REASON_CODES, agreement, requires_reason
 from expense_validator.domain.taxonomy import CATEGORIES
-from expense_validator.ports.store import Clock, ReceiptRecord, ReceiptStore, StoreTx
+from expense_validator.ports.store import Clock, ReceiptRecord, ReceiptStore, StoreTx, stamp
 from expense_validator.ports.tracer import Tracer
 
 AGREEMENT_SCORE = "auditor_agreement"
@@ -179,7 +179,7 @@ class ReviewService:
                 state=state_after_action(action),
                 human_acted=True,
                 notice=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
             )
         )
 

@@ -14,12 +14,11 @@ import json
 import sqlite3
 from collections.abc import Iterator
 from contextlib import closing, contextmanager
-from datetime import UTC
 from pathlib import Path
 
 from expense_validator.adapters.sqlite_store import BUSY_TIMEOUT_MS
 from expense_validator.domain.models import CacheEntry
-from expense_validator.ports.store import Clock
+from expense_validator.ports.store import Clock, stamp
 
 
 class SqliteClassificationCache:
@@ -45,9 +44,6 @@ class SqliteClassificationCache:
         finally:
             conn.close()
 
-    def _stamp(self) -> str:
-        return self._clock().astimezone(UTC).isoformat(timespec="microseconds")
-
     def _insert(self, conn: sqlite3.Connection, entry: CacheEntry, seeded: bool) -> bool:
         cursor = conn.execute(
             "INSERT INTO classification_cache (cache_key, entry, model_id, prompt_version,"
@@ -60,7 +56,7 @@ class SqliteClassificationCache:
                 entry.prompt_version,
                 entry.cost_usd,
                 int(seeded),
-                self._stamp(),
+                stamp(self._clock()),
             ),
         )
         return cursor.rowcount == 1

@@ -33,11 +33,13 @@ from expense_validator.ports.store import (
     Clock,
     EvaluationRecord,
     EventRecord,
+    ListOrder,
     ReceiptRecord,
     ReceiptStore,
     RevisionRecord,
     StoreTx,
     SubmissionRecord,
+    stamp,
 )
 
 SYSTEM = "system"
@@ -137,7 +139,7 @@ class ReceiptService:
                 state=state,
                 failed_stage=None,
                 failed_reason=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
             )
             tx.put_receipt(updated)
             tx.append_event(
@@ -170,6 +172,7 @@ class ReceiptService:
         batch_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order: ListOrder = "receipt_id",
     ) -> tuple[list[ReceiptRecord], int]:
         with self.store.transaction(write=False) as tx:
             return tx.list_receipts(
@@ -178,6 +181,7 @@ class ReceiptService:
                 batch_id=batch_id,
                 limit=limit,
                 offset=offset,
+                order=order,
             )
 
     def list_events(self, receipt_id: str) -> list[EventRecord]:
@@ -281,7 +285,8 @@ class ReceiptService:
                 qa_sample=False,
                 failed_stage=None,
                 failed_reason=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
+                created_at=stamp(now) if current is None else current.created_at,
             )
         )
         tx.enqueue(rid, revision, "classify", now)

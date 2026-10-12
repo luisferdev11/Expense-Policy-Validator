@@ -100,6 +100,10 @@
             "title": "Allowed Actions",
             "type": "array"
           },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
           "disposition": {
             "anyOf": [
               {
@@ -190,6 +194,7 @@
           "notice",
           "qa_sample",
           "updated_at",
+          "created_at",
           "failed",
           "receipt",
           "result",
@@ -266,6 +271,10 @@
             "title": "Counts",
             "type": "object"
           },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
           "items": {
             "items": {
               "$ref": "#/components/schemas/BatchItem"
@@ -281,6 +290,7 @@
         "required": [
           "batch_id",
           "total",
+          "created_at",
           "counts",
           "items"
         ],
@@ -431,6 +441,10 @@
             "title": "Allowed Actions",
             "type": "array"
           },
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
           "disposition": {
             "anyOf": [
               {
@@ -521,6 +535,7 @@
           "notice",
           "qa_sample",
           "updated_at",
+          "created_at",
           "failed",
           "receipt",
           "result",
@@ -552,6 +567,10 @@
       },
       "ReceiptSummary": {
         "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
           "disposition": {
             "anyOf": [
               {
@@ -614,7 +633,8 @@
           "evaluation_version",
           "notice",
           "qa_sample",
-          "updated_at"
+          "updated_at",
+          "created_at"
         ],
         "title": "ReceiptSummary",
         "type": "object"
@@ -918,6 +938,21 @@
               "minimum": 0,
               "title": "Offset",
               "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "order",
+            "required": false,
+            "schema": {
+              "default": "receipt_id",
+              "enum": [
+                "receipt_id",
+                "created_at",
+                "updated_at"
+              ],
+              "title": "Order",
+              "type": "string"
             }
           }
         ],

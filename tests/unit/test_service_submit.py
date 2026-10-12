@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import json
 from concurrent.futures import ThreadPoolExecutor
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from decimal import Decimal
 from pathlib import Path
 
@@ -18,6 +18,7 @@ from expense_validator.app.errors import (
 )
 from expense_validator.app.service import ReceiptService
 from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded
+from expense_validator.ports.store import stamp
 from tests.fakes import StepClock
 from tests.support import FIXTURE
 from tests.support import receipt_json as raw
@@ -43,6 +44,21 @@ def test_a_new_receipt_is_stored_before_any_work_and_queued(
         events = tx.list_events("SYN-1")
         assert [type(e.event) for e in events] == [ReceiptSubmitted]
         assert tx.open_work_count() == 1
+
+
+def test_created_at_is_the_first_revisions_time_and_updated_at_follows_the_last(
+    store: SqliteStore,
+) -> None:
+    clock = StepClock(step=timedelta(0))
+    service = ReceiptService(store, clock)
+    first = clock.now
+    service.submit(raw())
+    clock.advance(timedelta(seconds=60))
+    service.submit(raw(amount="99.00"))
+    record = service.get_receipt("SYN-1").record
+    assert record.current_revision == 2
+    assert record.created_at == stamp(first)
+    assert record.updated_at == stamp(first + timedelta(seconds=60))
 
 
 def test_the_same_receipt_twice_is_one_receipt_and_one_processing(

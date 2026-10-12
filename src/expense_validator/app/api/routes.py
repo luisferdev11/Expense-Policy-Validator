@@ -25,6 +25,7 @@ from expense_validator.app.errors import NotFoundError
 from expense_validator.app.reviewing import ActionRequest, ReviewService
 from expense_validator.app.service import ReceiptService
 from expense_validator.domain.lifecycle import ACTIONS
+from expense_validator.ports.store import ListOrder
 
 # The body is read raw, not through a model: money must keep its written precision, and a
 # float parsed by the framework would lose it.
@@ -97,9 +98,15 @@ def build_router(
         batch_id: str | None = None,
         limit: Annotated[int, Query(ge=1, le=500)] = 100,
         offset: Annotated[int, Query(ge=0)] = 0,
+        order: ListOrder = "receipt_id",
     ) -> ReceiptList:
         records, total = service.list_receipts(
-            state=state, disposition=disposition, batch_id=batch_id, limit=limit, offset=offset
+            state=state,
+            disposition=disposition,
+            batch_id=batch_id,
+            limit=limit,
+            offset=offset,
+            order=order,
         )
         return ReceiptList(items=[ReceiptSummary.of(r) for r in records], total=total)
 

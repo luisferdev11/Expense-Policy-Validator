@@ -48,6 +48,7 @@ class ReceiptSummary(BaseModel):
     notice: str | None
     qa_sample: bool
     updated_at: str
+    created_at: str
 
     @classmethod
     def of(cls, record: ReceiptRecord) -> ReceiptSummary:
@@ -60,6 +61,7 @@ class ReceiptSummary(BaseModel):
             notice=record.notice,
             qa_sample=record.qa_sample,
             updated_at=record.updated_at,
+            created_at=record.created_at,
         )
 
 
@@ -184,6 +186,7 @@ class BatchItem(BaseModel):
 class BatchResponse(BaseModel):
     batch_id: str
     total: int
+    created_at: str
     counts: dict[str, int]
     items: list[BatchItem]
 
@@ -192,6 +195,7 @@ class BatchResponse(BaseModel):
         return cls(
             batch_id=view.batch_id,
             total=view.total,
+            created_at=view.created_at,
             counts=view.counts,
             items=[
                 BatchItem(

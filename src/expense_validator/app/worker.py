@@ -41,7 +41,7 @@ from expense_validator.domain.lifecycle import (
     state_for_evaluation,
 )
 from expense_validator.ports.classifier import ItemClassifier
-from expense_validator.ports.store import Clock, ReceiptStore, WorkItem
+from expense_validator.ports.store import Clock, ReceiptStore, WorkItem, stamp
 from expense_validator.ports.tracer import Tracer
 
 WORKER = "worker"
@@ -138,7 +138,7 @@ class Worker:
                         state="classifying",
                         failed_stage=None,
                         failed_reason=None,
-                        updated_at=now.isoformat(),
+                        updated_at=stamp(now),
                     )
                 )
         calls_before = getattr(self.classifier, "calls_made", 0)
@@ -200,7 +200,7 @@ class Worker:
                             record,
                             failed_stage=None,
                             failed_reason=None,
-                            updated_at=now.isoformat(),
+                            updated_at=stamp(now),
                         )
                     )
                 return
@@ -255,7 +255,7 @@ class Worker:
                         state=record.state if evaluated else "failed",
                         failed_stage=stage,
                         failed_reason=reason,
-                        updated_at=now.isoformat(),
+                        updated_at=stamp(now),
                     )
                 )
                 tx.append_event(

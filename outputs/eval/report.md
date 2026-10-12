@@ -106,6 +106,7 @@ Each rule was registered and approved before its run; the 28 scored receipts inf
 | E5 | translation before classification | original | original 55/56 (95 % CI 0.905-0.997), translate 54/56 (95 % CI 0.879-0.990), McNemar p 1.0 | translate: no evidence of a gain at this N |
 | E15 | reading "subtype": null as "none" | strict | 2 null subtypes in 520 answers, 0 fixed | null_as_none: no net fix |
 | RET | policy retriever | trigger_map | 0 differences on 47 receipts | all_rules: same findings, harder to explain |
+| E16 | item classifier, a decision model for the category | jev-hybrid | accuracy 130/130 (95 % CI 0.971-1.000), restricted F1 1.0, E16 spend USD 0.0064 | gpt-oss-120b: a superior challenger is chosen before the reference; jev-1.13: more than 2 extra A6/A9 items wrong (23/29) |
 
 ## Base rate
 

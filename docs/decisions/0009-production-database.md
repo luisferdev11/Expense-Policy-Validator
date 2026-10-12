@@ -1,6 +1,6 @@
 # ADR 0009: The production database on AWS
 
-- **Status:** proposed. Chosen with Luis on 2026-10-12; pending his review in the documentation
+- **Status:** accepted. Chosen with Luis on 2026-10-12 and approved by him in the documentation
   pull request.
 - **Date:** 2026-10-12
 - **Where it is used:** `docs/aws.md` (the brief's Part 4 page), section 1 and the cost table.

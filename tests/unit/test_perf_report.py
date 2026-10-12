@@ -6,6 +6,7 @@ import shutil
 from pathlib import Path
 
 import pytest
+
 from perf.report import RunInfo, render
 
 FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "perf"
@@ -86,3 +87,17 @@ def test_a_profile_other_than_nominal_reports_without_judging(raw: Path) -> None
 def test_the_report_reads_the_aws_page_and_names_the_sqlite_limit(raw: Path) -> None:
     text = render("nominal", raw, INFO)
     assert "docs/aws.md" in text and "SQLite" in text
+
+
+def test_receipts_decided_by_a_reviewer_during_the_run_are_counted_too(raw: Path) -> None:
+    (raw / "drain.json").write_text(
+        '{"drain_seconds": 12.0, "timeout_s": 600, "remaining": 0, '
+        '"evaluated": {"total": 1505, "auto_approved": 1200, "in_review": 295, "compliance": 0, '
+        '"decided": 10}}',
+        encoding="utf-8",
+    )
+    text = render("nominal", raw, INFO)
+    assert (
+        "Receipts evaluated: 1505 (1200 auto_approved, 295 in_review, 0 compliance, "
+        "10 approved or rejected)" in text
+    )

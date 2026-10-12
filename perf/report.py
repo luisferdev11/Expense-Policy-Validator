@@ -30,6 +30,7 @@ from typing import Any
 from perf.profiles import DRAIN_OK_SECONDS, PROFILES, READ_P95_MS, SUBMIT_P95_MS, kind
 
 RESTING = ("auto_approved", "in_review", "compliance")
+DECIDED = ("approved", "rejected")  # states a reviewer put a receipt in during the run
 
 
 @dataclass(frozen=True)
@@ -128,11 +129,10 @@ def _queue_lines(raw: Path, drain: dict[str, Any] | None) -> list[str]:
     else:
         lines.append(f"- Drain time: {seconds} s after the load stopped.")
     done = drain["evaluated"]
-    lines.append(
-        f"- Receipts evaluated: {done['total']} ("
-        + ", ".join(f"{done[state]} {state}" for state in RESTING)
-        + ")."
-    )
+    parts = [f"{done[state]} {state}" for state in RESTING]
+    if "decided" in done:  # approved or rejected by a reviewer during the run
+        parts.append(f"{done['decided']} approved or rejected")
+    lines.append(f"- Receipts evaluated: {done['total']} ({', '.join(parts)}).")
     return lines
 
 
@@ -251,14 +251,16 @@ def measure_drain(host: str, raw: Path, timeout_s: int) -> dict[str, Any]:
         time.sleep(0.5)
         remaining = _get_json(f"{host}/health")["open_work"]
     evaluated = {
-        state: _get_json(f"{host}/receipts?state={state}&limit=1")["total"] for state in RESTING
+        state: _get_json(f"{host}/receipts?state={state}&limit=1")["total"]
+        for state in (*RESTING, *DECIDED)
     }
+    decided = sum(evaluated.pop(state) for state in DECIDED)
     drained = remaining == 0
     result = {
         "drain_seconds": round(time.time() - stop["stopped_at"], 1) if drained else None,
         "timeout_s": timeout_s,
         "remaining": remaining,
-        "evaluated": {"total": sum(evaluated.values()), **evaluated},
+        "evaluated": {"total": sum(evaluated.values()) + decided, **evaluated, "decided": decided},
     }
     (raw / "drain.json").write_text(json.dumps(result) + "\n", encoding="utf-8")
     return result

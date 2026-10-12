@@ -160,14 +160,13 @@ class WorkerOptions:
 
 def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
     from expense_validator.app.composition import build_worker
-    from expense_validator.paths import APP_CLASSIFICATION_CACHE
 
     load_env()
     return build_worker(
         store,
         offline=options.offline,
         no_trace=options.no_trace,
-        cache_path=options.cache or APP_CLASSIFICATION_CACHE,
+        seed_path=options.cache or CLASSIFICATIONS_FILE,
     )
 
 
@@ -260,8 +259,34 @@ def _add_worker_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--offline", action="store_true", help="never call a model")
     parser.add_argument("--no-trace", action="store_true", help="force the no-op tracer")
     parser.add_argument(
-        "--cache", help="answer cache file (default: .cache/app_classifications.jsonl)"
+        "--cache",
+        help="JSONL file that seeds an empty answer table (default: outputs/classifications.jsonl)",
     )
+
+
+def cache_export_command(db: str | None, out: str | None, seed: str | None) -> int:
+    """Write the database's answer table as JSONL sorted by key: the bytes of the committed
+    `outputs/classifications.jsonl` when the table holds only the seeded answers. A fresh
+    database is seeded first, so exporting it reproduces the committed file."""
+    from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
+    from expense_validator.adapters.sqlite_store import utc_now
+    from expense_validator.app.composition import db_path, open_store
+
+    store = open_store(db_path(db))
+    cache = SqliteClassificationCache(store.path, utc_now)
+    cache.seed_from(Path(seed) if seed else CLASSIFICATIONS_FILE)
+    lines = list(cache.export_lines())
+    text = "".join(line + "\n" for line in lines)
+    if out:
+        Path(out).write_text(text, encoding="utf-8")
+    else:
+        sys.stdout.write(text)
+    print(f"epv cache export: {len(lines)} rows (database {store.path})", file=sys.stderr)
+    return 0
+
+
+def _cmd_cache(args: argparse.Namespace) -> int:
+    return cache_export_command(args.db, args.out, args.cache)
 
 
 def _cmd_openapi(args: argparse.Namespace) -> int:
@@ -290,6 +315,16 @@ def main(argv: list[str] | None = None) -> int:
     sub.add_parser("openapi", help="print the API's OpenAPI document").set_defaults(
         func=_cmd_openapi
     )
+    cache = sub.add_parser("cache", help="the classification answer table")
+    cache_sub = cache.add_subparsers(dest="cache_command", required=True)
+    export = cache_sub.add_parser("export", help="write the answer table as JSONL, sorted by key")
+    export.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    export.add_argument("--out", help="write to this file instead of standard output")
+    export.add_argument(
+        "--cache",
+        help="JSONL file that seeds an empty table (default: outputs/classifications.jsonl)",
+    )
+    export.set_defaults(func=_cmd_cache)
     serve = sub.add_parser("serve", help="run the HTTP API")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)

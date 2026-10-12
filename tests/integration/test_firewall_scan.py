@@ -18,7 +18,10 @@ from fastapi.testclient import TestClient
 
 from expense_validator.adapters.config_files import load_pipeline_config
 from expense_validator.adapters.receipts_file import load_receipts
+from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
+from expense_validator.adapters.sqlite_store import utc_now
 from expense_validator.app.api import create_app
+from expense_validator.paths import CLASSIFICATIONS_FILE
 from tests.fakes import RecordingTracer
 from tests.integration.test_api_parity import offline_classifier
 from tests.support import Stack, build_stack
@@ -46,6 +49,8 @@ def processed(tmp_path_factory: pytest.TempPathFactory) -> tuple[Stack, Recordin
     directory = tmp_path_factory.mktemp("firewall")
     tracer = RecordingTracer()
     stack = build_stack(directory, tracer)
+    # The answer table is part of the database that is scanned below.
+    SqliteClassificationCache(stack.store.path, utc_now).seed_from(CLASSIFICATIONS_FILE)
     worker = stack.worker(offline_classifier(directory), tracer, config=load_pipeline_config())
     lines = raw_lines()
     assert all(any(key in line for key in KEYS) for line in lines)  # the keys do arrive
@@ -71,6 +76,16 @@ def test_the_database_holds_no_answer_key(
         dump = "\n".join(conn.iterdump())
     assert len(dump) > 100_000  # it really holds the processed dataset
     assert found_in(dump) == []
+
+
+def test_the_answer_table_holds_model_answers_and_no_answer_key(
+    processed: tuple[Stack, RecordingTracer, list[str]],
+) -> None:
+    stack, _, _ = processed
+    with closing(sqlite3.connect(stack.store.path)) as conn:
+        rows = [r[0] for r in conn.execute("SELECT entry FROM classification_cache")]
+    assert len(rows) == 78  # the seeded answers are in the scanned database
+    assert found_in("\n".join(rows)) == []
 
 
 def test_every_response_is_free_of_answer_keys(

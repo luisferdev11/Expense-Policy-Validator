@@ -122,12 +122,14 @@ query validation errors).
 ### `epv cache export`
 
 ```text
-epv cache export [--db PATH] [--out PATH]
+epv cache export [--db PATH] [--out PATH] [--cache SEED]
 ```
 
 Writes the database's classification cache as JSONL sorted by `cache_key`, one `CacheEntry` per line,
 the same bytes `ClassificationCache.save` writes. Default `--db` follows `db_path` (flag, `$EPV_DB`,
-`var/epv.sqlite3`); default `--out` is stdout. Exit 0; prints the row count to stderr.
+`var/epv.sqlite3`); default `--out` is stdout. A fresh database is seeded first (from `--cache`,
+default `outputs/classifications.jsonl`; a table that already has rows is left alone), so exporting
+it reproduces the committed file. Exit 0; prints the row count to stderr.
 
 ```bash
 uv run epv cache export --db var/epv.sqlite3 > /tmp/cache.jsonl

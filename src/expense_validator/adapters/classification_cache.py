@@ -2,7 +2,9 @@
 
 One row per cache key, written sorted by key, so the file is byte-stable. The key covers the
 cleaned description, merchant, MCC, model, provider endpoint and prompt version: a change in
-any of them is a miss, never a wrong hit.
+any of them is a miss, never a wrong hit. `ClassificationCache` is the JSONL adapter of
+`ClassificationCachePort` (first writer wins); the backend uses the table adapter in
+`sqlite_cache.py`, and seeds it from this file.
 """
 
 from __future__ import annotations
@@ -46,9 +48,13 @@ class ClassificationCache:
     def get(self, key: str) -> CacheEntry | None:
         return self._rows.get(key)
 
-    def put(self, entry: CacheEntry) -> None:
+    def put(self, entry: CacheEntry) -> bool:
+        """Keep the first answer for a key; True when this call stored a new row."""
+        if entry.cache_key in self._rows:
+            return False
         self._rows[entry.cache_key] = entry
         self._dirty = True
+        return True
 
     def total_cost_usd(self) -> float:
         return sum(e.cost_usd or 0.0 for e in self._rows.values())

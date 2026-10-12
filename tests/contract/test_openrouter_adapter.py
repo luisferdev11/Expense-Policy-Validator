@@ -15,8 +15,10 @@ from expense_validator.adapters.openrouter.classifier import (
     OpenRouterClassifier,
 )
 from expense_validator.adapters.openrouter.prompt import PROMPT_VERSION
-from expense_validator.domain.models import ClassifierRequest
-from tests.fakes import RecordingTracer
+from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
+from expense_validator.adapters.sqlite_store import SqliteStore
+from expense_validator.domain.models import CacheEntry, ClassifierRequest
+from tests.fakes import RecordingTracer, StepClock
 
 REQ = ClassifierRequest(description_clean="Arnold Palmer", merchant_name="Diner", mcc=5812)
 ANSWER = {
@@ -160,7 +162,7 @@ def test_cached_raw_answers_are_parsed_on_read(tmp_path: Path) -> None:
     assert (c.status, c.category, c.source.cache_hit) == ("classified", "food_beverage", True)
 
 
-def test_cap_refuses_the_call(tmp_path: Path) -> None:
+def test_cap_refuses_the_call_once_this_instance_has_billed_it(tmp_path: Path) -> None:
     transport = FakeTransport(cost=0.6)
     clf, _ = make(tmp_path, transport, cap_usd=1.0)
     clf.classify("L1", REQ)
@@ -168,6 +170,54 @@ def test_cap_refuses_the_call(tmp_path: Path) -> None:
     third = clf.classify("L3", REQ.model_copy(update={"description_clean": "Coffee"}))
     assert (third.status, third.unclassified_reason) == ("unclassified", "budget_refused")
     assert len(transport.payloads) == 2
+    assert clf.run_spend_usd == pytest.approx(1.2)
+
+
+def test_the_cap_counts_this_instances_spend_not_the_history_in_the_cache(tmp_path: Path) -> None:
+    """Rows stored before this process started (seeded or billed earlier) never use up the cap."""
+    transport = FakeTransport(cost=0.01)
+    clf, _ = make(tmp_path, transport, cap_usd=1.0)
+    clf.cache.put(
+        CacheEntry(
+            cache_key="h" * 64,
+            content=json.dumps(ANSWER),
+            model_id=MODEL_ID,
+            provider_endpoint=ENDPOINT,
+            prompt_version=PROMPT_VERSION,
+            request_id="gen-old",
+            cost_usd=5.0,  # more than the cap, from an earlier process
+            prompt_tokens=1,
+            completion_tokens=1,
+            reasoning=None,
+        )
+    )
+    fresh = clf.classify("L1", REQ.model_copy(update={"description_clean": "Never seen"}))
+    assert (fresh.status, fresh.source.cache_hit) == ("classified", False)
+    assert len(transport.payloads) == 1
+
+
+def test_a_racing_writer_wins_and_both_see_the_stored_answer(tmp_path: Path) -> None:
+    """Another worker stores the same key while this one's call is in flight: its `put` returns
+    False and the classification is rebuilt from the row that is stored."""
+    cache = SqliteClassificationCache(SqliteStore(tmp_path / "epv.sqlite3").path, StepClock())
+    rival_answer = {**ANSWER, "category": "office_supplies", "confidence": 0.5}
+
+    class Racing(FakeTransport):
+        def __call__(self, payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
+            rival = OpenRouterClassifier(
+                cache,
+                RecordingTracer(),
+                FakeTransport(content=json.dumps(rival_answer)),
+                raw_dir=tmp_path / "raw-rival",
+            )
+            rival.classify("L0", REQ)  # stores the same key first
+            return super().__call__(payload)
+
+    tracer = RecordingTracer()
+    mine = OpenRouterClassifier(cache, tracer, Racing(), raw_dir=tmp_path / "raw")
+    result = mine.classify("L1", REQ)
+    assert len(cache) == 1
+    assert (result.category, result.confidence) == ("office_supplies", 0.5)  # the stored answer
 
 
 def test_offline_never_calls_the_transport(tmp_path: Path) -> None:

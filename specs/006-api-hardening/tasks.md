@@ -85,22 +85,22 @@ Each phase is a vertical slice that ends green and committed. If time runs out, 
 
 ### Tests first
 
-- [ ] T035 [P] [US3] Extend `tests/unit/test_lifecycle.py`: `decision_after` for every row of data-model.md §4 (approve, reject from each of its four states, auto-approve, re-evaluation to `in_review` and `compliance`, request-info, escalate, new revision, failure, retry); reaching `approved` or `rejected` with `by_human_action=False` raises
-- [ ] T036 [P] [US3] Extend `tests/unit/test_review_actions.py`: approve as `alice` sets both fields in the same transaction as the event (read back inside the action's result); request-info and escalate leave them null; a category correction leaves them null
-- [ ] T037 [P] [US3] Extend `tests/unit/test_worker.py`: an evaluation to `auto_approved` sets `("system", evaluation time)`; a re-evaluation of an approved receipt that returns it to `in_review` (ADR 0007 D7) clears them; a failed re-evaluation keeps the state and the fields unchanged and does not call `decision_after` (spy on it)
-- [ ] T038 [P] [US3] Extend `tests/unit/test_service_submit.py`: a new revision of a decided receipt clears them
-- [ ] T039 [P] [US3] Extend `tests/unit/test_sqlite_store.py`: the v1 fixture migrates with R-C `("alice", approval time)`, R-D `("system", its evaluation time)`, R-E `("bob", rejection time)`, R-A and R-B null (SC-004)
-- [ ] T040 [P] [US3] Extend `tests/contract/test_api_actions.py`: the eight transitions of SC-005 (including escalate) through the HTTP API, reading `decided_by`/`decided_at` from `GET /receipts` and `GET /receipts/{id}`
+- [x] T035 [P] [US3] Extend `tests/unit/test_lifecycle.py`: `decision_after` for every row of data-model.md §4 (approve, reject from each of its four states, auto-approve, re-evaluation to `in_review` and `compliance`, request-info, escalate, new revision, failure, retry); reaching `approved` or `rejected` with `by_human_action=False` raises
+- [x] T036 [P] [US3] Extend `tests/unit/test_review_actions.py`: approve as `alice` sets both fields in the same transaction as the event (read back inside the action's result); request-info and escalate leave them null; a category correction leaves them null
+- [x] T037 [P] [US3] Extend `tests/unit/test_worker.py`: an evaluation to `auto_approved` sets `("system", evaluation time)`; a re-evaluation of an approved receipt that returns it to `in_review` (ADR 0007 D7) clears them; a failed re-evaluation keeps the state and the fields unchanged and does not call `decision_after` (spy on it)
+- [x] T038 [P] [US3] Extend `tests/unit/test_service_submit.py`: a new revision of a decided receipt clears them
+- [x] T039 [P] [US3] Extend `tests/unit/test_sqlite_store.py`: the v1 fixture migrates with R-C `("alice", approval time)`, R-D `("system", its evaluation time)`, R-E `("bob", rejection time)`, R-A and R-B null (SC-004)
+- [x] T040 [P] [US3] Extend `tests/contract/test_api_actions.py`: the eight transitions of SC-005 (including escalate) through the HTTP API, reading `decided_by`/`decided_at` from `GET /receipts` and `GET /receipts/{id}`
 
 ### Implementation
 
-- [ ] T041 [US3] Add `SYSTEM_ACTOR = "system"` and `decision_after(...)` to `src/expense_validator/domain/lifecycle.py` (pure; data-model.md §4)
-- [ ] T042 [US3] Apply it in `ReviewService._decide` (`src/expense_validator/app/reviewing.py:176-184`) with the actor and `stamp(now)`
-- [ ] T043 [US3] Apply it in `record_evaluation` (`src/expense_validator/app/evaluation.py:104-116`) with `by_human_action=False`; this covers first evaluations, re-evaluations and corrections
-- [ ] T044 [US3] Call `decision_after` in `ReceiptService._store_revision` (`service.py:272-286`), `ReceiptService.retry` (`service.py:132-141`) and `Worker._fail` only when it sets `failed` (`worker.py:251-260`); a failed re-evaluation keeps its state and does not call it
-- [ ] T045 [US3] Store and read the columns in `src/expense_validator/adapters/sqlite_store.py` (`put_receipt`, `_receipt`); add data-model.md §3.5 and §3.6 to `_migrate_1_to_2`
-- [ ] T046 [US3] Add `decided_by` and `decided_at` to `ReceiptSummary` in `src/expense_validator/app/api/schemas.py:42-63`
-- [ ] T047 [US3] Verify and commit: `feat: decided_by and decided_at on receipts (iteration 6)`
+- [x] T041 [US3] Add `SYSTEM_ACTOR = "system"` and `decision_after(...)` to `src/expense_validator/domain/lifecycle.py` (pure; data-model.md §4)
+- [x] T042 [US3] Apply it in `ReviewService._decide` (`src/expense_validator/app/reviewing.py:176-184`) with the actor and `stamp(now)`
+- [x] T043 [US3] Apply it in `record_evaluation` (`src/expense_validator/app/evaluation.py:104-116`) with `by_human_action=False`; this covers first evaluations, re-evaluations and corrections
+- [x] T044 [US3] Call `decision_after` in `ReceiptService._store_revision` (`service.py:272-286`), `ReceiptService.retry` (`service.py:132-141`) and `Worker._fail` only when it sets `failed` (`worker.py:251-260`); a failed re-evaluation keeps its state and does not call it
+- [x] T045 [US3] Store and read the columns in `src/expense_validator/adapters/sqlite_store.py` (`put_receipt`, `_receipt`); add data-model.md §3.5 and §3.6 to `_migrate_1_to_2`
+- [x] T046 [US3] Add `decided_by` and `decided_at` to `ReceiptSummary` in `src/expense_validator/app/api/schemas.py:42-63`
+- [x] T047 [US3] Verify and commit: `feat: decided_by and decided_at on receipts (iteration 6)`
 
 ## Phase 6: User Story 4 — typed OpenAPI and generated front-end types (P2)
 

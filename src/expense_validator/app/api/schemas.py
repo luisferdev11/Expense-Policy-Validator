@@ -49,6 +49,8 @@ class ReceiptSummary(BaseModel):
     qa_sample: bool
     updated_at: str
     created_at: str
+    decided_by: str | None
+    decided_at: str | None
 
     @classmethod
     def of(cls, record: ReceiptRecord) -> ReceiptSummary:
@@ -62,6 +64,8 @@ class ReceiptSummary(BaseModel):
             qa_sample=record.qa_sample,
             updated_at=record.updated_at,
             created_at=record.created_at,
+            decided_by=record.decided_by,
+            decided_at=record.decided_at,
         )
 
 

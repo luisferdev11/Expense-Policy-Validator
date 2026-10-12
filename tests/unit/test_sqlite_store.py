@@ -413,6 +413,36 @@ def test_a_receipt_with_no_revision_stops_the_migration_and_leaves_schema_one(
     assert "created_at" not in _columns(path, "receipts")
 
 
+def test_the_migration_backfills_who_decided_and_when_from_the_events(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    with closing(sqlite3.connect(path)) as conn:
+
+        def event_time(receipt_id: str, kind: str) -> str:
+            row = conn.execute(
+                "SELECT at FROM events WHERE receipt_id = ? AND type = ? ORDER BY seq DESC",
+                (receipt_id, kind),
+            ).fetchone()
+            return str(row[0])
+
+        evaluated = conn.execute(
+            "SELECT MAX(created_at) FROM evaluations WHERE receipt_id = 'R-D' AND revision = 1"
+        ).fetchone()[0]
+        expected = {
+            "R-A": (None, None),
+            "R-B": (None, None),
+            "R-C": ("alice", event_time("R-C", "ReceiptApproved")),
+            "R-D": ("system", evaluated),
+            "R-E": ("bob", event_time("R-E", "ReceiptRejected")),
+        }
+    SqliteStore(path)
+    with closing(sqlite3.connect(path)) as conn:
+        found = {
+            r[0]: (r[1], r[2])
+            for r in conn.execute("SELECT receipt_id, decided_by, decided_at FROM receipts")
+        }
+    assert found == expected
+
+
 def test_the_receipt_list_filters_and_counts(store: SqliteStore) -> None:
     with store.transaction() as tx:
         tx.put_receipt(_record("R-1", state="in_review"))

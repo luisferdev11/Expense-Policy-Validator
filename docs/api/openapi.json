@@ -104,6 +104,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
           "disposition": {
             "anyOf": [
               {
@@ -195,6 +217,8 @@
           "qa_sample",
           "updated_at",
           "created_at",
+          "decided_by",
+          "decided_at",
           "failed",
           "receipt",
           "result",
@@ -445,6 +469,28 @@
             "title": "Created At",
             "type": "string"
           },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
+          },
           "disposition": {
             "anyOf": [
               {
@@ -536,6 +582,8 @@
           "qa_sample",
           "updated_at",
           "created_at",
+          "decided_by",
+          "decided_at",
           "failed",
           "receipt",
           "result",
@@ -570,6 +618,28 @@
           "created_at": {
             "title": "Created At",
             "type": "string"
+          },
+          "decided_at": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided At"
+          },
+          "decided_by": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Decided By"
           },
           "disposition": {
             "anyOf": [
@@ -634,7 +704,9 @@
           "notice",
           "qa_sample",
           "updated_at",
-          "created_at"
+          "created_at",
+          "decided_by",
+          "decided_at"
         ],
         "title": "ReceiptSummary",
         "type": "object"

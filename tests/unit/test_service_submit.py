@@ -20,7 +20,7 @@ from expense_validator.app.service import ReceiptService
 from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded
 from expense_validator.ports.store import stamp
 from tests.fakes import StepClock
-from tests.support import FIXTURE
+from tests.support import FIXTURE, MEAL, ReviewEnv
 from tests.support import receipt_json as raw
 
 
@@ -206,3 +206,14 @@ def test_simultaneous_submissions_of_one_receipt_make_one_receipt(
     with store.transaction(write=False) as tx:
         assert len(tx.list_revisions("SYN-1")) == 1
         assert tx.open_work_count() == 1
+
+
+def test_a_new_revision_of_a_decided_receipt_clears_the_decision(tmp_path: Path) -> None:
+    env = ReviewEnv(tmp_path)
+    env.seed()
+    env.act("SYN-A", "approve", reason_code="policy_exception_granted")
+    assert env.service.get_receipt("SYN-A").record.decided_by == "alice"
+    env.submit("SYN-A", "41", "Lunch A", **MEAL)  # revision 2
+    record = env.service.get_receipt("SYN-A").record
+    assert (record.current_revision, record.state) == (2, "submitted")
+    assert (record.decided_by, record.decided_at) == (None, None)

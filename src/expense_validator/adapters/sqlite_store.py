@@ -189,6 +189,7 @@ def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
         conn.execute(statement)
     _backfill_created_at(conn)
     _normalise_updated_at(conn)
+    _backfill_decisions(conn)
 
 
 def _backfill_created_at(conn: sqlite3.Connection) -> None:
@@ -210,6 +211,25 @@ def _backfill_created_at(conn: sqlite3.Connection) -> None:
     conn.execute(
         "UPDATE receipts SET created_at = (SELECT MIN(v.created_at) FROM revisions v"
         " WHERE v.receipt_id = receipts.receipt_id)"
+    )
+
+
+def _backfill_decisions(conn: sqlite3.Connection) -> None:
+    """Who decided the current revision and when (data-model.md 3.5 and 3.6): the latest
+    approve or reject event of an approved or rejected receipt, and `system` at the latest
+    evaluation of an auto-approved one. Receipts in any other state keep both null."""
+    conn.execute(
+        "UPDATE receipts SET decided_by = d.actor, decided_at = d.at FROM ("
+        " SELECT receipt_id, revision, actor, at, ROW_NUMBER() OVER ("
+        "  PARTITION BY receipt_id, revision ORDER BY seq DESC) AS rn"
+        " FROM events WHERE type IN ('ReceiptApproved', 'ReceiptRejected')) AS d"
+        " WHERE d.receipt_id = receipts.receipt_id AND d.revision = receipts.current_revision"
+        " AND d.rn = 1 AND receipts.state IN ('approved', 'rejected')"
+    )
+    conn.execute(
+        "UPDATE receipts SET decided_by = 'system', decided_at = ("
+        " SELECT MAX(e.created_at) FROM evaluations e WHERE e.receipt_id = receipts.receipt_id"
+        " AND e.revision = receipts.current_revision) WHERE state = 'auto_approved'"
     )
 
 
@@ -259,6 +279,8 @@ def _receipt(row: sqlite3.Row) -> ReceiptRecord:
         failed_reason=row["failed_reason"],
         updated_at=row["updated_at"],
         created_at=row["created_at"],
+        decided_by=row["decided_by"],
+        decided_at=row["decided_at"],
     )
 
 
@@ -329,13 +351,15 @@ class SqliteTx:
         self._c.execute(
             "INSERT INTO receipts (receipt_id, current_revision, state, disposition,"
             " evaluation_version, human_acted, notice, qa_sample, failed_stage, failed_reason,"
-            " updated_at, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            " updated_at, created_at, decided_by, decided_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             " ON CONFLICT (receipt_id) DO UPDATE SET current_revision = excluded.current_revision,"
             " state = excluded.state, disposition = excluded.disposition,"
             " evaluation_version = excluded.evaluation_version,"
             " human_acted = excluded.human_acted, notice = excluded.notice,"
             " qa_sample = excluded.qa_sample, failed_stage = excluded.failed_stage,"
-            " failed_reason = excluded.failed_reason, updated_at = excluded.updated_at",
+            " failed_reason = excluded.failed_reason, updated_at = excluded.updated_at,"
+            " decided_by = excluded.decided_by, decided_at = excluded.decided_at",
             (
                 record.receipt_id,
                 record.current_revision,
@@ -349,6 +373,8 @@ class SqliteTx:
                 record.failed_reason,
                 record.updated_at,
                 record.created_at,
+                record.decided_by,
+                record.decided_at,
             ),
         )
 

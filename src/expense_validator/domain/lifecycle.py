@@ -25,6 +25,7 @@ Action = Literal["approve", "reject", "correct-category", "request-info", "escal
 Stage = Literal["classify", "evaluate"]
 
 ACTIONS: tuple[Action, ...] = get_args(Action)
+SYSTEM_ACTOR = "system"
 
 _ALLOWED: dict[State, tuple[Action, ...]] = {
     "in_review": ("approve", "reject", "correct-category", "request-info", "escalate"),
@@ -72,6 +73,32 @@ def state_after_correction(proposed: State) -> State:
     """After a reviewer's correction the receipt still waits for a human decision, even if it
     would now pass; a critical finding keeps it with Compliance."""
     return "in_review" if proposed == "auto_approved" else proposed
+
+
+def decision_after(
+    new_state: State,
+    *,
+    actor: str | None,
+    at: str,
+    by_human_action: bool,
+) -> tuple[str | None, str | None]:
+    """(decided_by, decided_at) for a receipt that has just moved to `new_state` (spec 006).
+
+    A reviewer's closing action keeps the actor and the time; an evaluation that auto-approves is
+    the system's decision; every other state has no decision, so a receipt that leaves a decided
+    state (a new revision, a re-evaluation back into review) loses it. `approved` and `rejected`
+    are reached only by a human action, and the rule raises if they are reached any other way,
+    so a future path cannot silently attribute a decision.
+    """
+    if new_state in ("approved", "rejected"):
+        if not by_human_action:
+            raise ValueError(f"{new_state!r} is reached only by a human action")
+        if not actor:
+            raise ValueError(f"{new_state!r} needs the actor who decided")
+        return actor, at
+    if new_state == "auto_approved":
+        return SYSTEM_ACTOR, at
+    return None, None
 
 
 def reevaluation_outcome(

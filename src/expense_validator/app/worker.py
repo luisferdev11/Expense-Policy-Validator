@@ -37,6 +37,7 @@ from expense_validator.domain.events import (
 )
 from expense_validator.domain.lifecycle import (
     Stage,
+    decision_after,
     reevaluation_outcome,
     state_for_evaluation,
 )
@@ -249,6 +250,11 @@ class Worker:
                 # disappear because a later re-evaluation failed); the failure is shown on it and
                 # a retry runs the stage again. Only a receipt with no evaluation is `failed`.
                 evaluated = record.evaluation_version is not None
+                decided_by, decided_at = record.decided_by, record.decided_at
+                if not evaluated:  # a state change, so the decision rule applies
+                    decided_by, decided_at = decision_after(
+                        "failed", actor=WORKER, at=stamp(now), by_human_action=False
+                    )
                 tx.put_receipt(
                     replace(
                         record,
@@ -256,6 +262,8 @@ class Worker:
                         failed_stage=stage,
                         failed_reason=reason,
                         updated_at=stamp(now),
+                        decided_by=decided_by,
+                        decided_at=decided_at,
                     )
                 )
                 tx.append_event(

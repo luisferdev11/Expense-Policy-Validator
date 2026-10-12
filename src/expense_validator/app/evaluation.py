@@ -18,7 +18,7 @@ from expense_validator.domain.engine.context import build_context
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.domain.evaluation import result_hash
 from expense_validator.domain.events import LineCategoryCorrected, ReceiptEvaluated
-from expense_validator.domain.lifecycle import State
+from expense_validator.domain.lifecycle import State, decision_after
 from expense_validator.domain.models import (
     ClassifiedReceipt,
     CrossReceiptContext,
@@ -101,10 +101,15 @@ def record_evaluation(
     result = evaluation.result
     rid, revision = record.receipt_id, record.current_revision
     version = tx.add_evaluation(rid, revision, result, evaluation.digest, now)
+    decided_by, decided_at = decision_after(
+        state, actor=actor, at=stamp(now), by_human_action=False
+    )
     tx.put_receipt(
         replace(
             record,
             state=state,
+            decided_by=decided_by,
+            decided_at=decided_at,
             disposition=result.disposition,
             evaluation_version=version,
             notice=notice,

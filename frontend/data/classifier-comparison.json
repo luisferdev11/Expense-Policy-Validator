@@ -1,0 +1,254 @@
+{
+  "generated_at": "2026-10-12T03:08:38+00:00",
+  "dev_set_sha256": "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7",
+  "n": 130,
+  "model_id": "typesafe/jev-1.13",
+  "prompt_version": "dec-v1",
+  "served_by": [
+    "TypeSafe"
+  ],
+  "variants": [
+    {
+      "variant": "gemma-3-12b",
+      "accuracy": {
+        "value": 0.8846153846153846,
+        "k": 115,
+        "n": 130,
+        "interval": [
+          0.8183,
+          0.9288
+        ]
+      },
+      "restricted_f1": 0.9189,
+      "a6a9_wrong": 8,
+      "a6a9_n": 29,
+      "schema_violations": {
+        "value": 0.015384615384615385,
+        "k": 2,
+        "n": 130,
+        "interval": [
+          0.0042,
+          0.0544
+        ]
+      },
+      "cost_per_1000_usd": 0.044492,
+      "mcnemar": {
+        "b_challenger_only": 5,
+        "c_reference_only": 13,
+        "p": 0.0963
+      },
+      "difference": {
+        "value": -0.0615,
+        "interval": [
+          -0.1231,
+          0.0
+        ]
+      },
+      "status": "worse"
+    },
+    {
+      "variant": "gpt-oss-120b",
+      "accuracy": {
+        "value": 0.9461538461538461,
+        "k": 123,
+        "n": 130,
+        "interval": [
+          0.893,
+          0.9737
+        ]
+      },
+      "restricted_f1": 0.9912,
+      "a6a9_wrong": 2,
+      "a6a9_n": 29,
+      "schema_violations": {
+        "value": 0.015384615384615385,
+        "k": 2,
+        "n": 130,
+        "interval": [
+          0.0042,
+          0.0544
+        ]
+      },
+      "cost_per_1000_usd": 0.060824,
+      "status": "reference"
+    },
+    {
+      "variant": "gpt-oss-20b",
+      "accuracy": {
+        "value": 0.9384615384615385,
+        "k": 122,
+        "n": 130,
+        "interval": [
+          0.8833,
+          0.9685
+        ]
+      },
+      "restricted_f1": 0.9825,
+      "a6a9_wrong": 3,
+      "a6a9_n": 29,
+      "schema_violations": {
+        "value": 0.007692307692307693,
+        "k": 1,
+        "n": 130,
+        "interval": [
+          0.0014,
+          0.0423
+        ]
+      },
+      "cost_per_1000_usd": 0.026332,
+      "mcnemar": {
+        "b_challenger_only": 5,
+        "c_reference_only": 6,
+        "p": 1.0
+      },
+      "difference": {
+        "value": -0.0077,
+        "interval": [
+          -0.0615,
+          0.0462
+        ]
+      },
+      "status": "worse"
+    },
+    {
+      "variant": "jev-1.13",
+      "accuracy": {
+        "value": 1.0,
+        "k": 130,
+        "n": 130,
+        "interval": [
+          0.9713,
+          1.0
+        ]
+      },
+      "restricted_f1": 1.0,
+      "a6a9_wrong": 23,
+      "a6a9_n": 29,
+      "schema_violations": {
+        "value": 0.0,
+        "k": 0,
+        "n": 130,
+        "interval": [
+          0.0,
+          0.0287
+        ]
+      },
+      "cost_per_1000_usd": 0.042604,
+      "mcnemar": {
+        "b_challenger_only": 7,
+        "c_reference_only": 0,
+        "p": 0.0156
+      },
+      "difference": {
+        "value": 0.0538,
+        "interval": [
+          0.0154,
+          0.1
+        ]
+      },
+      "status": "superior"
+    },
+    {
+      "variant": "qwen3.5-9b",
+      "accuracy": {
+        "value": 0.9307692307692308,
+        "k": 121,
+        "n": 130,
+        "interval": [
+          0.8737,
+          0.9632
+        ]
+      },
+      "restricted_f1": 0.9735,
+      "a6a9_wrong": 6,
+      "a6a9_n": 29,
+      "schema_violations": {
+        "value": 0.03076923076923077,
+        "k": 4,
+        "n": 130,
+        "interval": [
+          0.012,
+          0.0764
+        ]
+      },
+      "cost_per_1000_usd": 0.094766,
+      "mcnemar": {
+        "b_challenger_only": 5,
+        "c_reference_only": 7,
+        "p": 0.7744
+      },
+      "difference": {
+        "value": -0.0154,
+        "interval": [
+          -0.0692,
+          0.0385
+        ]
+      },
+      "status": "excluded"
+    }
+  ],
+  "latency_s": {
+    "n": 130,
+    "mean": 0.594,
+    "p50": 0.505,
+    "p95": 1.064,
+    "note": "Measured for jev-1.13 only; the committed E14 runs did not record latency."
+  },
+  "calibration": {
+    "jev-1.13 (top probability)": {
+      "n": 130,
+      "brier": 0.0109,
+      "ece": 0.0503
+    },
+    "jev-1.13 (reported confidence)": {
+      "n": 130,
+      "brier": 0.012,
+      "ece": 0.0523
+    },
+    "gpt-oss-120b (self-reported confidence)": {
+      "n": 128,
+      "brier": 0.0365,
+      "ece": 0.0243
+    }
+  },
+  "confusions": {
+    "jev-1.13": [],
+    "gpt-oss-120b": [
+      {
+        "expected": "airfare",
+        "predicted": "service_fee",
+        "count": 1
+      },
+      {
+        "expected": "airfare",
+        "predicted": "unclassified",
+        "count": 1
+      },
+      {
+        "expected": "clothing",
+        "predicted": "personal_electronics",
+        "count": 1
+      },
+      {
+        "expected": "gift_card",
+        "predicted": "personal_care",
+        "count": 1
+      },
+      {
+        "expected": "gift_card",
+        "predicted": "unclassified",
+        "count": 1
+      },
+      {
+        "expected": "health_otc",
+        "predicted": "other",
+        "count": 1
+      },
+      {
+        "expected": "other",
+        "predicted": "service_fee",
+        "count": 1
+      }
+    ]
+  }
+}

@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from expense_validator.adapters import sqlite_store
 from expense_validator.adapters.sqlite_store import (
     SCHEMA_VERSION,
     SchemaTooNewError,
@@ -26,11 +27,31 @@ from expense_validator.ports.store import (
 from tests.factories import receipt
 
 T0 = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+V1_FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "schema_v1.sql"
 
 
 @pytest.fixture
 def store(tmp_path: Path) -> SqliteStore:
     return SqliteStore(tmp_path / "epv.sqlite3")
+
+
+def _v1_database(tmp_path: Path) -> Path:
+    """A schema-1 file with five receipts, built by the v0.4.0 code (`schema_v1.sql`)."""
+    path = tmp_path / "v1.sqlite3"
+    with closing(sqlite3.connect(path)) as conn:
+        conn.executescript(V1_FIXTURE.read_text(encoding="utf-8"))
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    return path
+
+
+def _columns(path: Path, table: str) -> set[str]:
+    with closing(sqlite3.connect(path)) as conn:
+        return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def _version(path: Path) -> int:
+    with closing(sqlite3.connect(path)) as conn:
+        return int(conn.execute("PRAGMA user_version").fetchone()[0])
 
 
 def _record(receipt_id: str = "R-1", revision: int = 1, state: str = "submitted") -> ReceiptRecord:
@@ -66,6 +87,65 @@ def test_a_newer_schema_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "newer.sqlite3"
     with sqlite3.connect(path) as conn:
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+    with pytest.raises(SchemaTooNewError):
+        SqliteStore(path)
+
+
+def test_a_fresh_file_is_schema_two_with_the_cache_table_and_the_new_columns(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "fresh.sqlite3"
+    assert SqliteStore(path).schema_version == 2
+    assert _version(path) == 2
+    assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
+    assert _columns(path, "classification_cache") == {
+        "cache_key",
+        "entry",
+        "model_id",
+        "prompt_version",
+        "cost_usd",
+        "seeded",
+        "created_at",
+    }
+    with closing(sqlite3.connect(path)) as conn:
+        indexes = {row[1] for row in conn.execute("PRAGMA index_list(receipts)")}
+    assert {"receipts_created", "receipts_updated"} <= indexes
+
+
+def test_a_schema_one_file_is_migrated_to_two_in_place(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    assert SqliteStore(path).schema_version == 2
+    assert _version(path) == 2
+    assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
+    with closing(sqlite3.connect(path)) as conn:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "classification_cache" in tables
+        assert conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 5
+        assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] > 5
+
+
+def test_a_migration_step_that_fails_leaves_schema_one_and_the_data_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _v1_database(tmp_path)
+
+    def broken(conn: sqlite3.Connection) -> None:
+        conn.execute("ALTER TABLE receipts ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
+        raise RuntimeError("step failed")
+
+    monkeypatch.setattr(sqlite_store, "MIGRATIONS", [(2, broken)])
+    with pytest.raises(RuntimeError, match="step failed"):
+        SqliteStore(path)
+    assert _version(path) == 1
+    assert "created_at" not in _columns(path, "receipts")
+    with closing(sqlite3.connect(path)) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 5
+
+
+def test_a_schema_three_file_is_still_refused(tmp_path: Path) -> None:
+    path = tmp_path / "three.sqlite3"
+    with closing(sqlite3.connect(path)) as conn:
+        conn.execute("PRAGMA user_version = 3")
     with pytest.raises(SchemaTooNewError):
         SqliteStore(path)
 

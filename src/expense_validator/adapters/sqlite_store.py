@@ -11,7 +11,7 @@ from __future__ import annotations
 import json
 import re
 import sqlite3
-from collections.abc import Collection, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -35,7 +35,7 @@ from expense_validator.ports.store import (
     WorkItem,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MIN_SQLITE = (3, 35, 0)  # UPDATE ... RETURNING
 BUSY_TIMEOUT_MS = 10_000
 
@@ -75,9 +75,14 @@ CREATE TABLE receipts (
     qa_sample INTEGER NOT NULL DEFAULT 0,
     failed_stage TEXT,
     failed_reason TEXT,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT '',
+    decided_by TEXT,
+    decided_at TEXT
 );
 CREATE INDEX receipts_state ON receipts (state);
+CREATE INDEX receipts_created ON receipts (created_at, receipt_id);
+CREATE INDEX receipts_updated ON receipts (updated_at, receipt_id);
 CREATE TABLE classifications (
     receipt_id TEXT NOT NULL,
     revision INTEGER NOT NULL,
@@ -133,7 +138,50 @@ CREATE TABLE batch_items (
     error TEXT,
     PRIMARY KEY (batch_id, row)
 );
+CREATE TABLE classification_cache (
+    cache_key TEXT PRIMARY KEY,
+    entry TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    cost_usd REAL,
+    seeded INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX classification_cache_model ON classification_cache (model_id, prompt_version);
 """
+
+# DDL of the step from schema 1 to 2: the three receipt columns, the two list indexes and the cache
+# table. Statements are the ones of `_SCHEMA`, so a migrated file and a fresh one match.
+_V2_DDL = (
+    "ALTER TABLE receipts ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE receipts ADD COLUMN decided_by TEXT",
+    "ALTER TABLE receipts ADD COLUMN decided_at TEXT",
+    "CREATE INDEX receipts_created ON receipts (created_at, receipt_id)",
+    "CREATE INDEX receipts_updated ON receipts (updated_at, receipt_id)",
+    """CREATE TABLE classification_cache (
+    cache_key TEXT PRIMARY KEY,
+    entry TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    cost_usd REAL,
+    seeded INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+)""",
+    "CREATE INDEX classification_cache_model ON classification_cache (model_id, prompt_version)",
+)
+
+
+Migration = Callable[[sqlite3.Connection], None]
+
+
+def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
+    for statement in _V2_DDL:
+        conn.execute(statement)
+
+
+# Steps in order: (the version a step produces, the step). A file at schema N runs every step
+# whose version is above N, inside the transaction that opens the store.
+MIGRATIONS: list[tuple[int, Migration]] = [(2, _migrate_1_to_2)]
 
 
 class SchemaTooNewError(Exception):
@@ -564,7 +612,12 @@ class SqliteStore:
                 if found == 0:
                     for statement in _split(_SCHEMA):
                         conn.execute(statement)
-                    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+                else:
+                    for version, step in MIGRATIONS:
+                        if found < version:
+                            step(conn)
+                if found < SCHEMA_VERSION:
+                    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")  # last, with the steps
                 conn.execute("COMMIT")
             except BaseException:
                 conn.execute("ROLLBACK")

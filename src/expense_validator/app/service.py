@@ -190,6 +190,11 @@ class ReceiptService:
                 order=order,
             )
 
+    def open_work(self) -> int:
+        """Outbox items pending or claimed: the work that is still waiting."""
+        with self.store.transaction(write=False) as tx:
+            return tx.open_work_count()
+
     def list_events(self, receipt_id: str) -> list[EventRecord]:
         with self.store.transaction(write=False) as tx:
             if tx.get_receipt(receipt_id) is None:

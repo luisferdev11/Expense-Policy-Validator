@@ -1,0 +1,2 @@
+Method,Name,Error,Occurrences
+POST,/batches (100 rows),HTTPError('503 Server Error: Service Unavailable for url: /batches'),2

@@ -25,7 +25,7 @@ const USED_FIELDS: Record<string, string[]> = {
   RevisionDetail: ["receipt_id", "revision", "status", "created_at", "receipt", "evaluations"],
   EvaluationItem: ["version", "created_at", "result"],
   FailureInfo: ["stage", "reason"],
-  Health: ["status", "schema_version"],
+  Health: ["status", "schema_version", "open_work"],
   // `receipt` and `result` are typed since spec 006; the front end reads these fields from them
   // (src/api/types.ts). Spec 008's form reads the request schemas.
   ReceiptInput: ["receipt_id", "employee_id", "employee_country", "entity", "submitted_expense_type", "merchant_name", "mcc", "mcc_description", "transaction_datetime", "currency", "fx_rate_to_usd", "total_amount", "total_amount_usd", "attendee_count", "trip_id", "trip_nights", "pre_approval_ref", "itemized", "vat_number", "line_items"],

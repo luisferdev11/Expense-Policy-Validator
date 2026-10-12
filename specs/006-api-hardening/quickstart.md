@@ -73,7 +73,14 @@ the counts are updated again when the `/health` `open_work` assertion is added).
 
 ## 6. Load test
 
-Start a fresh database with the simulated classifier, then run a profile:
+One command runs a profile end to end (fresh database, API, extra workers, Locust, report):
+
+```bash
+uv run python -m perf.run --profile smoke       # nominal, peak; live bills OpenRouter (cap USD 0.25)
+```
+
+By hand, which is what `perf.run` does: start a fresh database with the simulated classifier, then
+run a profile (`--profile` is Locust's own option; `perf/locustfile.py` reads it):
 
 ```bash
 rm -f var/perf.sqlite3

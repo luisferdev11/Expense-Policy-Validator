@@ -218,3 +218,4 @@ class BatchResponse(BaseModel):
 class Health(BaseModel):
     status: str
     schema_version: int
+    open_work: int  # outbox items pending or claimed

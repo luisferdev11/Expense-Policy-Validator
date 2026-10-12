@@ -911,6 +911,8 @@ def build() -> dict[str, Any]:
                     status(200),
                     'pm.test("ok", () => pm.expect(pm.response.json().status).to.eql("ok"));',
                     'pm.test("schema 2", () => pm.expect(pm.response.json().schema_version).to.eql(2));',
+                    'pm.test("open_work counts the queue", () =>',
+                    '  pm.expect(pm.response.json().open_work).to.be.a("number"));',
                 ],
             )
         ],

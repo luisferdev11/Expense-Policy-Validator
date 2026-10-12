@@ -260,6 +260,12 @@ records the reasoning and the alternatives for each technical decision.
   `TEST-` prefix marks synthetic employees, so the load test keeps working once roles land (spec 009,
   ADR 0010 D6).
 
+  The worker count is part of each profile (`smoke` 1, `nominal` 5, `peak` 10, `live` 1): one
+  worker handles a receipt in lines x latency seconds (about 3 s for the sample receipt's two lines
+  at 1500 ms), so `nominal` needs about 4 workers and `peak` about 36; the 10 of `peak` is what one
+  laptop can run, and the report says how far the backlog grows. Extra workers are `epv worker`
+  processes on the same SQLite file, started by `perf/run.py`.
+
   Each simulated user mixes tasks by weight: submit 5, submit with key 1, batch of 100 rows 0.1,
   list by `updated_at` 3, detail 3, approve 0.5. The 1500 ms latency is the midpoint of the 1 to 4
   second model call quoted in `docs/aws.md:25-26`, per line; a receipt averages 2.47 lines

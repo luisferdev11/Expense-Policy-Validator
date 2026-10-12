@@ -498,6 +498,10 @@
       },
       "Health": {
         "properties": {
+          "open_work": {
+            "title": "Open Work",
+            "type": "integer"
+          },
           "schema_version": {
             "title": "Schema Version",
             "type": "integer"
@@ -509,7 +513,8 @@
         },
         "required": [
           "status",
-          "schema_version"
+          "schema_version",
+          "open_work"
         ],
         "title": "Health",
         "type": "object"

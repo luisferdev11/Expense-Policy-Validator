@@ -312,6 +312,8 @@ export interface components {
         };
         /** Health */
         Health: {
+            /** Open Work */
+            open_work: number;
             /** Schema Version */
             schema_version: number;
             /** Status */

@@ -33,10 +33,22 @@ def post(client: TestClient, body: str, key: str | None = None):  # type: ignore
     return client.post("/receipts", content=body, headers=headers)
 
 
-def test_health_reports_the_schema_version(client: TestClient) -> None:
+def test_health_reports_the_schema_version_and_the_open_work(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "schema_version": 2}
+    assert response.json() == {"status": "ok", "schema_version": 2, "open_work": 0}
+
+
+def test_open_work_counts_pending_and_claimed_items_of_the_outbox(tmp_path: Path) -> None:
+    store = SqliteStore(tmp_path / "epv.sqlite3")
+    clock = StepClock()
+    client = TestClient(create_app(ReceiptService(store, clock)))
+    post(client, raw(receipt_id="SYN-1"))
+    post(client, raw(receipt_id="SYN-2"))
+    assert client.get("/health").json()["open_work"] == 2  # two classify items, pending
+    with store.transaction() as tx:
+        assert tx.claim_work(clock(), clock() + timedelta(seconds=60)) is not None
+    assert client.get("/health").json()["open_work"] == 2  # a claimed item is still open
 
 
 def test_a_new_receipt_is_accepted_with_202(client: TestClient) -> None:

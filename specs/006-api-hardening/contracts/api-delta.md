@@ -159,8 +159,11 @@ uv run python -m perf.report --profile smoke --raw docs/perf/raw/$DATE-smoke \
     --out docs/perf/$DATE-smoke.md --drain --host http://127.0.0.1:8000
 ```
 
-`--profile` is a custom Locust argument read by `perf/locustfile.py`; it sets the user count, spawn
-rate, run time and task weights from `perf/profiles.py` (research R14). The queue is judged only
+`--profile` is Locust's own option (a free-text label that groups runs); `perf/locustfile.py` reads it
+and checks it against `perf/profiles.py`, and fills the user count, spawn rate and run time from the
+profile unless `-u`, `-r` or `-t` are given (research R14). `uv run python -m perf.run --profile P`
+does all of this in one command: a fresh database, the API, the extra workers, Locust and the
+report. The task functions are in `perf/tasks.py`, which does not import Locust. The queue is judged only
 through `GET /health`: during the run a background greenlet samples `open_work` every 0.5 s (peak
 backlog, written to `backlog.csv`), the `test_stop` hook records the moment the load stopped in
 `stop.json`, and `perf.report --drain` polls `/health` until `open_work` is 0 (drain time). Generated

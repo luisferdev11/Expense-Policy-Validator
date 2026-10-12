@@ -47,7 +47,9 @@ def build_router(
 
     @router.get("/health", response_model=Health, tags=["operations"])
     def health() -> Health:
-        return Health(status="ok", schema_version=service.store.schema_version)
+        return Health(
+            status="ok", schema_version=service.store.schema_version, open_work=service.open_work()
+        )
 
     @router.post(
         "/receipts",

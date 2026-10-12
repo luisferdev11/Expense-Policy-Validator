@@ -17,7 +17,7 @@ from pathlib import Path
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.keyword_classifier import KeywordClassifier
-from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
+from expense_validator.adapters.openrouter.classifier import CAP_USD, OpenRouterClassifier
 from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.receipts_file import load_receipts
@@ -155,7 +155,10 @@ def _cmd_eval(args: argparse.Namespace) -> int:
 class WorkerOptions:
     offline: bool = False
     no_trace: bool = False
-    cache: Path | None = None
+    cache: Path | None = None  # the JSONL file that seeds an empty answer table
+    classifier: str = "openrouter"
+    simulated_latency_ms: int = 0
+    cap_usd: float = CAP_USD
 
 
 def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
@@ -167,6 +170,9 @@ def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
         offline=options.offline,
         no_trace=options.no_trace,
         seed_path=options.cache or CLASSIFICATIONS_FILE,
+        cap_usd=options.cap_usd,
+        classifier=options.classifier,
+        simulated_latency_ms=options.simulated_latency_ms,
     )
 
 
@@ -236,8 +242,15 @@ def worker_command(
     return 0
 
 
-def _options(args: argparse.Namespace) -> WorkerOptions:
-    return WorkerOptions(args.offline, args.no_trace, Path(args.cache) if args.cache else None)
+def worker_options(args: argparse.Namespace) -> WorkerOptions:
+    return WorkerOptions(
+        offline=args.offline,
+        no_trace=args.no_trace,
+        cache=Path(args.cache) if args.cache else None,
+        classifier=args.classifier,
+        simulated_latency_ms=args.simulated_latency_ms,
+        cap_usd=args.cap_usd,
+    )
 
 
 def _cmd_serve(args: argparse.Namespace) -> int:
@@ -245,19 +258,52 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         args.host,
         args.port,
         args.db,
-        _options(args) if args.with_worker else None,
+        worker_options(args) if args.with_worker else None,
         no_trace=args.no_trace,
         cors=args.cors_origin,
     )
 
 
 def _cmd_worker(args: argparse.Namespace) -> int:
-    return worker_command(args.db, args.once, args.poll_seconds, _options(args))
+    return worker_command(args.db, args.once, args.poll_seconds, worker_options(args))
+
+
+def _non_negative_float(text: str) -> float:
+    value = float(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, got {text}")
+    return value
+
+
+def _non_negative_int(text: str) -> int:
+    value = int(text)
+    if value < 0:
+        raise argparse.ArgumentTypeError(f"must be 0 or more, got {text}")
+    return value
 
 
 def _add_worker_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--offline", action="store_true", help="never call a model")
     parser.add_argument("--no-trace", action="store_true", help="force the no-op tracer")
+    parser.add_argument(
+        "--classifier",
+        choices=["openrouter", "keyword", "simulated"],
+        default="openrouter",
+        help="openrouter (default); keyword and simulated make no model call (load tests)",
+    )
+    parser.add_argument(
+        "--simulated-latency-ms",
+        type=_non_negative_int,
+        default=0,
+        help="sleep this long before every line's answer, whichever classifier (default 0)",
+    )
+    parser.add_argument(
+        "--cap-usd",
+        type=_non_negative_float,
+        default=CAP_USD,
+        help="the most this process may bill to OpenRouter (default 1.00); cached and seeded "
+        "answers never count",
+    )
     parser.add_argument(
         "--cache",
         help="JSONL file that seeds an empty answer table (default: outputs/classifications.jsonl)",
@@ -301,7 +347,7 @@ def _cmd_view(args: argparse.Namespace) -> int:
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
 
 
-def main(argv: list[str] | None = None) -> int:
+def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(prog="epv", description="Expense Policy Validator")
     sub = parser.add_subparsers(dest="command", required=True)
     run = sub.add_parser("run", help="validate every receipt and write the results")
@@ -343,7 +389,11 @@ def main(argv: list[str] | None = None) -> int:
     worker.add_argument("--poll-seconds", type=float, default=1.0)
     _add_worker_options(worker)
     worker.set_defaults(func=_cmd_worker)
-    args = parser.parse_args(argv)
+    return parser
+
+
+def main(argv: list[str] | None = None) -> int:
+    args = build_parser().parse_args(argv)
     code: int = args.func(args)
     return code
 

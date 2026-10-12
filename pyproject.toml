@@ -50,11 +50,11 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "eval", "viewer"]
+files = ["src", "eval", "viewer", "perf"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["streamlit.*", "langfuse.*", "pandas.*"]
+module = ["streamlit.*", "langfuse.*", "pandas.*", "locust.*", "gevent.*", "requests.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

@@ -25,7 +25,7 @@ headers (`FINDINGS.md` F-04).
 | `/history/:id` | Events, what each revision changed, evaluation versions |
 | `/how-it-works` | The states, who acts in each, and the events |
 | `/insights` | Volume, aging, agreement with the engine, rules that fire, each with its N |
-| `/evaluation` | Scores, classifier comparison and dev-set decisions, from `public/evaluation.json` (provenance on the page) |
+| `/evaluation` | Scores against baselines, confusion matrices, per-rule results, five classifiers on the dev set (including jev-1.13), confidence, decisions and base rate, from `public/evaluation.json` |
 
 A receipt shows the verdict, the findings with the literal policy text, the line items with how
 each was read, revisions, the audit trail and a fixed decision bar. Actions follow
@@ -43,6 +43,16 @@ npm run e2e       # smoke tests per screen (Playwright), against its own throwaw
 
 `npm run e2e` starts the API on port 8777 with a fresh SQLite file and the app on 5177. Set
 `EPV_SHOTS=<dir>` to save screenshots.
+
+## Evaluation data
+
+```bash
+npm run evaluation   # rebuilds public/evaluation.json from outputs/eval and data/; no model call
+# the jev-1.13 dev-set run (calls OpenRouter; key from .env, traced in Langfuse; about USD 0.006)
+uv run python -I frontend/scripts/jev_dev_run.py
+```
+
+A test fails when `public/evaluation.json` is stale, and checks that it holds no receipt ID or answer key.
 
 ## Notes
 

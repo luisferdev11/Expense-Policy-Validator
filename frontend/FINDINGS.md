@@ -37,23 +37,27 @@ propose, and how the front end copes today. Luis reviews these after the backend
   someone disagreed" uses the receipt's *current* result, not the one the reviewer saw, so it is
   an approximation. Labelled as such on the screen.
 
-## F-03. The Evaluation screen has no data source
+## F-03. The Evaluation screen had no data source (resolved in the front end, 2026-10-11)
 
-- **Date:** 2026-10-10
-- **Expected:** the comparison of gpt-oss-120b, gpt-oss-20b and jev-1.13 (`docs/roadmap.md`,
-  iteration 4) reads committed figures.
-- **What happened:** no endpoint serves evaluation figures, and the jev-1.13 run on the frozen dev
-  set (`docs/plans/2026-10-10-product-plan.md`) needs model calls, which this session may not
-  make. I did not read `outputs/` or `eval/` (labels firewall).
-- **Proposal:** decide where the figures come from: a committed JSON of per-model metrics, each with
-  its N, produced by `epv eval` with no model call, and either copied into `frontend/public/` at
-  build time or served by an endpoint.
-- **Today:** `frontend/public/evaluation.json` carries the figures that the design canvas (board 5)
-  shows: the 28-receipt scores, the three classifiers on the frozen dev set (N = 130) and the five
-  decisions. The canvas cites `outputs/eval/metrics.json` and `experiments.json` of v0.2.0; **they
-  were copied from the canvas, not re-read from the repository, so check them against the committed
-  outputs before delivery.** The screen says so. jev-1.13 shows "not run" where the canvas has
-  `[frozen-set run]` and `[pending]`: the run needs model calls.
+- **Expected:** the comparison of the classifiers (`docs/roadmap.md`, iteration 4) reads committed
+  figures, and jev-1.13 appears with a measured result.
+- **What happened:** no endpoint serves evaluation figures; jev-1.13 had only a draft-set result.
+- **Done (inside `frontend/`):** `npm run evaluation` builds `public/evaluation.json` from
+  `outputs/eval/metrics.json` and `experiments.json` (aggregates only, no model call) and from
+  `frontend/data/classifier-comparison.json`. A unit test fails if the committed JSON is stale or
+  carries a receipt ID or an answer key. The canvas figures were checked against the committed
+  report: they match.
+- **jev-1.13 run:** `uv run python -I frontend/scripts/jev_dev_run.py` ran it on the frozen dev set
+  (N = 130, hash `5f34f08e…`) with the E13 decision payload (`dec-v1`) over normalised text, traced
+  in Langfuse (`classify-dev-item` and `classify-item`), USD 0.0055 billed. Statistics come from
+  `eval.experiments.decide.e14`, and the four registered variants reproduce their committed
+  numbers. Result: 130 of 130 categories, restricted F1 1.000, 0.59 s per item, USD 0.043 per
+  1,000 items; 7 items right where gpt-oss-120b was wrong and none the reverse (exact p = 0.0156).
+  It returns no subtype or recipient, so it cannot replace the classifier alone. It is not a
+  registered experiment and decides nothing.
+- **Still open (for Luis):** whether to register a follow-up (jev for the category plus a
+  generative model for subtype and recipient), and a larger or real-world dev set, because a
+  perfect score at N = 130 says little about real receipts. See `MEJORAS-ITERACION-FINAL.md`.
 
 ## F-04. The API sends no CORS headers
 
@@ -61,6 +65,7 @@ propose, and how the front end copes today. Luis reviews these after the backend
 - **Expected:** a browser app on another origin can call the API.
 - **What happened:** `OPTIONS /receipts` with an `Origin` header answers `405 method_not_allowed`.
 - **Reproduce:** `curl -i -X OPTIONS localhost:8000/receipts -H 'Origin: http://localhost:5173' -H 'Access-Control-Request-Method: POST'`.
+- **Update 2026-10-11:** fixed on main (CORS for ports 5173 and 4173, `--cors-origin`). The proxy stays as the default for development.
 - **Proposal:** either serve the built front end from the API process (`frontend/dist` as static
   files under `/`, API under `/api`), or add CORS middleware with an allow-list setting.
 - **Today:** the app calls a same-origin `/api` prefix that the Vite dev and preview servers proxy

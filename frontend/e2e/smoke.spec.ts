@@ -3,8 +3,8 @@ import type { Page } from "@playwright/test";
 import { apac, jsonl, receipt } from "./fixtures";
 
 const shots = process.env.EPV_SHOTS;
-async function shot(page: Page, name: string) {
-  if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage: false });
+async function shot(page: Page, name: string, fullPage = false) {
+  if (shots) await page.screenshot({ path: `${shots}/${name}.png`, fullPage });
 }
 
 async function submitBatch(page: Page, rows: unknown[]) {
@@ -28,7 +28,7 @@ test("empty screens say what is done and what is next", async ({ page }) => {
   await expect(page.getByRole("link", { name: "Submit one or a batch" })).toBeVisible();
   await shot(page, "01-queue-empty");
   await page.goto("/evaluation");
-  await expect(page.getByRole("heading", { name: "Three classifiers on the frozen dev set" })).toBeVisible();
+  await expect(page.getByRole("heading", { name: "Five classifiers on the frozen dev set" })).toBeVisible();
   await page.goto("/insights");
   await expect(page.getByText("No receipts yet.")).toBeVisible();
   await expect(page.locator(".nav__health")).toContainText("API connected");
@@ -220,9 +220,12 @@ test("how it works and evaluation", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "How a receipt moves" })).toBeVisible();
   await expect(page.getByRole("rowheader", { name: "With Compliance" })).toBeVisible();
   await page.goto("/evaluation");
-  await expect(page.getByText("28 of 28")).toBeVisible();
-  await expect(page.getByText("not run").first()).toBeVisible();
-  await shot(page, "08-evaluation");
+  await expect(page.getByText("28 of 28").first()).toBeVisible();
+  await expect(page.getByRole("rowheader", { name: "jev-1.13", exact: true })).toBeVisible();
+  await expect(page.getByText("Reading the jev-1.13 row.")).toBeVisible();
+  await expect(page.getByRole("table", { name: "Disposition confusion matrix" })).toBeVisible();
+  await expect(page.getByRole("img", { name: /Category accuracy with 95 percent intervals/ })).toBeVisible();
+  await shot(page, "08-evaluation", true);
 });
 
 test("insights, history and theme", async ({ page }) => {

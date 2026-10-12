@@ -213,3 +213,17 @@ th[scope=row] { text-align: left; font-weight: 500; padding: 0 var(--space-3); h
 .ll-table td .state-chip { white-space: normal; height: auto; padding: 1px var(--space-2); }
 .page { max-width: 1360px; }
 @media (max-width: 1100px) { .intake-grid { grid-template-columns: 1fr; } }
+
+.eval { max-width: 1280px; }
+.eval-run { font-size: 12px; }
+.eval-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); position: sticky; top: 0; z-index: 2; padding: var(--space-2) 0; background: var(--canvas); }
+.eval-nav a { padding: 4px var(--space-3); border: 1px solid var(--border-control); border-radius: var(--radius-pill); text-decoration: none; font-size: 13px; background: var(--surface); }
+.eval-nav a:hover { border-color: var(--accent); }
+.eval section { scroll-margin-top: 56px; }
+.eval-note { align-items: flex-start; }
+.confusion { border-collapse: collapse; font-size: 14px; }
+.confusion th, .confusion td { border: 1px solid var(--border); padding: var(--space-3) var(--space-4); text-align: center; min-width: 84px; }
+.confusion thead th { background: var(--surface-sunken); font: 500 12px/16px var(--font-sans); }
+.confusion tbody th { background: var(--surface-sunken); text-align: left; font: 500 13px/20px var(--font-sans); }
+.confusion td.is-diag { font-weight: 600; }
+.chart { max-width: 760px; }

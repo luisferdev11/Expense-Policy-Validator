@@ -5,6 +5,7 @@
   "type": "module",
   "scripts": {
     "styles": "node scripts/build-styles.mjs",
+    "evaluation": "node scripts/build-evaluation.mjs",
     "predev": "npm run styles",
     "dev": "vite",
     "prebuild": "npm run styles",

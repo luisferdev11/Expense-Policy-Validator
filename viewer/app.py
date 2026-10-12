@@ -177,8 +177,8 @@ elif view == "Upload":
             st.session_state["upload_run"] = {
                 "run_id": upload_run.run_id,
                 "path": str(upload_run.path),
-                "calls": classifier.calls_made,
-                "usd": classifier.run_spend_usd,
+                "calls": getattr(classifier, "calls_made", 0),
+                "usd": getattr(classifier, "run_spend_usd", 0.0),
                 "errors": len(parsed.errors),
             }
     last = st.session_state.get("upload_run")

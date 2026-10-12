@@ -16,6 +16,7 @@ from expense_validator.app.decide import decide_receipt
 from expense_validator.domain.engine.context import build_context
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.domain.models import (
+    Classification,
     ClassifiedReceipt,
     ReceiptInput,
     ReceiptResult,
@@ -54,9 +55,16 @@ def classify_receipt(
             items = normalise(receipt)
             span.update(output=[i.model_dump(mode="json") for i in items])
         with tracer.span("classify-receipt") as span:
-            classifications = tuple(
-                classifier.classify(i.line_id, build_request(receipt, i)) for i in items
-            )
+            answered: list[Classification] = []
+            flags: dict[str, dict[str, bool]] = {}
+            for i in items:
+                answered.append(classifier.classify(i.line_id, build_request(receipt, i)))
+                # Only the hybrid exposes flags (a conflict between its two sides); they appear
+                # in the span output when true and change nothing else.
+                raised = {k: v for k, v in getattr(classifier, "last_flags", {}).items() if v}
+                if raised:
+                    flags[i.line_id] = raised
+            classifications = tuple(answered)
             span.update(
                 output=[
                     {
@@ -68,6 +76,7 @@ def classify_receipt(
                         "cache_key": c.source.cache_key,
                         "request_id": c.source.request_id,
                         "unclassified_reason": c.unclassified_reason,
+                        **flags.get(c.line_id, {}),
                     }
                     for c in classifications
                 ]

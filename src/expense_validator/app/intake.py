@@ -12,6 +12,7 @@ from __future__ import annotations
 import hashlib
 import json
 import shutil
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from decimal import Decimal
 from pathlib import Path
@@ -19,9 +20,8 @@ from typing import Any
 
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
-from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
-from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.results_files import write_results
+from expense_validator.app.classifiers import build_classifier
 from expense_validator.app.errors import InvalidReceiptError
 from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.service import parse_receipt
@@ -94,20 +94,21 @@ def default_classifier(
     tracer: Tracer,
     cache_path: Path = UPLOAD_CACHE,
     offline: bool = False,
-    prompt_link: Any = None,
-) -> OpenRouterClassifier:
-    """The configured classifier on a gitignored cache, seeded from the committed one, so
-    uploads never change committed outputs and known lines cost nothing."""
+    prompt_links: Mapping[str, Any] | None = None,
+) -> ItemClassifier:
+    """The configured classifier (`classifier_model`, through the one factory) on a gitignored
+    cache, seeded from the committed one, so uploads never change committed outputs and known
+    lines cost nothing."""
     if not cache_path.exists() and CLASSIFICATIONS_FILE.exists():
         cache_path.parent.mkdir(parents=True, exist_ok=True)
         shutil.copy(CLASSIFICATIONS_FILE, cache_path)
     config = load_pipeline_config()
-    return OpenRouterClassifier(
-        ClassificationCache(cache_path),
+    return build_classifier(
+        config.classifier_model,
         tracer,
+        ClassificationCache(cache_path),
         offline=offline,
-        prompt_link=prompt_link,
-        pin=PINS[config.classifier_model],
+        prompt_links=prompt_links,
         null_subtype_as_none=config.null_subtype_as_none,
     )
 

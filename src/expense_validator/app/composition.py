@@ -13,11 +13,11 @@ from pathlib import Path
 from typing import Any
 
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
-from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.persisting_classifier import PersistingClassifier
 from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
 from expense_validator.adapters.tracing import make_tracer
 from expense_validator.app.api import DEFAULT_CORS_ORIGINS
+from expense_validator.app.classifiers import sync_prompt_links
 from expense_validator.app.intake import default_classifier
 from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
@@ -87,7 +87,8 @@ def build_worker(
     Langfuse is best effort: with no keys or no server the worker runs untraced.
     """
     tracer = make_tracer(disabled=no_trace)
-    prompt_link = None if offline else sync_prompt(tracer)
-    base = default_classifier(tracer, cache_path, offline=offline, prompt_link=prompt_link)
-    classifier = PersistingClassifier(base, base.cache.save)
-    return Worker(store, classifier, tracer, load_settings(), utc_now, load_pipeline_config())
+    config = load_pipeline_config()
+    links = sync_prompt_links(config.classifier_model, tracer, offline)
+    base = default_classifier(tracer, cache_path, offline=offline, prompt_links=links)
+    classifier = PersistingClassifier(base, base.cache.save)  # type: ignore[attr-defined]
+    return Worker(store, classifier, tracer, load_settings(), utc_now, config)

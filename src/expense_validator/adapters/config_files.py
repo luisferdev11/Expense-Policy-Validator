@@ -16,6 +16,7 @@ from typing import Any
 
 import yaml
 
+from expense_validator.adapters.openrouter.models import CLASSIFIER_NAMES
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.paths import CONFIG_DIR, DECISIONS_FILE, POLICY_DIR, REPO_ROOT
 
@@ -75,8 +76,14 @@ PIPELINE_FILE = CONFIG_DIR / "pipeline.yaml"
 def load_pipeline_config(path: Path = PIPELINE_FILE) -> PipelineConfig:
     raw = path.read_bytes()
     data: dict[str, Any] = yaml.safe_load(raw)
+    classifier_model = str(data["classifier_model"])
+    if classifier_model not in CLASSIFIER_NAMES:
+        raise ValueError(
+            f"unknown classifier_model {classifier_model!r} in {path.name}; "
+            f"accepted: {', '.join(CLASSIFIER_NAMES)}"
+        )
     return PipelineConfig(
-        classifier_model=str(data["classifier_model"]),
+        classifier_model=classifier_model,
         confidence_source=str(data["confidence_source"]),
         translate=bool(data["translate"]),
         null_subtype_as_none=bool(data["null_subtype_as_none"]),

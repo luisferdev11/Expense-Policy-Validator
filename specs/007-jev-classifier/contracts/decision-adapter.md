@@ -164,3 +164,13 @@ does the following:
 
 `default_classifier` (`app/intake.py:93`), `build_worker` (`app/composition.py:76`), the shadow
 stage and `epv run` call only this factory.
+
+As built (phase 3): `prompt_links` is a mapping with the keys `chat` and `decision`, and
+`app/classifiers.py` also provides `sync_prompt_links(name, tracer, offline)`, which syncs only the
+prompts the named classifier needs (a pin: `cls-v2`; `jev-1.13`: `dec-v1`; the hybrid: both).
+`default_classifier(tracer, cache_path, offline, prompt_links)` returns an `ItemClassifier` and its
+callers read `calls_made` and `run_spend_usd` with `getattr`. `CLASSIFIER_NAMES` lives in
+`adapters/openrouter/models.py`, so `load_pipeline_config` (an adapter) can validate against it,
+and `app/classifiers.py` re-exports it. The hybrid exposes `last_flags`, `last_keys` and
+`last_latency_s` after every call (the span output, the E16 runner), and the merged source's
+`prompt_version` is the hybrid's own, `hyb-v1(dec-v1+cls-v2)`.

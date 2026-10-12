@@ -17,13 +17,11 @@ from pathlib import Path
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.keyword_classifier import KeywordClassifier
-from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
-from expense_validator.adapters.openrouter.models import PINS
-from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
 from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.adapters.tracing import make_tracer
+from expense_validator.app.classifiers import build_classifier, sync_prompt_links
 from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.worker import Worker
 from expense_validator.paths import (
@@ -86,13 +84,12 @@ def run_command(
     cache = ClassificationCache(cache_path)
     clf: ItemClassifier
     if classifier == "openrouter":
-        prompt_link = None if offline else sync_prompt(tracer)
-        clf = OpenRouterClassifier(
-            cache,
+        clf = build_classifier(
+            config.classifier_model,
             tracer,
+            cache,
             offline=offline,
-            prompt_link=prompt_link,
-            pin=PINS[config.classifier_model],
+            prompt_links=sync_prompt_links(config.classifier_model, tracer, offline),
             null_subtype_as_none=config.null_subtype_as_none,
         )
     elif classifier == "keyword":

@@ -296,6 +296,8 @@ iteration_2:
   # E16 (specs/007-jev-classifier/contracts/e16-rule.md). Registered on 2026-10-12 before any
   # E16 run, after the demonstrative jev-1.13 run of 2026-10-11 whose numbers are known. Luis
   # approved the rule text in conversation on 2026-10-12; a change to it needs a new approval.
+  # Wording amended on 2026-10-12 with Luis's approval, before any E16 run: the reference's
+  # answers are the committed E14 rows; the rule is unchanged.
   - id: E16
     factor: item classifier, a decision model for the category
     registered_at: "2026-10-12T19:30:31+00:00"
@@ -303,8 +305,8 @@ iteration_2:
     reference: gpt-oss-120b   # its committed E14 answers on this set; no new call
     held_fixed: >-
       Frozen dev set (all 130 items decide). Decision prompt dec-v1 (the E13 payload, moved into
-      the package unchanged); cls-v2 for gpt-oss-120b, whose answers are the committed E14 cache
-      (explorations/results/iter2/cache/gpt-oss-120b.jsonl), so the hybrid's detail side makes no
+      the package unchanged); cls-v2 for gpt-oss-120b, whose answers are the committed E14 rows
+      (explorations/results/iter2/E14/gpt-oss-120b.jsonl), so the hybrid's detail side makes no
       new call. OpenRouter routing; serving provider recorded. Input: item text, merchant, MCC;
       never the declared expense type or attendee count.
     why: >-

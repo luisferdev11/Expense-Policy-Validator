@@ -45,7 +45,8 @@ needs a defined path: what a reviewer can do, and what happens after a review.
    Every action is an event, and a Langfuse score `auditor_agreement` on the receipt's trace.
 7. **Storage.** SQLite locally (events, projections, outbox), mirroring the AWS design (SQS,
    DynamoDB, S3). The committed outputs and `epv run` stay unchanged, so the evaluation never
-   depends on the application.
+   depends on the application. *Amended 2026-10-12: the production database is Aurora PostgreSQL,
+   not DynamoDB; see ADR 0009.*
 
 ## Consequences
 

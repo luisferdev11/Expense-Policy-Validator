@@ -121,6 +121,14 @@ With N = 9 should-pass receipts the false-positive rate is very uncertain (see i
 
 ## Failure cases
 
-- **Failure case 1:** stage TBD in iteration 3.
-- **Failure case 2:** stage TBD in iteration 3.
+The final run has no disposition error on the 28 scored receipts. These are the two the system made in earlier runs; both come from the classification stage, not from the rule logic.
+
+- **Failure case 1: RCP-007**, stage `classification` (the model's answer broke the output schema). Run: iteration 1 (v0.1.1, gpt-oss-120b pinned to deepinfra/bf16).
+  - What happened: The line 'Assorted soft drinks' came back as JSON with `"subtype": null`. The cls-v2 parser is strict, so the line was `unclassified` (schema_violation). EXC-03 turned the missing category into a review signal, the receipt went to review, and that was the run's only disposition error. Reading null as `none` would have given the right disposition. Experiment E15 then tested exactly that on the dev set and found no net fix (2 null subtypes in 520 answers), so the parser stayed strict; the final run classifies the line correctly, but one malformed answer still turns a line into a review signal.
+  - What I would change: Retry a schema violation once before giving up on the line, and re-run E15 on a larger dev set. A strict parser is right; a single malformed answer should not decide a receipt.
+  - Evidence: AI_NOTES 33, docs/decisions/0005-iteration-2-decisions.md (E15).
+- **Failure case 2: RCP-012**, stage `classification` (the serving provider returned a malformed answer with confidence 0). Run: iteration 2, first pass of the finalist (gpt-oss-120b through OpenRouter routing).
+  - What happened: The only line (wireless headphones) was served by CoreWeave (fp4), whose answer had `confidence: 0`, stray whitespace and no reasoning. EXC-03 treated the line as uncertain and the engine left it out, so TECH-01 (high) and DOC-03 (medium) did not fire and the receipt went to review instead of flag. The same provider made RCP-032 miss TECH-04, without changing its disposition. The first diagnosis blamed the EXC-03 threshold; checking the line's confidence showed it was 0, so no threshold would have helped (AI_NOTES 42).
+  - What I would change: Done: requests ignore CoreWeave, and its answers were asked again (ADR 0004, decided by Luis on dev-set evidence). Better next: treat 'confidence 0 and no reasoning' as a failed answer and retry through another provider, instead of keeping a blocklist.
+  - Evidence: docs/decisions/0004-openrouter-routing.md (amendment), AI_NOTES 42.
 

@@ -14,6 +14,7 @@ from eval.answers import load_answers
 from eval.base_rate import base_rate_table
 from eval.baselines import run_flagger
 from eval.compare import compare
+from eval.failure_cases import FAILURE_CASES, render_failure_cases
 from eval.metrics import system_metrics
 from eval.oracle import attribute, oracle_rows
 from eval.scope import OUT_OF_SCOPE
@@ -245,9 +246,7 @@ def _render(metrics: dict[str, Any]) -> str:
         "",
         "## Failure cases",
         "",
-        "- **Failure case 1:** stage TBD in iteration 3.",
-        "- **Failure case 2:** stage TBD in iteration 3.",
-        "",
+        *render_failure_cases(FAILURE_CASES),
     ]
     return "\n".join(lines)
 

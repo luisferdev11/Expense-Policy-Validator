@@ -35,7 +35,9 @@ Nothing here changes a policy decision or the engine.
   `evaluations` (versioned findings), `outbox`, `batches` and `batch_items`.
 - A `ReceiptStore` port in `ports/` describes the operations the use cases need; the SQLite
   implementation lives in `adapters/`. Only one implementation exists. The port is the seam to
-  DynamoDB and SQS on AWS, not a speculative abstraction (constitution XI).
+  DynamoDB and SQS on AWS, not a speculative abstraction (constitution XI). *Amended 2026-10-12:
+  the production store is Aurora PostgreSQL behind the same port; DynamoDB with SQS stays the
+  alternative for a much larger volume (ADR 0009).*
 
 ### D2. Layering of the new code (ADR 0003)
 

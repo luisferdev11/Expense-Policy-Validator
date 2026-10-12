@@ -115,7 +115,8 @@ application beyond Streamlit. ADR 0006 records the intake and lifecycle decision
 
 **Scope.**
 - The README, at most 2 pages, with the brief's sections.
-- The AWS one-page design, with the monthly cost worked out by hand at 50,000 receipts a day.
+- The AWS one-page design, with the monthly cost worked out by hand at 50,000 receipts a day (the
+  brief's figure) and at 100,000 (the production target). The database choice is ADR 0009.
   It also answers candidates L1 to L8 for production. Its "before production" list must include
   the recipient-abuse risk (Q3, L8).
 - The two failure cases, each with its stage.

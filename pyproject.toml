@@ -1,16 +1,18 @@
 [project]
 name = "expense-policy-validator"
-version = "0.1.0"
+version = "0.3.0"
 description = "Classifies itemized expense receipts, applies written expense policies with a deterministic rule engine, and raises evidence-grounded exceptions."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
+    "fastapi>=0.143.0",
     "langfuse>=3",
     "openai>=1.40",
     "pydantic>=2.7",
     "python-dotenv>=1.0",
     "pyyaml>=6.0",
     "streamlit>=1.38",
+    "uvicorn>=0.54.0",
 ]
 
 [project.scripts]
@@ -25,6 +27,7 @@ packages = ["src/expense_validator", "eval", "viewer"]
 
 [dependency-groups]
 dev = [
+    "httpx>=0.28.1",
     "mypy>=1.11",
     "pre-commit>=3.8",
     "pytest>=8.3",
@@ -38,6 +41,10 @@ target-version = "py312"
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
+
+[tool.ruff.lint.per-file-ignores]
+# The generator holds the JavaScript of the Postman assertions as strings, which are long.
+"docs/api/build_collection.py" = ["E501"]
 
 [tool.mypy]
 python_version = "3.12"

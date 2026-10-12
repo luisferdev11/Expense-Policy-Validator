@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 from expense_validator.domain.models import CacheEntry, ClassifierRequest
@@ -66,5 +67,9 @@ class ClassificationCache:
             json.dumps(self._rows[k].model_dump(mode="json"), ensure_ascii=False)
             for k in sorted(self._rows)
         ]
-        self.path.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+        # Write beside the file and rename over it: a crash leaves the old file, never half of
+        # a new one.
+        temporary = self.path.with_name(self.path.name + ".tmp")
+        temporary.write_text("".join(line + "\n" for line in lines), encoding="utf-8")
+        os.replace(temporary, self.path)
         self._dirty = False

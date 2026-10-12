@@ -335,6 +335,39 @@ The answers (revisions for a changed receipt, re-evaluation of affected receipts
 actions, Streamlit intake first, then the backend with Postman collections, then the front)
 are in ADR 0006 and `docs/plans/2026-10-10-product-plan.md`.
 
+## 2026-10-10: "Move on to the next iteration; this one must be clean"
+
+Luis, translated:
+
+```
+We closed 2.1, I think, because I have merged. I want you to move on to the next iteration. This
+one is very important. It has to end clean, with good software engineering practices.
+```
+
+The assistant tagged v0.2.1, consulted the advisor model before starting, and ran the whole Spec
+Kit cycle on branch `feat/004-backend-lifecycle`. The advisor's plan: vertical slices that each end
+green and committed, ADR 0007 before any code, parity with `epv run` by construction (one decision
+step shared by the batch run and the worker), the cascade without touching the engine, the
+labels firewall stated before `/speckit-specify`.
+
+The `/speckit-specify` prompt, which states the firewall as the parent `CLAUDE.md` requires:
+
+```
+Iteration 3 (release v0.3.0): the intake and lifecycle backend. LABELS FIREWALL (rule 1):
+data/receipts.jsonl contains the correct answers (labels, line_items[].labels, notes). Do NOT read
+that file and do not load it into context; only code under eval/ may read labels. Everything the
+backend stores, returns or traces is the stripped ReceiptInput (via parse_receipt_line); the
+idempotency hash is computed on the stripped canonical form. Build from ADR 0006 and the product
+plan. Scope: SQLite append-only event store with projections and an outbox; FastAPI `epv serve`
+and a separate `epv worker`; persist-first idempotent POST /receipts and POST /batches; revisions;
+stage-by-stage resume with leased outbox claims; cascade re-evaluation using build_context
+unchanged; the lifecycle state machine; four reviewer actions; Langfuse auditor_agreement scores
+(best effort); a Postman collection. Success criteria: the 32 receipts through the API equal
+`epv run`; the same POST twice is one receipt and one processing; a crashed worker resumes with
+zero extra billed calls; outcomes do not depend on arrival order. The engine's decisions must not
+change (alert Luis before any engine change).
+```
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

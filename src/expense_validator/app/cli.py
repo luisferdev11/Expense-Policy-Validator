@@ -22,8 +22,10 @@ from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
+from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.adapters.tracing import make_tracer
 from expense_validator.app.pipeline import run_pipeline
+from expense_validator.app.worker import Worker
 from expense_validator.paths import (
     BASELINES_DIR,
     CLASSIFICATIONS_FILE,
@@ -149,6 +151,126 @@ def _cmd_eval(args: argparse.Namespace) -> int:
     return 0
 
 
+@dataclass(frozen=True)
+class WorkerOptions:
+    offline: bool = False
+    no_trace: bool = False
+    cache: Path | None = None
+
+
+def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
+    from expense_validator.app.composition import build_worker
+    from expense_validator.paths import APP_CLASSIFICATION_CACHE
+
+    load_env()
+    return build_worker(
+        store,
+        offline=options.offline,
+        no_trace=options.no_trace,
+        cache_path=options.cache or APP_CLASSIFICATION_CACHE,
+    )
+
+
+def serve_command(
+    host: str,
+    port: int,
+    db: str | None,
+    worker: WorkerOptions | None = None,
+    no_trace: bool = False,
+    cors: list[str] | None = None,
+) -> int:
+    """Run the API; with `worker` options, a worker thread runs beside it (for demos)."""
+    import threading
+
+    import uvicorn
+
+    from expense_validator.app.api import create_app
+    from expense_validator.app.composition import (
+        build_review,
+        build_service,
+        cors_origins,
+        db_path,
+        open_store,
+    )
+
+    load_env()
+    path = db_path(db)
+    store = open_store(path)
+    service = build_service(store)
+    app = create_app(
+        service,
+        build_review(store, service, no_trace=no_trace),
+        cors_origins=cors_origins(cors),
+    )
+    stop = threading.Event()
+    if worker is not None:
+        in_process = _build_worker(store, worker)
+        threading.Thread(target=in_process.run_forever, args=(1.0, stop), daemon=True).start()
+    where = "in process" if worker is not None else "separate"
+    print(f"epv serve: http://{host}:{port} (database {path}, worker {where})", file=sys.stderr)
+    try:
+        uvicorn.run(app, host=host, port=port, log_level="info")
+    finally:
+        stop.set()
+    return 0
+
+
+def worker_command(
+    db: str | None,
+    once: bool = False,
+    poll_seconds: float = 1.0,
+    options: WorkerOptions | None = None,
+) -> int:
+    from expense_validator.app.composition import db_path, open_store
+
+    path = db_path(db)
+    worker = _build_worker(open_store(path), options or WorkerOptions())
+    if once:
+        processed = worker.run_once()
+        print(f"epv worker: processed {processed} work items (database {path})", file=sys.stderr)
+        return 0
+    print(f"epv worker: polling every {poll_seconds}s (database {path})", file=sys.stderr)
+    try:
+        worker.run_forever(poll_seconds)
+    except KeyboardInterrupt:
+        worker.tracer.flush()
+    return 0
+
+
+def _options(args: argparse.Namespace) -> WorkerOptions:
+    return WorkerOptions(args.offline, args.no_trace, Path(args.cache) if args.cache else None)
+
+
+def _cmd_serve(args: argparse.Namespace) -> int:
+    return serve_command(
+        args.host,
+        args.port,
+        args.db,
+        _options(args) if args.with_worker else None,
+        no_trace=args.no_trace,
+        cors=args.cors_origin,
+    )
+
+
+def _cmd_worker(args: argparse.Namespace) -> int:
+    return worker_command(args.db, args.once, args.poll_seconds, _options(args))
+
+
+def _add_worker_options(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--offline", action="store_true", help="never call a model")
+    parser.add_argument("--no-trace", action="store_true", help="force the no-op tracer")
+    parser.add_argument(
+        "--cache", help="answer cache file (default: .cache/app_classifications.jsonl)"
+    )
+
+
+def _cmd_openapi(args: argparse.Namespace) -> int:
+    from expense_validator.app.composition import openapi_document
+
+    print(json.dumps(openapi_document(), indent=2, sort_keys=True))
+    return 0
+
+
 def _cmd_view(args: argparse.Namespace) -> int:
     app = REPO_ROOT / "viewer" / "app.py"
     return subprocess.call([sys.executable, "-m", "streamlit", "run", str(app)])
@@ -165,6 +287,27 @@ def main(argv: list[str] | None = None) -> int:
     run.set_defaults(func=_cmd_run)
     sub.add_parser("eval", help="score committed results").set_defaults(func=_cmd_eval)
     sub.add_parser("view", help="launch the Streamlit viewer").set_defaults(func=_cmd_view)
+    sub.add_parser("openapi", help="print the API's OpenAPI document").set_defaults(
+        func=_cmd_openapi
+    )
+    serve = sub.add_parser("serve", help="run the HTTP API")
+    serve.add_argument("--host", default="127.0.0.1")
+    serve.add_argument("--port", type=int, default=8000)
+    serve.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    serve.add_argument("--with-worker", action="store_true", help="also run a worker thread")
+    serve.add_argument(
+        "--cors-origin",
+        action="append",
+        help="an origin a browser front end may call from (repeatable; default: Vite dev server)",
+    )
+    _add_worker_options(serve)
+    serve.set_defaults(func=_cmd_serve)
+    worker = sub.add_parser("worker", help="run the worker that processes submitted receipts")
+    worker.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    worker.add_argument("--once", action="store_true", help="drain the queue and exit")
+    worker.add_argument("--poll-seconds", type=float, default=1.0)
+    _add_worker_options(worker)
+    worker.set_defaults(func=_cmd_worker)
     args = parser.parse_args(argv)
     code: int = args.func(args)
     return code

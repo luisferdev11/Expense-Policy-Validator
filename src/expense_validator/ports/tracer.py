@@ -29,4 +29,10 @@ class Tracer(Protocol):
         self, name: str, model: str, input: Any, **fields: Any
     ) -> AbstractContextManager[Observation]: ...
 
+    def score(
+        self, run_label: str, receipt_id: str, name: str, value: float, comment: str | None = None
+    ) -> None:
+        """Attach a numeric score to the trace of one receipt in one run. Best effort."""
+        ...
+
     def flush(self, timeout_s: float = 5.0) -> None: ...

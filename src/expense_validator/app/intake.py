@@ -13,17 +13,18 @@ import hashlib
 import json
 import shutil
 from dataclasses import dataclass, field
+from decimal import Decimal
 from pathlib import Path
-
-from pydantic import ValidationError
+from typing import Any
 
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
 from expense_validator.adapters.openrouter.models import PINS
-from expense_validator.adapters.receipts_file import parse_receipt_line
 from expense_validator.adapters.results_files import write_results
+from expense_validator.app.errors import InvalidReceiptError
 from expense_validator.app.pipeline import run_pipeline
+from expense_validator.app.service import parse_receipt
 from expense_validator.domain.models import ReceiptInput, ReceiptResult
 from expense_validator.paths import CLASSIFICATIONS_FILE, REPO_ROOT
 from expense_validator.ports.classifier import ItemClassifier
@@ -46,21 +47,23 @@ class UploadRun:
     path: Path
 
 
-def _rows(text: str) -> list[str]:
-    """Split an upload into one JSON text per receipt."""
+def split_rows(text: str) -> list[str]:
+    """Split an upload into one JSON text per row: a JSON array, one pretty-printed object, or
+    JSONL. Numbers in an array keep the precision they were written with."""
     stripped = text.strip()
     if stripped.startswith("["):
         try:
-            return [json.dumps(row) for row in json.loads(stripped)]
+            rows = json.loads(stripped, parse_float=Decimal)
+            return [json.dumps(row, default=str) for row in rows]
         except json.JSONDecodeError:
             pass
     if stripped.startswith("{") and "\n" in stripped:
         try:
-            whole = json.loads(stripped)
+            whole = json.loads(stripped, parse_float=Decimal)
         except json.JSONDecodeError:
             whole = None
         if isinstance(whole, dict):
-            return [json.dumps(whole)]
+            return [json.dumps(whole, default=str)]
     return [line for line in text.splitlines() if line.strip()]
 
 
@@ -68,15 +71,11 @@ def parse_upload(text: str) -> ParsedUpload:
     receipts: list[ReceiptInput] = []
     errors: list[tuple[int, str]] = []
     seen: set[str] = set()
-    for row, raw in enumerate(_rows(text), start=1):
+    for row, raw in enumerate(split_rows(text), start=1):
         try:
-            parsed = parse_receipt_line(raw)
-        except json.JSONDecodeError as exc:
-            errors.append((row, f"not valid JSON: {exc.msg}"))
-            continue
-        except ValidationError as exc:
-            fields = sorted({".".join(str(p) for p in e["loc"]) for e in exc.errors()})
-            errors.append((row, f"not a valid receipt: {', '.join(fields[:5])}"))
+            parsed = parse_receipt(raw)
+        except InvalidReceiptError as exc:
+            errors.append((row, exc.message))
             continue
         if parsed.receipt_id in seen:
             errors.append((row, f"duplicate receipt_id {parsed.receipt_id} in this upload"))
@@ -91,7 +90,12 @@ def run_id(receipts: list[ReceiptInput]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
 
-def default_classifier(tracer: Tracer, cache_path: Path = UPLOAD_CACHE) -> OpenRouterClassifier:
+def default_classifier(
+    tracer: Tracer,
+    cache_path: Path = UPLOAD_CACHE,
+    offline: bool = False,
+    prompt_link: Any = None,
+) -> OpenRouterClassifier:
     """The configured classifier on a gitignored cache, seeded from the committed one, so
     uploads never change committed outputs and known lines cost nothing."""
     if not cache_path.exists() and CLASSIFICATIONS_FILE.exists():
@@ -101,6 +105,8 @@ def default_classifier(tracer: Tracer, cache_path: Path = UPLOAD_CACHE) -> OpenR
     return OpenRouterClassifier(
         ClassificationCache(cache_path),
         tracer,
+        offline=offline,
+        prompt_link=prompt_link,
         pin=PINS[config.classifier_model],
         null_subtype_as_none=config.null_subtype_as_none,
     )

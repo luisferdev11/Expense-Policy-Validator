@@ -7,6 +7,7 @@ It lives in `app/` because it calls the services, and adapters may not import `a
 from __future__ import annotations
 
 from collections.abc import Sequence
+from typing import Any
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,7 @@ from expense_validator.app.api.routes import build_router
 from expense_validator.app.batching import BatchService
 from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
+from expense_validator.domain.models import ReceiptInput
 
 # The origins of a local front end: the Vite dev server and its preview. A deployment lists its own
 # (`--cors-origin` or `EPV_CORS_ORIGINS`). A browser blocks calls to another origin unless the API
@@ -26,6 +28,39 @@ DEFAULT_CORS_ORIGINS = (
     "http://localhost:4173",
     "http://127.0.0.1:4173",
 )
+
+
+def add_request_schemas(document: dict[str, Any]) -> None:
+    """Add the schema of what a client submits: `ReceiptInputRequest` and `LineItemInputRequest`.
+
+    The response schemas, `ReceiptInput` and `LineItemInput`, are generated in serialization mode
+    (money is a string). A client may send money as a number or a string, which is the validation
+    mode's schema, so it gets its own names: every `$defs` key and every reference carries the
+    `Request` suffix, which cannot collide with a response schema (spec 006, research R10).
+    """
+    schemas = document.setdefault("components", {}).setdefault("schemas", {})
+    schema = ReceiptInput.model_json_schema(
+        mode="validation", ref_template="#/components/schemas/{model}Request"
+    )
+    definitions = schema.pop("$defs", {})
+    renamed = {"ReceiptInputRequest": schema}
+    renamed.update({f"{name}Request": sub for name, sub in definitions.items()})
+    for name, sub in renamed.items():
+        if name in schemas:
+            raise ValueError(f"the OpenAPI component {name} already exists")
+        sub["title"] = name
+        schemas[name] = sub
+
+
+def _install_openapi(app: FastAPI) -> None:
+    generate = app.openapi
+
+    def openapi() -> dict[str, Any]:
+        if app.openapi_schema is None:
+            add_request_schemas(generate())  # builds and caches the document, then adds to it
+        return app.openapi_schema or {}
+
+    app.openapi = openapi  # type: ignore[method-assign]
 
 
 def create_app(
@@ -49,6 +84,7 @@ def create_app(
     )
     install_error_handlers(app)
     app.include_router(build_router(service, review, batches or BatchService(service)))
+    _install_openapi(app)
     return app
 
 

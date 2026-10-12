@@ -1,7 +1,8 @@
 // Types for docs/api/openapi.json and specs/004-backend-lifecycle/contracts/api.md.
-// The OpenAPI document leaves `receipt` and `result` as plain objects, so their shape is
-// written here from ReceiptInput and ReceiptResult (src/expense_validator/domain/models.py).
-// Money is a string in JSON.
+// The receipt and the result are generated from the document (see below); the unions of states,
+// actions and reason codes, and the response wrappers, are written here. Money is a string in JSON.
+
+import type { components } from "./generated";
 
 export type State =
   | "submitted"
@@ -24,90 +25,20 @@ export type ReasonCode =
   | "documentation_provided"
   | "other";
 
-export interface LineItem {
-  line_id: string;
-  description_raw: string;
-  language: string;
-  quantity: string;
-  unit_price: string;
-  amount: string;
-  amount_usd: string;
-}
-
-export interface Receipt {
-  receipt_id: string;
-  employee_id: string;
-  employee_country: string;
-  entity: "GLOBAL" | "APAC" | "EMEA";
-  submitted_expense_type: string;
-  merchant_name: string | null;
-  mcc: number;
-  mcc_description: string;
-  transaction_datetime: string | null;
-  currency: string | null;
-  fx_rate_to_usd: string | null;
-  total_amount: string | null;
-  total_amount_usd: string | null;
-  attendee_count: number | null;
-  trip_id: string | null;
-  trip_nights: number | null;
-  pre_approval_ref: string | null;
-  itemized: boolean;
-  vat_number: string | null;
-  line_items: LineItem[];
-}
-
-export interface OutputLine {
-  line_id: string;
-  description_raw: string;
-  category: string | null;
-  restricted: boolean | null;
-  confidence: number | null;
-  subtype: string;
-  recipient_kind: string;
-  recipient_name: string | null;
-  status: "classified" | "unclassified";
-  unclassified_reason: string | null;
-}
-
-export interface Finding {
-  rule_id: string;
-  policy_doc: string;
-  severity: Severity;
-  line_ids: string[];
-  evidence: string;
-  explanation: string;
-  decisions: string[];
-  computed: Record<string, string>;
-}
-
-export interface ReviewSignal {
-  rule_id: string;
-  policy_doc: string;
-  reason: string;
-  line_ids: string[];
-}
-
-export interface RunMetadata {
-  classifier: string;
-  model_id: string;
-  provider_endpoint: string;
-  prompt_version: string;
-  rules_version: string;
-  exc03_threshold: number;
-  exc03_threshold_status: string;
-  confidence_source: string;
-  pipeline_config_version: string | null;
-}
-
-export interface Result {
-  receipt_id: string;
-  disposition: Disposition;
-  line_items: OutputLine[];
-  exceptions: Finding[];
-  review_signals: ReviewSignal[];
-  run: RunMetadata;
-}
+// The domain shapes come from the OpenAPI document through `generated.ts` (`npm run gen:api`).
+// Everything the app imports is re-exported here; nothing else imports `generated.ts` directly.
+type S = components["schemas"];
+export type Receipt = S["ReceiptInput"]; // what the API returns
+export type LineItem = S["LineItemInput"];
+export type ReceiptInput = S["ReceiptInputRequest"]; // what a client submits
+export type LineItemInputRequest = S["LineItemInputRequest"];
+export type Entity = ReceiptInput["entity"];
+export type Language = ReceiptInput["line_items"][number]["language"];
+export type Result = S["ReceiptResult"];
+export type OutputLine = S["OutputLineItem"];
+export type Finding = S["ExceptionFinding"];
+export type ReviewSignal = S["ReviewSignal"];
+export type RunMetadata = S["RunMetadata"];
 
 export interface FailureInfo {
   stage: "classify" | "evaluate";
@@ -123,6 +54,9 @@ export interface ReceiptSummary {
   notice: string | null;
   qa_sample: boolean;
   updated_at: string;
+  created_at: string; // when revision 1 was stored; never changes
+  decided_by: string | null; // the reviewer, or "system" for an auto-approval
+  decided_at: string | null;
 }
 
 export interface ReceiptList {
@@ -182,6 +116,7 @@ export interface BatchItem {
 export interface BatchResponse {
   batch_id: string;
   total: number;
+  created_at: string;
   counts: Record<string, number>;
   items: BatchItem[];
 }

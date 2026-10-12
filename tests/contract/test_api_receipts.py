@@ -5,15 +5,18 @@ from __future__ import annotations
 import json
 from datetime import timedelta
 from pathlib import Path
+from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
 
+from expense_validator.adapters.keyword_classifier import KeywordClassifier
 from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.app.api import create_app
 from expense_validator.app.service import ReceiptService
+from expense_validator.domain.models import LineItemInput, ReceiptInput, ReceiptResult
 from tests.fakes import StepClock
-from tests.support import FIXTURE
+from tests.support import FIXTURE, build_stack
 from tests.support import receipt_json as raw
 
 
@@ -198,3 +201,80 @@ def test_unknown_routes_and_methods_use_the_error_shape(client: TestClient) -> N
 def test_the_openapi_document_lists_every_receipt_endpoint(client: TestClient) -> None:
     paths = client.get("/openapi.json").json()["paths"]
     assert {"/receipts", "/receipts/{receipt_id}", "/receipts/{receipt_id}/events"} <= set(paths)
+
+
+# The typed OpenAPI document (spec 006, US4)
+
+
+def _schema(client: TestClient, name: str) -> dict[str, Any]:
+    components = client.get("/openapi.json").json()["components"]["schemas"]
+    assert name in components, f"component {name} is missing"
+    return components[name]  # type: ignore[no-any-return]
+
+
+def _ref(node: dict[str, Any]) -> str | None:
+    """The component a property points at, directly or on the non-null side of an anyOf."""
+    for candidate in [node, *node.get("anyOf", [])]:
+        if "$ref" in candidate:
+            return str(candidate["$ref"]).rsplit("/", 1)[1]
+    return None
+
+
+def _is_string(node: dict[str, Any]) -> bool:
+    return node.get("type") == "string" or any(
+        alt.get("type") == "string" for alt in node.get("anyOf", [])
+    )
+
+
+def test_receipts_and_results_are_typed_in_the_document(client: TestClient) -> None:
+    detail = _schema(client, "ReceiptDetail")["properties"]
+    assert _ref(detail["receipt"]) == "ReceiptInput"
+    assert _ref(detail["result"]) == "ReceiptResult"
+    assert _ref(_schema(client, "RevisionDetail")["properties"]["receipt"]) == "ReceiptInput"
+    assert _ref(_schema(client, "EvaluationItem")["properties"]["result"]) == "ReceiptResult"
+    assert _ref(_schema(client, "ActionResponse")["properties"]["receipt"]) == "ReceiptInput"
+
+
+def test_every_model_field_is_in_the_typed_schemas_and_money_is_a_string(
+    client: TestClient,
+) -> None:
+    receipt_schema = _schema(client, "ReceiptInput")
+    assert set(receipt_schema["properties"]) == set(ReceiptInput.model_fields)
+    line_schema = _schema(client, "LineItemInput")
+    assert set(line_schema["properties"]) == set(LineItemInput.model_fields)
+    result_schema = _schema(client, "ReceiptResult")
+    assert set(result_schema["properties"]) == set(ReceiptResult.model_fields)
+    for name in ("fx_rate_to_usd", "total_amount", "total_amount_usd"):
+        assert _is_string(receipt_schema["properties"][name]), name
+    for name in ("quantity", "unit_price", "amount", "amount_usd"):
+        assert _is_string(line_schema["properties"][name]), name
+
+
+def test_the_request_and_response_schemas_are_separate_components(client: TestClient) -> None:
+    document = client.get("/openapi.json").json()
+    names = set(document["components"]["schemas"])
+    assert {
+        "ReceiptInput",
+        "LineItemInput",
+        "ReceiptResult",
+        "ReceiptInputRequest",
+        "LineItemInputRequest",
+    } <= names
+    assert not [n for n in names if n.endswith(("-Input", "-Output"))]
+    assert _schema(client, "ReceiptInputRequest") != _schema(client, "ReceiptInput")
+    assert _schema(client, "LineItemInputRequest") != _schema(client, "LineItemInput")
+    body = document["paths"]["/receipts"]["post"]["requestBody"]["content"]["application/json"]
+    assert body["schema"] == {"$ref": "#/components/schemas/ReceiptInputRequest"}
+
+
+def test_typing_the_document_left_the_wire_format_byte_for_byte_as_it_was(tmp_path: Path) -> None:
+    """The detail and the revision of the sample receipt DEMO-001, captured before the schemas were
+    typed (`wire_before_typing.json`), are exactly what the API still sends."""
+    expected = json.loads((FIXTURE.parent / "wire_before_typing.json").read_text(encoding="utf-8"))
+    stack = build_stack(tmp_path)
+    sample = Path(__file__).resolve().parents[2] / "docs" / "samples" / "receipt-one.json"
+    stack.service.submit(sample.read_text(encoding="utf-8"))
+    stack.worker(KeywordClassifier()).run_once()
+    live = TestClient(create_app(stack.service))
+    assert live.get("/receipts/DEMO-001").text == expected["detail"]
+    assert live.get("/receipts/DEMO-001/revisions/1").text == expected["revision"]

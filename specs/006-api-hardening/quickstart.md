@@ -67,8 +67,9 @@ uv run epv serve --with-worker --offline --no-trace &
 npx --yes newman run docs/api/epv.postman_collection.json -e docs/api/epv.local.postman_environment.json
 ```
 
-Expected: no diff; Newman passes every assertion (record the new request and assertion counts here
-when T056 is done; v0.4.0 had 51 requests and 99 assertions).
+Expected: no diff; Newman passes every assertion. v0.4.0 had 51 requests and 99 assertions; after
+T056 there are 53 requests and 108 assertions, all passing on a fresh instance (run on 2026-10-12;
+the counts are updated again when the `/health` `open_work` assertion is added).
 
 ## 6. Load test
 

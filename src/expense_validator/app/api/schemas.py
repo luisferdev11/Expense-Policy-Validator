@@ -13,6 +13,7 @@ from pydantic import BaseModel, ConfigDict
 from expense_validator.app.batching import BatchView
 from expense_validator.app.reviewing import ActionResult
 from expense_validator.app.service import ReceiptView, RevisionView, SubmitOutcome
+from expense_validator.domain.models import ReceiptInput, ReceiptResult
 from expense_validator.ports.store import EventRecord, ReceiptRecord
 
 
@@ -71,8 +72,8 @@ class ReceiptSummary(BaseModel):
 
 class ReceiptDetail(ReceiptSummary):
     failed: FailureInfo | None
-    receipt: dict[str, Any]
-    result: dict[str, Any] | None
+    receipt: ReceiptInput
+    result: ReceiptResult | None
     allowed_actions: list[str]
 
     @classmethod
@@ -86,8 +87,8 @@ class ReceiptDetail(ReceiptSummary):
         return cls(
             **summary.model_dump(),
             failed=failed,
-            receipt=view.receipt.model_dump(mode="json"),
-            result=view.result.model_dump(mode="json") if view.result else None,
+            receipt=view.receipt,
+            result=view.result,
             allowed_actions=list(view.allowed_actions),
         )
 
@@ -148,7 +149,7 @@ class EventList(BaseModel):
 class EvaluationItem(BaseModel):
     version: int
     created_at: str
-    result: dict[str, Any]
+    result: ReceiptResult
 
 
 class RevisionDetail(BaseModel):
@@ -156,7 +157,7 @@ class RevisionDetail(BaseModel):
     revision: int
     status: str
     created_at: str
-    receipt: dict[str, Any]
+    receipt: ReceiptInput
     evaluations: list[EvaluationItem]
 
     @classmethod
@@ -167,12 +168,12 @@ class RevisionDetail(BaseModel):
             revision=rev.revision,
             status=rev.status,
             created_at=rev.created_at,
-            receipt=rev.receipt.model_dump(mode="json"),
+            receipt=rev.receipt,
             evaluations=[
                 EvaluationItem(
                     version=e.version,
                     created_at=e.created_at,
-                    result=e.result.model_dump(mode="json"),
+                    result=e.result,
                 )
                 for e in view.evaluations
             ],

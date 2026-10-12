@@ -28,11 +28,14 @@ from expense_validator.domain.lifecycle import ACTIONS
 from expense_validator.ports.store import ListOrder
 
 # The body is read raw, not through a model: money must keep its written precision, and a
-# float parsed by the framework would lose it.
+# float parsed by the framework would lose it. The document still describes it with the schema of
+# a receipt as a client sends it; `add_request_schemas` (api/__init__.py) defines that component.
 _RECEIPT_BODY = {
     "requestBody": {
         "required": True,
-        "content": {"application/json": {"schema": {"type": "object"}}},
+        "content": {
+            "application/json": {"schema": {"$ref": "#/components/schemas/ReceiptInputRequest"}}
+        },
     }
 }
 

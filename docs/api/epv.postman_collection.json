@@ -51,7 +51,8 @@
                 "type": "text/javascript",
                 "exec": [
                   "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
-                  "pm.test(\"ok\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));"
+                  "pm.test(\"ok\", () => pm.expect(pm.response.json().status).to.eql(\"ok\"));",
+                  "pm.test(\"schema 2\", () => pm.expect(pm.response.json().schema_version).to.eql(2));"
                 ]
               }
             }
@@ -79,7 +80,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"TEST-PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -125,7 +126,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"TEST-PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -165,7 +166,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"TEST-PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 24.0,\n  \"total_amount_usd\": 24.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 24.0,\n      \"amount\": 24.0,\n      \"amount_usd\": 24.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -207,7 +208,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"TEST-PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -283,7 +284,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-FIREWALL\",\n  \"employee_id\": \"PM-{{run}}-EF\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 12.0,\n  \"total_amount_usd\": 12.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-FIREWALL-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 12.0,\n      \"amount\": 12.0,\n      \"amount_usd\": 12.0,\n      \"labels\": {\n        \"category\": \"gift\"\n      }\n    }\n  ],\n  \"labels\": {\n    \"disposition\": \"flag\"\n  },\n  \"notes\": \"invented answer key: it must never be stored\"\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-FIREWALL\",\n  \"employee_id\": \"TEST-PM-{{run}}-EF\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 12.0,\n  \"total_amount_usd\": 12.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-FIREWALL-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 12.0,\n      \"amount\": 12.0,\n      \"amount_usd\": 12.0,\n      \"labels\": {\n        \"category\": \"gift\"\n      }\n    }\n  ],\n  \"labels\": {\n    \"disposition\": \"flag\"\n  },\n  \"notes\": \"invented answer key: it must never be stored\"\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -390,6 +391,12 @@
                   "  pm.expect(body.disposition).to.eql(\"pass\");",
                   "  pm.expect(body.allowed_actions).to.eql([\"reject\"]);",
                   "});",
+                  "pm.test(\"created once, decided by the system at the evaluation\", () => {",
+                  "  pm.expect(body.created_at).to.have.length(32);",
+                  "  pm.expect(body.updated_at >= body.created_at).to.be.true;",
+                  "  pm.expect(body.decided_by).to.eql(\"system\");",
+                  "  pm.expect(body.decided_at).to.have.length(32);",
+                  "});",
                   "pm.test(\"the result is what the batch run produces\", () => {",
                   "  pm.expect(body.result.receipt_id).to.eql(body.receipt_id);",
                   "  pm.expect(body.result.run.model_id).to.be.a(\"string\");",
@@ -450,7 +457,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-OFFICE\",\n  \"employee_id\": \"TEST-PM-{{run}}-EO\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Office Supplies\",\n  \"merchant_name\": \"Cornerstone Office Supply\",\n  \"mcc\": 5943,\n  \"mcc_description\": \"Office supply stores\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 18.5,\n  \"total_amount_usd\": 18.5,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-OFFICE-L1\",\n      \"description_raw\": \"Legal pads 3-pack\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 18.5,\n      \"amount\": 18.5,\n      \"amount_usd\": 18.5\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -614,7 +621,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
+              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"TEST-PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"TEST-PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/batches",
@@ -635,6 +642,9 @@
                   "pm.test(\"status is 207\", () => pm.response.to.have.status(207));",
                   "const body = pm.response.json();",
                   "pm.collectionVariables.set(\"batchId\", body.batch_id);",
+                  "pm.collectionVariables.set(\"batchCreatedAt\", body.created_at);",
+                  "pm.test(\"the batch says when it was received\", () =>",
+                  "  pm.expect(body.created_at).to.have.length(32));",
                   "pm.test(\"row 2 is invalid and named, the others are accepted\", () => {",
                   "  pm.expect(body.items.map(i => i.outcome)).to.eql(",
                   "    [\"accepted\", \"invalid\", \"accepted\"]);",
@@ -658,7 +668,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
+              "raw": "{\"receipt_id\": \"PM-{{run}}-BATCH-1\", \"employee_id\": \"TEST-PM-{{run}}-EB1\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 10.0, \"total_amount_usd\": 10.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-1-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 10.0, \"amount\": 10.0, \"amount_usd\": 10.0}]}\n{this row is not valid json\n{\"receipt_id\": \"PM-{{run}}-BATCH-2\", \"employee_id\": \"TEST-PM-{{run}}-EB2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Office Supplies\", \"merchant_name\": \"Cornerstone Office Supply\", \"mcc\": 5943, \"mcc_description\": \"Office supply stores\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 11.0, \"total_amount_usd\": 11.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-BATCH-2-L1\", \"description_raw\": \"Legal pads 3-pack\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 11.0, \"amount\": 11.0, \"amount_usd\": 11.0}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/batches",
@@ -729,6 +739,7 @@
                   "  pm.test(\"processed in time\", () => pm.expect(done, JSON.stringify(body)).to.be.true);",
                   "pm.test(\"two receipts at rest and one invalid row\", () => {",
                   "  pm.expect(body.total).to.eql(3);",
+                  "  pm.expect(body.created_at).to.eql(pm.collectionVariables.get(\"batchCreatedAt\"));",
                   "  pm.expect(body.counts.invalid).to.eql(1);",
                   "  pm.expect(body.counts.auto_approved).to.eql(2);",
                   "});",
@@ -790,7 +801,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-A\",\n  \"employee_id\": \"PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 40.0,\n  \"total_amount_usd\": 40.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-A-L1\",\n      \"description_raw\": \"Grilled salmon entree\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 40.0,\n      \"amount\": 40.0,\n      \"amount_usd\": 40.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-A\",\n  \"employee_id\": \"TEST-PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 40.0,\n  \"total_amount_usd\": 40.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-A-L1\",\n      \"description_raw\": \"Grilled salmon entree\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 40.0,\n      \"amount\": 40.0,\n      \"amount_usd\": 40.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -878,7 +889,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-B\",\n  \"employee_id\": \"PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-B-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-B\",\n  \"employee_id\": \"TEST-PM-{{run}}-E1\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": null,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-B-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -1388,6 +1399,10 @@
                   "  pm.expect(pm.response.json().state).to.eql(\"rejected\");",
                   "  pm.expect(pm.response.json().agreement).to.eql(0);",
                   "  pm.expect(pm.response.json().allowed_actions).to.eql([]);",
+                  "});",
+                  "pm.test(\"decided by alice, replacing the system\", () => {",
+                  "  pm.expect(pm.response.json().decided_by).to.eql(\"alice\");",
+                  "  pm.expect(pm.response.json().decided_at).to.have.length(32);",
                   "});"
                 ]
               }
@@ -1412,7 +1427,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"receipt_id\": \"PM-{{run}}-MEAL-C\", \"employee_id\": \"PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 40.0, \"total_amount_usd\": 40.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-C-L1\", \"description_raw\": \"Grilled salmon entree\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 40.0, \"amount\": 40.0, \"amount_usd\": 40.0}]}\n{\"receipt_id\": \"PM-{{run}}-MEAL-D\", \"employee_id\": \"PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 50.0, \"total_amount_usd\": 50.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-D-L1\", \"description_raw\": \"Iced tea\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 50.0, \"amount\": 50.0, \"amount_usd\": 50.0}]}"
+              "raw": "{\"receipt_id\": \"PM-{{run}}-MEAL-C\", \"employee_id\": \"TEST-PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 40.0, \"total_amount_usd\": 40.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-C-L1\", \"description_raw\": \"Grilled salmon entree\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 40.0, \"amount\": 40.0, \"amount_usd\": 40.0}]}\n{\"receipt_id\": \"PM-{{run}}-MEAL-D\", \"employee_id\": \"TEST-PM-{{run}}-E2\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Meals - Individual\", \"merchant_name\": \"Harvest Table Kitchen\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 50.0, \"total_amount_usd\": 50.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-MEAL-D-L1\", \"description_raw\": \"Iced tea\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 50.0, \"amount\": 50.0, \"amount_usd\": 50.0}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/batches",
@@ -1674,7 +1689,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-D\",\n  \"employee_id\": \"PM-{{run}}-E2\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": 2,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-D-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
+              "raw": "{\n  \"receipt_id\": \"PM-{{run}}-MEAL-D\",\n  \"employee_id\": \"TEST-PM-{{run}}-E2\",\n  \"employee_country\": \"US\",\n  \"entity\": \"GLOBAL\",\n  \"submitted_expense_type\": \"Meals - Individual\",\n  \"merchant_name\": \"Harvest Table Kitchen\",\n  \"mcc\": 5812,\n  \"mcc_description\": \"Eating places\",\n  \"transaction_datetime\": \"2026-05-01T12:00:00\",\n  \"currency\": \"USD\",\n  \"fx_rate_to_usd\": 1.0,\n  \"total_amount\": 50.0,\n  \"total_amount_usd\": 50.0,\n  \"attendee_count\": 2,\n  \"trip_id\": null,\n  \"trip_nights\": null,\n  \"pre_approval_ref\": null,\n  \"itemized\": true,\n  \"line_items\": [\n    {\n      \"line_id\": \"PM-{{run}}-MEAL-D-L1\",\n      \"description_raw\": \"Iced tea\",\n      \"language\": \"en\",\n      \"quantity\": 1,\n      \"unit_price\": 50.0,\n      \"amount\": 50.0,\n      \"amount_usd\": 50.0\n    }\n  ]\n}"
             },
             "url": {
               "raw": "{{baseUrl}}/receipts",
@@ -1869,7 +1884,7 @@
             ],
             "body": {
               "mode": "raw",
-              "raw": "{\"receipt_id\": \"PM-{{run}}-GIFT\", \"employee_id\": \"PM-{{run}}-E3\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 85.0, \"total_amount_usd\": 85.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 85.0, \"amount\": 85.0, \"amount_usd\": 85.0}]}\n{\"receipt_id\": \"PM-{{run}}-GIFT-2\", \"employee_id\": \"PM-{{run}}-E4\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 90.0, \"total_amount_usd\": 90.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-2-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 90.0, \"amount\": 90.0, \"amount_usd\": 90.0}]}"
+              "raw": "{\"receipt_id\": \"PM-{{run}}-GIFT\", \"employee_id\": \"TEST-PM-{{run}}-E3\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 85.0, \"total_amount_usd\": 85.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 85.0, \"amount\": 85.0, \"amount_usd\": 85.0}]}\n{\"receipt_id\": \"PM-{{run}}-GIFT-2\", \"employee_id\": \"TEST-PM-{{run}}-E4\", \"employee_country\": \"US\", \"entity\": \"GLOBAL\", \"submitted_expense_type\": \"Client Entertainment\", \"merchant_name\": \"Harbor View Restaurant\", \"mcc\": 5812, \"mcc_description\": \"Eating places\", \"transaction_datetime\": \"2026-05-01T12:00:00\", \"currency\": \"USD\", \"fx_rate_to_usd\": 1.0, \"total_amount\": 90.0, \"total_amount_usd\": 90.0, \"attendee_count\": null, \"trip_id\": null, \"trip_nights\": null, \"pre_approval_ref\": null, \"itemized\": true, \"line_items\": [{\"line_id\": \"PM-{{run}}-GIFT-2-L1\", \"description_raw\": \"Gift basket for R. Delgado, City Procurement Office\", \"language\": \"en\", \"quantity\": 1, \"unit_price\": 90.0, \"amount\": 90.0, \"amount_usd\": 90.0}]}"
             },
             "url": {
               "raw": "{{baseUrl}}/batches",
@@ -2073,6 +2088,10 @@
                   "pm.test(\"approved, an override of the engine\", () => {",
                   "  pm.expect(pm.response.json().state).to.eql(\"approved\");",
                   "  pm.expect(pm.response.json().agreement).to.eql(0);",
+                  "});",
+                  "pm.test(\"decided by alice, with a time\", () => {",
+                  "  pm.expect(pm.response.json().decided_by).to.eql(\"alice\");",
+                  "  pm.expect(pm.response.json().decided_at).to.have.length(32);",
                   "});"
                 ]
               }
@@ -2176,6 +2195,81 @@
                 "exec": [
                   "pm.test(\"status is 404\", () => pm.response.to.have.status(404));",
                   "pm.test(\"error code is not_found\", () => pm.expect(pm.response.json().error.code).to.eql(\"not_found\"));"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "List ordered by when each receipt arrived",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?order=created_at&limit=50",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "order",
+                  "value": "created_at"
+                },
+                {
+                  "key": "limit",
+                  "value": "50"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 200\", () => pm.response.to.have.status(200));",
+                  "pm.test(\"oldest first, by created_at\", () => {",
+                  "  const times = pm.response.json().items.map(i => i.created_at);",
+                  "  pm.expect(times).to.eql([...times].sort());",
+                  "});"
+                ]
+              }
+            }
+          ]
+        },
+        {
+          "name": "An unknown order is refused",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/receipts?order=bogus",
+              "host": [
+                "{{baseUrl}}"
+              ],
+              "path": [
+                "receipts"
+              ],
+              "query": [
+                {
+                  "key": "order",
+                  "value": "bogus"
+                }
+              ]
+            }
+          },
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "type": "text/javascript",
+                "exec": [
+                  "pm.test(\"status is 422\", () => pm.response.to.have.status(422));",
+                  "pm.test(\"error code is invalid_request\", () => pm.expect(pm.response.json().error.code).to.eql(\"invalid_request\"));"
                 ]
               }
             }

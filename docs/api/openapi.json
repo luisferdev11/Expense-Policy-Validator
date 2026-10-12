@@ -174,9 +174,7 @@
             "type": "boolean"
           },
           "receipt": {
-            "additionalProperties": true,
-            "title": "Receipt",
-            "type": "object"
+            "$ref": "#/components/schemas/ReceiptInput"
           },
           "receipt_id": {
             "title": "Receipt Id",
@@ -185,14 +183,12 @@
           "result": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ReceiptResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Result"
+            ]
           },
           "revision": {
             "title": "Revision",
@@ -328,9 +324,7 @@
             "type": "string"
           },
           "result": {
-            "additionalProperties": true,
-            "title": "Result",
-            "type": "object"
+            "$ref": "#/components/schemas/ReceiptResult"
           },
           "version": {
             "title": "Version",
@@ -400,6 +394,70 @@
         "title": "EventList",
         "type": "object"
       },
+      "ExceptionFinding": {
+        "additionalProperties": false,
+        "properties": {
+          "computed": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Computed",
+            "type": "object"
+          },
+          "decisions": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Decisions",
+            "type": "array"
+          },
+          "evidence": {
+            "title": "Evidence",
+            "type": "string"
+          },
+          "explanation": {
+            "title": "Explanation",
+            "type": "string"
+          },
+          "line_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Line Ids",
+            "type": "array"
+          },
+          "policy_doc": {
+            "title": "Policy Doc",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          },
+          "severity": {
+            "enum": [
+              "critical",
+              "high",
+              "medium",
+              "low"
+            ],
+            "title": "Severity",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "policy_doc",
+          "severity",
+          "line_ids",
+          "evidence",
+          "explanation",
+          "decisions",
+          "computed"
+        ],
+        "title": "ExceptionFinding",
+        "type": "object"
+      },
       "FailureInfo": {
         "properties": {
           "reason": {
@@ -454,6 +512,272 @@
           "schema_version"
         ],
         "title": "Health",
+        "type": "object"
+      },
+      "LineItemInput": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "title": "Amount",
+            "type": "string"
+          },
+          "amount_usd": {
+            "title": "Amount Usd",
+            "type": "string"
+          },
+          "description_raw": {
+            "title": "Description Raw",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "en",
+              "es",
+              "fr",
+              "de",
+              "pt",
+              "ja"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "quantity": {
+            "title": "Quantity",
+            "type": "string"
+          },
+          "unit_price": {
+            "title": "Unit Price",
+            "type": "string"
+          }
+        },
+        "required": [
+          "line_id",
+          "description_raw",
+          "language",
+          "quantity",
+          "unit_price",
+          "amount",
+          "amount_usd"
+        ],
+        "title": "LineItemInput",
+        "type": "object"
+      },
+      "LineItemInputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount"
+          },
+          "amount_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Amount Usd"
+          },
+          "description_raw": {
+            "title": "Description Raw",
+            "type": "string"
+          },
+          "language": {
+            "enum": [
+              "en",
+              "es",
+              "fr",
+              "de",
+              "pt",
+              "ja"
+            ],
+            "title": "Language",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "quantity": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Quantity"
+          },
+          "unit_price": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Unit Price"
+          }
+        },
+        "required": [
+          "line_id",
+          "description_raw",
+          "language",
+          "quantity",
+          "unit_price",
+          "amount",
+          "amount_usd"
+        ],
+        "title": "LineItemInputRequest",
+        "type": "object"
+      },
+      "OutputLineItem": {
+        "additionalProperties": false,
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "enum": [
+                  "alcohol",
+                  "tobacco",
+                  "personal_electronics",
+                  "gift",
+                  "gift_card",
+                  "household_goods",
+                  "personal_care",
+                  "clothing",
+                  "gambling",
+                  "jewelry",
+                  "food_beverage",
+                  "computer_accessory",
+                  "office_supplies",
+                  "lodging",
+                  "ground_transport",
+                  "airfare",
+                  "laundry_service",
+                  "health_otc",
+                  "software_subscription",
+                  "service_fee",
+                  "other"
+                ],
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "description_raw": {
+            "title": "Description Raw",
+            "type": "string"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "recipient_kind": {
+            "enum": [
+              "none",
+              "client_or_prospect",
+              "employee",
+              "government_official"
+            ],
+            "title": "Recipient Kind",
+            "type": "string"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
+          },
+          "restricted": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Restricted"
+          },
+          "status": {
+            "enum": [
+              "classified",
+              "unclassified"
+            ],
+            "title": "Status",
+            "type": "string"
+          },
+          "subtype": {
+            "enum": [
+              "event_ticket",
+              "mobile_handset",
+              "prescription_medication",
+              "none"
+            ],
+            "title": "Subtype",
+            "type": "string"
+          },
+          "unclassified_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unclassified Reason"
+          }
+        },
+        "required": [
+          "line_id",
+          "description_raw",
+          "category",
+          "restricted",
+          "confidence",
+          "subtype",
+          "recipient_kind",
+          "recipient_name",
+          "status",
+          "unclassified_reason"
+        ],
+        "title": "OutputLineItem",
         "type": "object"
       },
       "ReceiptDetail": {
@@ -539,9 +863,7 @@
             "type": "boolean"
           },
           "receipt": {
-            "additionalProperties": true,
-            "title": "Receipt",
-            "type": "object"
+            "$ref": "#/components/schemas/ReceiptInput"
           },
           "receipt_id": {
             "title": "Receipt Id",
@@ -550,14 +872,12 @@
           "result": {
             "anyOf": [
               {
-                "additionalProperties": true,
-                "type": "object"
+                "$ref": "#/components/schemas/ReceiptResult"
               },
               {
                 "type": "null"
               }
-            ],
-            "title": "Result"
+            ]
           },
           "revision": {
             "title": "Revision",
@@ -592,6 +912,405 @@
         "title": "ReceiptDetail",
         "type": "object"
       },
+      "ReceiptInput": {
+        "additionalProperties": false,
+        "properties": {
+          "attendee_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attendee Count"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "employee_country": {
+            "title": "Employee Country",
+            "type": "string"
+          },
+          "employee_id": {
+            "title": "Employee Id",
+            "type": "string"
+          },
+          "entity": {
+            "enum": [
+              "GLOBAL",
+              "APAC",
+              "EMEA"
+            ],
+            "title": "Entity",
+            "type": "string"
+          },
+          "fx_rate_to_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate To Usd"
+          },
+          "itemized": {
+            "title": "Itemized",
+            "type": "boolean"
+          },
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/LineItemInput"
+            },
+            "title": "Line Items",
+            "type": "array"
+          },
+          "mcc": {
+            "title": "Mcc",
+            "type": "integer"
+          },
+          "mcc_description": {
+            "title": "Mcc Description",
+            "type": "string"
+          },
+          "merchant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Name"
+          },
+          "pre_approval_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre Approval Ref"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "submitted_expense_type": {
+            "title": "Submitted Expense Type",
+            "type": "string"
+          },
+          "total_amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount"
+          },
+          "total_amount_usd": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount Usd"
+          },
+          "transaction_datetime": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Datetime"
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "trip_nights": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Nights"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Vat Number"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "employee_id",
+          "employee_country",
+          "entity",
+          "submitted_expense_type",
+          "merchant_name",
+          "mcc",
+          "mcc_description",
+          "transaction_datetime",
+          "currency",
+          "fx_rate_to_usd",
+          "total_amount",
+          "total_amount_usd",
+          "attendee_count",
+          "trip_id",
+          "trip_nights",
+          "pre_approval_ref",
+          "itemized",
+          "vat_number",
+          "line_items"
+        ],
+        "title": "ReceiptInput",
+        "type": "object"
+      },
+      "ReceiptInputRequest": {
+        "additionalProperties": false,
+        "properties": {
+          "attendee_count": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Attendee Count"
+          },
+          "currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Currency"
+          },
+          "employee_country": {
+            "title": "Employee Country",
+            "type": "string"
+          },
+          "employee_id": {
+            "title": "Employee Id",
+            "type": "string"
+          },
+          "entity": {
+            "enum": [
+              "GLOBAL",
+              "APAC",
+              "EMEA"
+            ],
+            "title": "Entity",
+            "type": "string"
+          },
+          "fx_rate_to_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fx Rate To Usd"
+          },
+          "itemized": {
+            "title": "Itemized",
+            "type": "boolean"
+          },
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/LineItemInputRequest"
+            },
+            "title": "Line Items",
+            "type": "array"
+          },
+          "mcc": {
+            "title": "Mcc",
+            "type": "integer"
+          },
+          "mcc_description": {
+            "title": "Mcc Description",
+            "type": "string"
+          },
+          "merchant_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Merchant Name"
+          },
+          "pre_approval_ref": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pre Approval Ref"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "submitted_expense_type": {
+            "title": "Submitted Expense Type",
+            "type": "string"
+          },
+          "total_amount": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount"
+          },
+          "total_amount_usd": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Total Amount Usd"
+          },
+          "transaction_datetime": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Transaction Datetime"
+          },
+          "trip_id": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Id"
+          },
+          "trip_nights": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Trip Nights"
+          },
+          "vat_number": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": null,
+            "title": "Vat Number"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "employee_id",
+          "employee_country",
+          "entity",
+          "submitted_expense_type",
+          "merchant_name",
+          "mcc",
+          "mcc_description",
+          "transaction_datetime",
+          "currency",
+          "fx_rate_to_usd",
+          "total_amount",
+          "total_amount_usd",
+          "attendee_count",
+          "trip_id",
+          "trip_nights",
+          "pre_approval_ref",
+          "itemized",
+          "line_items"
+        ],
+        "title": "ReceiptInputRequest",
+        "type": "object"
+      },
       "ReceiptList": {
         "properties": {
           "items": {
@@ -611,6 +1330,58 @@
           "total"
         ],
         "title": "ReceiptList",
+        "type": "object"
+      },
+      "ReceiptResult": {
+        "additionalProperties": false,
+        "properties": {
+          "disposition": {
+            "enum": [
+              "flag",
+              "review",
+              "pass"
+            ],
+            "title": "Disposition",
+            "type": "string"
+          },
+          "exceptions": {
+            "items": {
+              "$ref": "#/components/schemas/ExceptionFinding"
+            },
+            "title": "Exceptions",
+            "type": "array"
+          },
+          "line_items": {
+            "items": {
+              "$ref": "#/components/schemas/OutputLineItem"
+            },
+            "title": "Line Items",
+            "type": "array"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "review_signals": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewSignal"
+            },
+            "title": "Review Signals",
+            "type": "array"
+          },
+          "run": {
+            "$ref": "#/components/schemas/RunMetadata"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "disposition",
+          "line_items",
+          "exceptions",
+          "review_signals",
+          "run"
+        ],
+        "title": "ReceiptResult",
         "type": "object"
       },
       "ReceiptSummary": {
@@ -711,6 +1482,38 @@
         "title": "ReceiptSummary",
         "type": "object"
       },
+      "ReviewSignal": {
+        "additionalProperties": false,
+        "properties": {
+          "line_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Line Ids",
+            "type": "array"
+          },
+          "policy_doc": {
+            "title": "Policy Doc",
+            "type": "string"
+          },
+          "reason": {
+            "title": "Reason",
+            "type": "string"
+          },
+          "rule_id": {
+            "title": "Rule Id",
+            "type": "string"
+          }
+        },
+        "required": [
+          "rule_id",
+          "policy_doc",
+          "reason",
+          "line_ids"
+        ],
+        "title": "ReviewSignal",
+        "type": "object"
+      },
       "RevisionDetail": {
         "properties": {
           "created_at": {
@@ -725,9 +1528,7 @@
             "type": "array"
           },
           "receipt": {
-            "additionalProperties": true,
-            "title": "Receipt",
-            "type": "object"
+            "$ref": "#/components/schemas/ReceiptInput"
           },
           "receipt_id": {
             "title": "Receipt Id",
@@ -751,6 +1552,72 @@
           "evaluations"
         ],
         "title": "RevisionDetail",
+        "type": "object"
+      },
+      "RunMetadata": {
+        "additionalProperties": false,
+        "properties": {
+          "classifier": {
+            "title": "Classifier",
+            "type": "string"
+          },
+          "confidence_source": {
+            "default": "self_reported",
+            "title": "Confidence Source",
+            "type": "string"
+          },
+          "exc03_threshold": {
+            "title": "Exc03 Threshold",
+            "type": "number"
+          },
+          "exc03_threshold_status": {
+            "enum": [
+              "provisional",
+              "chosen_on_dev"
+            ],
+            "title": "Exc03 Threshold Status",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "pipeline_config_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Pipeline Config Version"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          },
+          "provider_endpoint": {
+            "title": "Provider Endpoint",
+            "type": "string"
+          },
+          "rules_version": {
+            "title": "Rules Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "classifier",
+          "model_id",
+          "provider_endpoint",
+          "prompt_version",
+          "rules_version",
+          "exc03_threshold",
+          "exc03_threshold_status",
+          "confidence_source",
+          "pipeline_config_version"
+        ],
+        "title": "RunMetadata",
         "type": "object"
       },
       "SubmitResponse": {
@@ -1079,7 +1946,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ReceiptInputRequest"
               }
             }
           },

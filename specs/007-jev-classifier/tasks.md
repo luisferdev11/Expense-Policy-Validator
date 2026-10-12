@@ -31,8 +31,8 @@ for the migration list. If they are missing, stop and implement them first.
 
 ## Phase 0: Setup
 
-- [ ] T001 Create branch `feat/007-jev-classifier` from `main` (with 006 merged). Move `httpx` from the dev group to `dependencies` in `pyproject.toml`. Bump the version to `1.2.0` in all three places: `pyproject.toml`, `frontend/package.json`, and `create_app` in `src/expense_validator/app/api/__init__.py` (the OpenAPI `version`). Regenerate `docs/api/openapi.json`. Run `uv sync`
-- [ ] T002 Capture the `dec-v1` payload fixture once: write a throwaway script under `explorations/scripts/capture_dec_v1_fixture.py` that imports `explorations/lib/decision_adapters.py` and writes `decision_payload()` for 3 synthetic items (one English food item, one Japanese item, one "Moscow Mule mug" trap; merchants and MCCs invented) into `tests/fixtures/dec_v1_payload.json`. Commit both, so the provenance is visible
+- [x] T001 Create branch `feat/007-jev-classifier` from `main` (with 006 merged). Move `httpx` from the dev group to `dependencies` in `pyproject.toml`. Bump the version to `1.2.0` in all three places: `pyproject.toml`, `frontend/package.json`, and `create_app` in `src/expense_validator/app/api/__init__.py` (the OpenAPI `version`). Regenerate `docs/api/openapi.json`. Run `uv sync`
+- [x] T002 Capture the `dec-v1` payload fixture once: write a throwaway script under `explorations/scripts/capture_dec_v1_fixture.py` that imports `explorations/lib/decision_adapters.py` and writes `decision_payload()` for 3 synthetic items (one English food item, one Japanese item, one "Moscow Mule mug" trap; merchants and MCCs invented) into `tests/fixtures/dec_v1_payload.json`. Commit both, so the provenance is visible
 
 ## Phase 1: Decide-rule fixes, US3 (slice 1)
 

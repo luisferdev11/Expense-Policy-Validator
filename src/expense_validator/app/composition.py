@@ -8,7 +8,7 @@ from __future__ import annotations
 
 import os
 import tempfile
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
 
@@ -17,6 +17,7 @@ from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.persisting_classifier import PersistingClassifier
 from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
 from expense_validator.adapters.tracing import make_tracer
+from expense_validator.app.api import DEFAULT_CORS_ORIGINS
 from expense_validator.app.intake import default_classifier
 from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
@@ -29,6 +30,19 @@ def db_path(explicit: str | None = None, env: Mapping[str, str] | None = None) -
     env = os.environ if env is None else env
     chosen = explicit or env.get("EPV_DB")
     return Path(chosen) if chosen else DEFAULT_DB_FILE
+
+
+def cors_origins(
+    explicit: Sequence[str] | None = None, env: Mapping[str, str] | None = None
+) -> list[str]:
+    """The origins allowed to call the API from a browser: the flags, else `EPV_CORS_ORIGINS`
+    (comma separated), else the local front end's."""
+    env = os.environ if env is None else env
+    if explicit:
+        return list(explicit)
+    listed = env.get("EPV_CORS_ORIGINS", "")
+    chosen = [origin.strip() for origin in listed.split(",") if origin.strip()]
+    return chosen or list(DEFAULT_CORS_ORIGINS)
 
 
 def open_store(path: Path) -> SqliteStore:

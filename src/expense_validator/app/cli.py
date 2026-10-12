@@ -177,6 +177,7 @@ def serve_command(
     db: str | None,
     worker: WorkerOptions | None = None,
     no_trace: bool = False,
+    cors: list[str] | None = None,
 ) -> int:
     """Run the API; with `worker` options, a worker thread runs beside it (for demos)."""
     import threading
@@ -187,6 +188,7 @@ def serve_command(
     from expense_validator.app.composition import (
         build_review,
         build_service,
+        cors_origins,
         db_path,
         open_store,
     )
@@ -195,7 +197,11 @@ def serve_command(
     path = db_path(db)
     store = open_store(path)
     service = build_service(store)
-    app = create_app(service, build_review(store, service, no_trace=no_trace))
+    app = create_app(
+        service,
+        build_review(store, service, no_trace=no_trace),
+        cors_origins=cors_origins(cors),
+    )
     stop = threading.Event()
     if worker is not None:
         in_process = _build_worker(store, worker)
@@ -242,6 +248,7 @@ def _cmd_serve(args: argparse.Namespace) -> int:
         args.db,
         _options(args) if args.with_worker else None,
         no_trace=args.no_trace,
+        cors=args.cors_origin,
     )
 
 
@@ -288,6 +295,11 @@ def main(argv: list[str] | None = None) -> int:
     serve.add_argument("--port", type=int, default=8000)
     serve.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
     serve.add_argument("--with-worker", action="store_true", help="also run a worker thread")
+    serve.add_argument(
+        "--cors-origin",
+        action="append",
+        help="an origin a browser front end may call from (repeatable; default: Vite dev server)",
+    )
     _add_worker_options(serve)
     serve.set_defaults(func=_cmd_serve)
     worker = sub.add_parser("worker", help="run the worker that processes submitted receipts")

@@ -54,7 +54,7 @@ every receipt evaluated and zero extra billed calls.
 - [x] T023 [P] [US3] Extend `tests/unit/test_sqlite_store.py`: `claim_work` returns one row and sets a lease; a second claim returns another or none; an expired lease (injected clock) makes the row claimable again; two connections never claim the same row; attempts increase
 - [x] T024 [US3] Implement claims, `complete_stage`, `record_failure` and `retry` in `src/expense_validator/adapters/sqlite_store.py`
 - [x] T025 [P] [US3] Write `tests/unit/test_worker.py` with `tests/fakes.py` doubles: the classify stage stores classifications and emits `ReceiptClassified`; the evaluate stage stores an evaluation and moves the state; a stage error sets `failed(stage, reason)`; `retry` resumes at that stage
-- [x] T026 [US3] Implement `src/expense_validator/app/worker.py` (`run_once`, `run_forever`, stage handlers using `app/decide.py`, trace label `app-r<revision>-v<version>`)
+- [x] T026 [US3] Implement `src/expense_validator/app/worker.py` (`run_once`, `run_forever`, stage handlers using `app/decide.py`, trace label `app-r<revision>`)
 - [x] T027 [P] [US3] Add a counting fake classifier and a `RaisesAfter(n)` classifier to `tests/fakes.py`
 - [x] T028 [US3] Write `tests/integration/test_crash_resume.py`: crash after N lines, rerun, all evaluated, results equal an uninterrupted run, billed calls equal an uninterrupted run, and the cache serves the repeated lines (SC-003 for 3 stop points)
 - [x] T029 [US3] Add `Tracer.score` to `src/expense_validator/ports/tracer.py`, the Langfuse tracer, the no-op and guarded tracers in `src/expense_validator/adapters/tracing.py`, and `RecordingTracer.score` in `tests/fakes.py`; contract test in `tests/contract/test_tracer.py` (never raises when Langfuse is down)

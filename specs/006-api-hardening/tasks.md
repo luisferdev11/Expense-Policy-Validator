@@ -16,11 +16,11 @@ Each phase is a vertical slice that ends green and committed. If time runs out, 
 
 ## Phase 1: Setup
 
-- [ ] T001 Create branch `feat/006-api-hardening` from `main` (after `docs/specs-final-iteration` is merged); confirm `uv run pytest` is green before any change
-- [ ] T002 Bump `version` to `1.1.0` in `pyproject.toml`, `frontend/package.json` and `create_app(version=...)` in `src/expense_validator/app/api/__init__.py:41`
-- [ ] T003 [P] `uv add --dev locust`; record the resolved version in `specs/006-api-hardening/plan.md` (Technical Context); add `perf` to `[tool.mypy] files` in `pyproject.toml` and, if Locust ships no types, `locust.*` to the `ignore_missing_imports` override
-- [ ] T004 [P] In `frontend/`, `npm install --save-dev --save-exact openapi-typescript@<7.x at least two weeks old>`; add the script `"gen:api": "openapi-typescript ../docs/api/openapi.json -o src/api/generated.ts"` to `frontend/package.json`; record the version in `plan.md`
-- [ ] T005 Commit: `chore: version 1.1.0 and dev dependencies for iteration 6`
+- [x] T001 Create branch `feat/006-api-hardening` from `main` (after `docs/specs-final-iteration` is merged); confirm `uv run pytest` is green before any change
+- [x] T002 Bump `version` to `1.1.0` in `pyproject.toml`, `frontend/package.json` and `create_app(version=...)` in `src/expense_validator/app/api/__init__.py:41`
+- [x] T003 [P] `uv add --dev locust` (pinned 2.46.6, see plan.md); record the resolved version in `specs/006-api-hardening/plan.md` (Technical Context); add `perf` to `[tool.mypy] files` in `pyproject.toml` and, if Locust ships no types, `locust.*` to the `ignore_missing_imports` override
+- [x] T004 [P] In `frontend/`, `npm install --save-dev --save-exact openapi-typescript@<7.x at least two weeks old>`; add the script `"gen:api": "openapi-typescript ../docs/api/openapi.json -o src/api/generated.ts"` to `frontend/package.json`; record the version in `plan.md`
+- [x] T005 Commit: `chore: version 1.1.0 and dev dependencies for iteration 6`
 
 ## Phase 2: Foundational — migration framework (blocks every story)
 

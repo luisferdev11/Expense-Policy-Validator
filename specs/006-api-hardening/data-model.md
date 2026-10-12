@@ -135,6 +135,7 @@ test removes revision 1 of fixture R-B and checks that R-B gets revision 2's tim
 ```python
 SYSTEM_ACTOR = "system"
 
+
 def decision_after(
     new_state: State,
     *,
@@ -180,7 +181,7 @@ reached otherwise, so a future path cannot silently attribute a decision.
 ```python
 class ClassificationCachePort(Protocol):
     def get(self, key: str) -> CacheEntry | None: ...
-    def put(self, entry: CacheEntry) -> bool: ...   # True if this call stored the row
+    def put(self, entry: CacheEntry) -> bool: ...  # True if this call stored the row
     def __len__(self) -> int: ...
 ```
 

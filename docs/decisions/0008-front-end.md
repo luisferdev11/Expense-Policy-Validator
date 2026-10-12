@@ -1,7 +1,7 @@
 # ADR 0008: The front end of iteration 4
 
-- **Status:** proposed. Built in the front-end session and merged in PR #19, pending Luis's review
-  in the documentation pull request.
+- **Status:** accepted. Built in the front-end session and merged in PR #19; approved by Luis on
+  2026-10-12 in the documentation pull request.
 - **Date:** 2026-10-11
 - **Details:** `frontend/README.md`; the gaps it found are in `frontend/FINDINGS.md` (F-01 to F-11)
   and in the shared improvements list.

@@ -110,6 +110,7 @@ application beyond Streamlit. ADR 0006 records the intake and lifecycle decision
 | 3 · intake and lifecycle backend | v0.3.0 | Event store, idempotent single and batch intake with revisions, worker that resumes after a crash, cross-receipt re-evaluation, reviewer actions, Langfuse `auditor_agreement` scores. Postman collection and environment under `docs/api/`. Tests: idempotency, crash-resume, cascade, parity with `epv run`. **Released 2026-10-10** (`specs/004-backend-lifecycle/`, ADR 0007): `epv serve`, `epv worker`, `epv openapi`; the 32 receipts through the API equal `epv run` byte for byte in 10 arrival orders; 51 Postman requests with 99 assertions pass against a live offline server |
 | 4 · application | v0.4.0 | React + Vite front on the API with the Ledgerline design: intake, queue and workbench, compliance, receipt timeline, insights, and an evaluation area with a demonstrative comparison of the classifiers. **Released 2026-10-11** (`frontend/`, ADR 0008). jev-1.13 ran once on the frozen dev set: 130 of 130 categories (N = 130, USD 0.0055), category only, so it decides nothing; a follow-up experiment is proposed in the improvements list |
 | 5 · delivery package | v1.0.0 | The scope below, plus the engine adjustments from Luis's review. **In progress:** the AWS design (`docs/aws.md`, with the monthly cost worked out), the two failure cases in the evaluation report, and the README draft; the engine adjustments wait for Luis's review session |
+| 6 · final improvements | v1.1.0 to v1.3.0 | Seven improvements Luis picked on 2026-10-12, specified in full before any code. See the section below |
 
 ## Iteration 5: delivery package
 
@@ -126,6 +127,20 @@ application beyond Streamlit. ADR 0006 records the intake and lifecycle decision
 
 **Exit criteria.** Everything in the brief's "What to submit" list is present and reproducible
 from the repository.
+
+## Iteration 6: final improvements (specified 2026-10-12)
+
+Luis picked seven items from the improvements list. Each implementable group has a full Spec Kit
+chain (spec, research, data model, contracts, plan, tasks, quickstart), so an implementation
+session only runs `/speckit-implement`. Order: 006 first (its schema migration is the base), then
+007, then 008 (it uses the types 006 generates).
+
+| Spec | Release | Content | Status |
+|---|---|---|---|
+| `specs/006-api-hardening/` | v1.1.0 | Classification cache as a table behind a port (the committed JSONL stays as seed and export); schema v2 with the first real migration; `created_at` (first receipt) and one timestamp format; `decided_by` and `decided_at`; `receipt` and `result` typed in OpenAPI with generated front-end types; a Locust load test with a committed report | Specified |
+| `specs/007-jev-classifier/` | v1.2.0 | The jev decision adapter and a hybrid classifier (jev for the category, gpt-oss-120b for subtype and recipient); shadow mode in the worker with an agreement report; E16 registered before running, with the A6/A9 guard checked before "superior"; switching the classifier is a configuration change, gated on E16 and an ADR | Specified; E16 needs Luis's approval before any run |
+| `specs/008-guided-intake/` | v1.3.0 | A guided form for one receipt, with a draft saved in the browser and revision prefill | Specified |
+| `specs/009-roles/` | – | Roles and access (ADR 0010): five roles from the identity provider, OIDC, actor from the token | Designed, deferred; needs answers R1 to R5 |
 
 ## Candidates after delivery
 

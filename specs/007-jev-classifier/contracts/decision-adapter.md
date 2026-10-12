@@ -84,7 +84,7 @@ bills itself (spec 006 FR-008: cached and seeded answers never count).
 |---|---|---|---|
 | Primary (`classifier_model: jev-1.13` or `jev-hybrid`) | USD 1.00 per process | USD 1.00 per process | `CAP_USD` of `openrouter/classifier.py`, the same as today's primary |
 | Shadow (`--shadow`) | `--shadow-cap-usd`, default USD 0.25 per process | Same value, counted separately | The shadow flag |
-| E16 (`run_dev.py`) | The USD 0.10 that remains of E16's budget | Not billed: committed E14 cache | The registration |
+| E16 (`run_dev.py`) | The USD 0.10 that remains of E16's budget | Not billed: the committed E14 answers (rebuilt from `E14/gpt-oss-120b.jsonl`; the cache directory is gitignored) | The registration |
 
 For a hybrid, each side has its own counter, and a line is refused (`budget_refused`) when the
 side that would bill has reached its cap.

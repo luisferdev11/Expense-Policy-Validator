@@ -368,6 +368,40 @@ zero extra billed calls; outcomes do not depend on arrival order. The engine's d
 change (alert Luis before any engine change).
 ```
 
+## 2026-10-12: prompt `dec-v1`, the decision payload for jev (iteration 6, spec 007)
+
+`dec-v1` is the prompt a *decision model* (jev, `typesafe/jev-1.13`) receives. It is not a chat
+prompt: OpenRouter's decisions endpoint (`POST /api/alpha/decisions`) takes a `state` (the item
+text, the merchant, the MCC as a string) and `questions`, each with `instructions` and a closed
+`criteria` map from option to description, and answers with a `choice`, a probability per option and
+a `confidence`. Questions are answered in isolation, so everything the model needs is in the
+instructions and the criteria. It returns a category only: no subtype and no recipient.
+
+The instructions, verbatim (they are the E13 text, moved into
+`src/expense_validator/adapters/openrouter/decision_prompt.py`):
+
+```
+Choose the spend category of one line item from an expense receipt. The state gives the item text
+exactly as printed (it may be in English, Spanish, French, German, Portuguese or Japanese), the
+merchant name and the merchant category code (MCC). Classify what the item IS, not the words in its
+name: food cooked with alcohol (beer-battered fish, rum cake, wine sauce) is food_beverage;
+non-alcoholic drinks and mocktails are food_beverage; cooking wine is alcohol; barware and
+drinkware are household_goods. Accessories made for a personal device (cases, chargers) are
+personal_electronics; non-electronic watches are jewelry. Mobile phones, prescription medication and
+event tickets have no category of their own: choose other. A charge with unknown contents is other.
+```
+
+The criteria are the 21 categories of `data/category-taxonomy.md`, each with the example text of its
+table row, generated from the package taxonomy (so the options never drift from the engine's).
+
+Why it exists: jev classified 130 of 130 dev items on 2026-10-11 against 123 of 130 for
+`gpt-oss-120b`, but cannot return a subtype or a recipient (A6, A9). The prompt was written for
+experiment E13, used unchanged in the demonstrative run of 2026-10-11, and is the one experiment
+E16 and the hybrid classifier use. A test (`tests/fixtures/dec_v1_payload.json`, captured once
+from `explorations/lib/decision_adapters.py`) proves the moved payload equals the one those runs
+sent, so their evidence stays valid. It is synced to Langfuse Prompt Management as
+`classify-item-decision`, label `dec-v1`.
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

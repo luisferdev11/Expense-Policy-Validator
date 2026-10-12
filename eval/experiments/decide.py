@@ -11,6 +11,7 @@ word for word; a result that contradicts intuition is reported, never overridden
 from __future__ import annotations
 
 import json
+import statistics
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -83,25 +84,87 @@ def _complete(results: Mapping[str, Rows]) -> None:
 
 
 def _loss(v: dict[str, Any]) -> str:
+    if v["status"] == "reference":
+        return "a superior challenger is chosen before the reference"
     if v["status"] == "excluded":
         sv = v["schema_violations"]
         return f"excluded: {sv['k']}/{sv['n']} schema violations, over 2 %"
     if v["status"] == "fails_a6a9_guard":
         return f"more than 2 extra A6/A9 items wrong ({v['a6a9_wrong']}/{v['a6a9_n']})"
+    if v["status"] == "fails_restricted_guard":
+        return f"restricted F1 {v['restricted_f1']} below the reference's minus 0.01"
     lo = v["difference"]["interval"][0]
     if lo <= -0.02:
         return f"non-inferiority not shown: bootstrap lower bound {lo} < -0.02"
     return f"restricted F1 {v['restricted_f1']} below the reference's minus 0.01"
 
 
-def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def _median_latency(pred: Rows) -> float | None:
+    values = [r["latency_s"] for r in pred if r.get("latency_s") is not None]
+    return statistics.median(values) if values else None
+
+
+def _status(
+    *,
+    violations_share: float,
+    superior: bool,
+    a6a9_fails: bool,
+    restricted_fails: bool,
+    lo: float,
+    strict: bool,
+) -> str:
+    """One challenger's status.
+
+    `strict` is E16's registered order: exclusion, the A6/A9 guard, the restricted guard,
+    superiority, non-inferiority, so a guard failure is reported as such whatever the accuracy.
+
+    Without it, E14's registered labels are kept, so the committed `experiments.json` is
+    byte-identical: a challenger that is not superior is `worse` unless it is non-inferior on
+    accuracy. The one change is that a superior challenger must pass both guards first, and
+    otherwise is labelled with the guard it fails (it used to be `superior` regardless).
+    """
+    if violations_share > SCHEMA_LIMIT:
+        return "excluded"
+    if strict:
+        if a6a9_fails:
+            return "fails_a6a9_guard"
+        if restricted_fails:
+            return "fails_restricted_guard"
+        if superior:
+            return "superior"
+        return "non_inferior" if lo > MARGIN else "worse"
+    if superior:
+        if a6a9_fails:
+            return "fails_a6a9_guard"
+        if restricted_fails:
+            return "fails_restricted_guard"
+        return "superior"
+    if lo > MARGIN and not restricted_fails:
+        return "fails_a6a9_guard" if a6a9_fails else "non_inferior"
+    return "worse"
+
+
+def judge(
+    results: Mapping[str, Rows],
+    items: Sequence[dict[str, Any]],
+    *,
+    strict: bool = False,
+    seed: int | None = None,
+) -> dict[str, Any]:
+    """Compare each challenger with the reference and pick the winner (E14 and E16).
+
+    A superior challenger that passes every guard wins outright (the cheapest, then the lowest
+    median latency, then the name, among several). Only when none is superior is the cheapest of
+    the reference and the non-inferior challengers chosen. If nothing qualifies, the reference
+    stays.
+    """
     _complete(results)
     ref = results[REFERENCE]
     ref_correct = _correct(ref, items)
     ref_f1 = _restricted_f1(ref, items)
     ref_a6a9 = _a6a9_wrong(ref, items)
     variants = []
-    qualifying = [REFERENCE]
+    latency: dict[str, float | None] = {}
     for name in sorted(results):
         pred = results[name]
         correct = _correct(pred, items)
@@ -120,41 +183,43 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
             "schema_violations": _proportion(violations, len(items)),
             "cost_per_1000_usd": round(_cost_per_1000(pred), 6),
         }
+        latency[name] = _median_latency(pred)
         if name == REFERENCE:
             entry["status"] = "reference"
             variants.append(entry)
             continue
         b = sum(1 for x, y in zip(correct, ref_correct, strict=True) if x and not y)
         c = sum(1 for x, y in zip(correct, ref_correct, strict=True) if y and not x)
-        diff, lo, hi = paired_bootstrap(correct, ref_correct)
+        diff, lo, hi = (
+            paired_bootstrap(correct, ref_correct)
+            if seed is None
+            else paired_bootstrap(correct, ref_correct, seed=seed)
+        )
         p_value = mcnemar_exact(b, c)
         entry |= {
             "mcnemar": {"b_challenger_only": b, "c_reference_only": c, "p": round(p_value, 4)},
             "difference": {"value": round(diff, 4), "interval": [round(lo, 4), round(hi, 4)]},
         }
-        if violations / len(items) > SCHEMA_LIMIT:
-            entry["status"] = "excluded"
-        elif p_value < 0.05 and b > c and lo > 0:
-            entry["status"] = "superior"
-        elif (
-            lo > MARGIN
-            and entry["restricted_f1"] >= ref_f1 - 0.01
-            and entry["a6a9_wrong"] <= ref_a6a9 + A6A9_SLACK
-        ):
-            entry["status"] = "non_inferior"
-        elif lo > MARGIN and entry["restricted_f1"] >= ref_f1 - 0.01:
-            entry["status"] = "fails_a6a9_guard"
-        else:
-            entry["status"] = "worse"
-        if entry["status"] in {"superior", "non_inferior"}:
-            qualifying.append(name)
+        entry["status"] = _status(
+            violations_share=violations / len(items),
+            superior=p_value < 0.05 and b > c and lo > 0,
+            a6a9_fails=entry["a6a9_wrong"] > ref_a6a9 + A6A9_SLACK,
+            restricted_fails=entry["restricted_f1"] < ref_f1 - 0.01,
+            lo=lo,
+            strict=strict,
+        )
         variants.append(entry)
     costs = {v["variant"]: v["cost_per_1000_usd"] for v in variants}
-    winner = min(qualifying, key=lambda n: (costs[n], n))
+    superior = [v["variant"] for v in variants if v["status"] == "superior"]
+    non_inferior = [v["variant"] for v in variants if v["status"] == "non_inferior"]
+    qualifying = superior or [REFERENCE, *non_inferior]
+
+    def rank(name: str) -> tuple[float, float, str]:
+        seen = latency[name]
+        return (costs[name], float("inf") if seen is None else seen, name)
+
+    winner = min(qualifying, key=rank)
     return {
-        "id": "E14",
-        "factor": "item classifier model",
-        "n": len(items),
         "variants": variants,
         "winner": winner,
         "why_others_lost": {
@@ -162,6 +227,18 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
             for v in variants
             if v["variant"] != winner
         },
+    }
+
+
+def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    outcome = judge(results, items)
+    return {
+        "id": "E14",
+        "factor": "item classifier model",
+        "n": len(items),
+        "variants": outcome["variants"],
+        "winner": outcome["winner"],
+        "why_others_lost": outcome["why_others_lost"],
         "note": "Latency was not recorded; ties on cost break by model name.",
     }
 

@@ -6,6 +6,8 @@ It is deterministic: the same classified receipt, context and settings give the 
 
 from __future__ import annotations
 
+from typing import Any
+
 from expense_validator.domain.engine.evaluate import evaluate
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.domain.models import (
@@ -19,6 +21,12 @@ from expense_validator.domain.retriever import retrieve
 from expense_validator.ports.tracer import Tracer
 
 
+def _version_metadata(version: int | None) -> dict[str, Any]:
+    """A stored evaluation version names itself on its decision, so that every decision of one
+    receipt revision can sit in the same trace and still be told apart."""
+    return {} if version is None else {"metadata": {"evaluation_version": version}}
+
+
 def decide_receipt(
     classified: ClassifiedReceipt,
     context: CrossReceiptContext,
@@ -26,6 +34,7 @@ def decide_receipt(
     settings: Settings,
     tracer: Tracer,
     run_label: str,
+    version: int | None = None,
 ) -> ReceiptResult:
     with tracer.receipt_trace(
         classified.receipt.receipt_id, run_label, input=None, name="decide-receipt"
@@ -39,5 +48,5 @@ def decide_receipt(
         with tracer.span("report-exceptions") as span:
             result = report(classified, findings, meta)
             span.update(output=[e.explanation for e in result.exceptions])
-        root.update(output=result.model_dump(mode="json"))
+        root.update(output=result.model_dump(mode="json"), **_version_metadata(version))
     return result

@@ -86,7 +86,7 @@ class ActionResult:
 class _Traced:
     evaluation: Evaluation
     meta: RunMetadata
-    label: str
+    version: int
 
 
 class ReviewService:
@@ -254,7 +254,7 @@ class ReviewService:
         )
         version = record_evaluation(tx, acted, evaluation, state, None, actor, now)
         queue_neighbours(tx, rid, now)
-        return _Traced(evaluation, meta, f"app-r{revision}-v{version}")
+        return _Traced(evaluation, meta, version)
 
     # After the commit: best effort
 
@@ -272,12 +272,19 @@ class ReviewService:
             if traced is not None:
                 ev = traced.evaluation
                 decide_receipt(
-                    ev.classified, ev.context, traced.meta, self.settings, self.tracer, traced.label
+                    ev.classified,
+                    ev.context,
+                    traced.meta,
+                    self.settings,
+                    self.tracer,
+                    f"app-r{record.current_revision}",
+                    traced.version,
                 )
             comment = f"{action}; proposal={proposal}"
             if request.reason_code:
                 comment += f"; reason_code={request.reason_code}"
-            label = f"app-r{record.current_revision}-v{record.evaluation_version}"
+            comment += f"; evaluation_version={record.evaluation_version}"
+            label = f"app-r{record.current_revision}"
             self.tracer.score(label, receipt_id, AGREEMENT_SCORE, float(agree), comment)
         except Exception:  # Langfuse never gates an action (constitution X)
             return

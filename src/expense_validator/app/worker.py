@@ -144,7 +144,7 @@ class Worker:
         calls_before = getattr(self.classifier, "calls_made", 0)
         hits_before = getattr(self.classifier, "cache_hits", 0)
         classified = classify_receipt(
-            found.receipt, self.classifier, self.tracer, f"app-r{revision}-c"
+            found.receipt, self.classifier, self.tracer, f"app-r{revision}"
         )
         unavailable = sorted(
             {
@@ -223,11 +223,17 @@ class Worker:
             version = record_evaluation(tx, record, evaluation, state, notice, WORKER, now)
             if raised is not None:
                 tx.append_event(rid, revision, NoticeRaised(text=raised), WORKER, now)
-            traced = (evaluation, f"app-r{revision}-v{version}")
+            traced = (evaluation, version)
         if traced is not None:
-            decided, label = traced
+            decided, stored_version = traced
             decide_receipt(
-                decided.classified, decided.context, self.meta, self.settings, self.tracer, label
+                decided.classified,
+                decided.context,
+                self.meta,
+                self.settings,
+                self.tracer,
+                f"app-r{revision}",
+                stored_version,
             )
 
     # Failure

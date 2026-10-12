@@ -169,11 +169,14 @@ event payload, so the committed side does not depend on Langfuse.
 
 ### D11. Trace identity
 
-The trace id is `trace_id_for(run_label, receipt_id)` with
-`run_label = "app-r<revision>-v<evaluation_version>"`, so each revision and each evaluation
-version is its own trace and re-evaluations do not merge into one. Classification of a revision
-uses `app-r<revision>-c`. The `Tracer` port gains `score(trace_label, name, value, comment)`,
-guarded like the other methods.
+**One receipt revision is one trace** (constitution X). The trace id is
+`trace_id_for(run_label, receipt_id)` with `run_label = "app-r<revision>"`. The classification of
+the revision is its `validate-receipt` observation, and every stored evaluation version is a
+`decide-receipt` observation in the same trace, with `metadata.evaluation_version` telling them
+apart, as the batch run does with its two top-level observations. A new revision is a new trace.
+The `Tracer` port gains `score(trace_label, receipt_id, name, value, comment)`, guarded like the
+other methods. (The first implementation used `app-r<revision>-c` and `app-r<revision>-v<n>`, which
+made two traces per revision against the constitution; amendment 8 records the change.)
 
 ### D12. Quality-review sample
 
@@ -225,9 +228,12 @@ Each one refines a decision above after the code or a test showed a gap. None ch
 6. **D9, the ordinal in the human classification's cache key is the event's sequence number.**
 7. **D10, `request-info` and `escalate` are scored like the other actions**: 1 when the proposal was
    `review` or `flag`, 0 when it was `pass`.
-8. **D11, only a stored evaluation version gets a decision trace.** An evaluation that leaves the
-   result unchanged records nothing, so it has nothing to observe. Labels are
-   `app-r<revision>-c` (classification) and `app-r<revision>-v<version>` (decision).
+8. **D11, one trace per receipt revision, decided with Luis's go-ahead on 2026-10-11.** Only a
+   stored evaluation version gets a `decide-receipt` observation, because an evaluation that leaves
+   the result unchanged records nothing, so it has nothing to observe. The label is
+   `app-r<revision>` for the classification and for every decision, so the trace of a revision
+   gathers all of them. The `auditor_agreement` score is attached to that trace and names the
+   evaluation version it was based on in its comment (`evaluation_version=<n>`).
 9. **D3, batches have no key of their own.** Each valid row follows the receipt rules, so
    resubmitting a batch is idempotent per receipt, and each submission is a new batch record. A
    batch has at most 1000 rows. A row that is valid JSON but not an object is an invalid row.
@@ -247,6 +253,10 @@ Each one refines a decision above after the code or a test showed a gap. None ch
 13. **Failure reasons are scrubbed.** A stage failure stores the exception type and a message with
     key-like tokens redacted and the length bounded, so a provider's error text cannot put a key
     in the store.
+14. **CORS for a browser front end.** The API answers cross-origin calls only from a list of
+    origins: the Vite dev server by default, else `--cors-origin` (repeatable) or
+    `EPV_CORS_ORIGINS`. Methods are `GET` and `POST`; the headers are `Content-Type` and
+    `Idempotency-Key`. No origin outside the list gets any CORS header.
 
 ## Consequences
 

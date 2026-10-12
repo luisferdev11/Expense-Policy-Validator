@@ -260,25 +260,27 @@ def test_a_decided_receipt_returns_to_the_queue_with_a_notice_when_the_result_ch
 # Scores
 
 
-def test_every_action_posts_an_agreement_score_on_the_trace_of_the_version_it_was_based_on(
+def test_every_action_posts_an_agreement_score_on_the_receipts_trace_naming_the_version(
     env: Env,
 ) -> None:
     env.act("SYN-A", "reject")
     env.act("SYN-U", "reject", reason_code="engine_missed_issue")
     assert env.tracer.scores == [
         {
-            "run_label": "app-r1-v1",
+            "run_label": "app-r1",
             "receipt_id": "SYN-A",
             "name": "auditor_agreement",
             "value": 1.0,
-            "comment": "reject; proposal=flag",
+            "comment": "reject; proposal=flag; evaluation_version=1",
         },
         {
-            "run_label": "app-r1-v1",
+            "run_label": "app-r1",
             "receipt_id": "SYN-U",
             "name": "auditor_agreement",
             "value": 0.0,
-            "comment": "reject; proposal=pass; reason_code=engine_missed_issue",
+            "comment": (
+                "reject; proposal=pass; reason_code=engine_missed_issue; evaluation_version=1"
+            ),
         },
     ]
 
@@ -300,4 +302,6 @@ def test_a_scored_correction_also_traces_the_new_decision(env: Env) -> None:
     before = len(env.tracer.named("decide-receipt"))
     env.act("SYN-A", "correct-category", line_id="SYN-A-L1", category="lodging")
     assert len(env.tracer.named("decide-receipt")) == before + 1
-    assert env.tracer.scores[-1]["comment"] == "correct-category; proposal=flag"
+    assert (
+        env.tracer.scores[-1]["comment"] == "correct-category; proposal=flag; evaluation_version=1"
+    )

@@ -303,8 +303,9 @@ requests' tests pass.
   change MUST be raised with Luis before it is made.
 - **FR-029**: `epv run`, its committed outputs and the evaluation MUST continue to work unchanged
   and without the backend.
-- **FR-030**: Every model call made by the backend MUST be traced; one trace per receipt revision
-  and evaluation version; if Langfuse is down, nothing else fails.
+- **FR-030**: Every model call made by the backend MUST be traced; one trace per receipt revision,
+  in which each stored evaluation version is a decision observation; if Langfuse is down, nothing
+  else fails.
 - **FR-031**: The system MUST start with a fresh database, run the API and the worker as separate
   processes, and use only local storage under a gitignored directory.
 - **FR-032**: A Postman collection and environment under `docs/api/` MUST cover every endpoint and

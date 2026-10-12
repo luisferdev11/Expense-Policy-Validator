@@ -60,6 +60,30 @@ text is written on 2026-10-12, before any E16 run, and after the demonstrative j
     approved_by: Luis   # approved in conversation on 2026-10-12, before any E16 run
 ```
 
+## Implementation notes (2026-10-12, phase 4)
+
+None of these changes the approved rule text above; the registration in
+`explorations/research/experiments_plan.yaml` is verbatim (a test compares them).
+
+- **Where the reference's answers come from.** `held_fixed` names
+  `explorations/results/iter2/cache/gpt-oss-120b.jsonl` as the "committed E14 cache". That
+  directory is gitignored (`explorations/.gitignore`), so a clone does not have it. The same answers
+  are committed in `explorations/results/iter2/E14/gpt-oss-120b.jsonl` (the literal `raw_content`,
+  request id, cost and serving provider of each item), and the runner rebuilds the cache entries
+  from those rows, keyed as E14 keyed them. The substance of the registration (the hybrid's detail
+  side makes no new call) is unchanged. The wording of `held_fixed` would need Luis's approval to
+  correct, so it was left as approved.
+- **The hybrid's detail side is offline.** An item with no committed answer is an
+  `offline_cache_miss`, never a billed gpt-oss call.
+- **One jev pass.** Both variants share one jev cache (`cache/jev-1.13.jsonl`), so jev is asked once
+  per item; the repeat pass writes to its own file, `cache/jev-1.13.repeat.jsonl`, and counts in the
+  budget.
+- **Rows carry both confidence sources**: `top_probability` and `reported_confidence`, plus the
+  `confidence` the pipeline would use. E7's threshold procedure is run on the better-calibrated one.
+- **Latency** is timed on the billed jev call. A variant answered from the cache borrows the other
+  jev variant's timings (the hybrid's other side is a cached E14 answer, so its latency is the jev
+  call's). E14 did not record the reference's latency.
+
 ## How the rule differs from E14, and why
 
 | E14 as coded (`eval/experiments/decide.py`) | E16 | Reason |

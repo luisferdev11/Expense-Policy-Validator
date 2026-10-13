@@ -73,7 +73,7 @@ def create_app(
     review = review or ReviewService(service.store, service.clock, service)
     app = FastAPI(
         title="Expense Policy Validator",
-        version="1.1.0",
+        version="1.3.0",
         description="Intake and lifecycle of expense receipts (ADR 0006, ADR 0007).",
     )
     app.add_middleware(

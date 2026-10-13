@@ -74,6 +74,159 @@ test("intake: one receipt, repeated, then revised", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Revisions" })).toBeVisible();
 });
 
+// Spec 008: the guided form. Each test uses its own receipt ID and does not need the others.
+async function fillHeader(page: Page, id: string) {
+  await page.getByLabel("Receipt ID", { exact: true }).fill(id);
+  await page.getByLabel("Employee ID", { exact: true }).fill("E-FORM");
+  await page.getByLabel("Employee's home country", { exact: true }).fill("US");
+  await page.getByLabel("Declared expense type", { exact: true }).fill("Office Supplies");
+  await page.getByLabel("Merchant", { exact: true }).fill("Form Stationers");
+  await page.getByLabel("MCC", { exact: true }).fill("5943");
+  await page.getByLabel("MCC description", { exact: true }).fill("Office supply stores");
+}
+
+test("form: fill and submit a two-line receipt", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-1");
+  await expect(page.getByLabel("Regional entity", { exact: true })).toHaveValue("GLOBAL");
+
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Pens box of 12");
+  await line1.getByLabel("Quantity", { exact: true }).fill("2");
+  await line1.getByLabel("Unit price", { exact: true }).fill("15.00");
+  await page.getByRole("button", { name: "Add line" }).click();
+  const line2 = page.getByRole("group", { name: "Line 2" });
+  await expect(line2.getByLabel("Description (as printed)", { exact: true })).toBeFocused();
+  await line2.getByLabel("Description (as printed)", { exact: true }).fill("Legal pads");
+  await line2.getByLabel("Unit price", { exact: true }).fill("12.50");
+
+  await expect(line1.getByLabel("Amount", { exact: true })).toHaveValue("30.00");
+  await expect(page.getByLabel("Total (receipt currency)", { exact: true })).toHaveValue("42.50");
+  await expect(page.getByLabel("Total in USD", { exact: true })).toHaveValue("42.50");
+
+  await page.getByText("Preview JSON").click();
+  await expect(page.locator("pre.json-preview")).toContainText('"line_id": "E2E-FORM-1-L2"');
+
+  // Keyboard only: Enter in an input sends the form.
+  await page.getByLabel("Merchant", { exact: true }).press("Enter");
+  const result = page.getByRole("region", { name: "Submission result" });
+  await expect(result).toContainText("Accepted");
+  await page.getByLabel("Merchant", { exact: true }).press("Enter");
+  await expect(result).toContainText("Already known");
+  await shot(page, "09-intake-form");
+});
+
+test("form: errors are shown per field and nothing is sent", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("/api/receipts")) posts.push(r.url());
+  });
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-ERR");
+  await page.getByLabel("Employee ID", { exact: true }).fill("");
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Pens");
+  await line1.getByLabel("Quantity", { exact: true }).fill("0");
+  await line1.getByLabel("Unit price", { exact: true }).fill("5");
+
+  await page.getByRole("button", { name: "Validate" }).click();
+  const summary = page.getByRole("alert");
+  await expect(summary).toContainText("Fix these before sending");
+  await expect(summary.getByRole("link")).toHaveCount(2);
+  await expect(page.getByLabel("Employee ID", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(line1.getByLabel("Quantity", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(line1).toContainText("Must be greater than 0");
+  await summary.getByRole("link", { name: /Employee ID/ }).click();
+  await expect(page.getByLabel("Employee ID", { exact: true })).toBeFocused();
+  expect(posts).toHaveLength(0);
+});
+
+test("form: a draft survives a reload and can be discarded", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await page.getByLabel("Receipt ID", { exact: true }).fill("E2E-FORM-DRAFT");
+  await page.getByLabel("Employee ID", { exact: true }).fill("E-DRAFT");
+  await page.getByLabel("Merchant", { exact: true }).fill("Draft Cafe");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true }).fill("Coffee");
+  await page.getByRole("button", { name: "Add line" }).click();
+  await page.getByRole("group", { name: "Line 2" }).getByLabel("Description (as printed)", { exact: true }).fill("Bagel");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/Draft restored from/)).toBeVisible();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("E2E-FORM-DRAFT");
+  await expect(page.getByLabel("Employee ID", { exact: true })).toHaveValue("E-DRAFT");
+  await expect(page.getByLabel("Merchant", { exact: true })).toHaveValue("Draft Cafe");
+  await expect(page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true })).toHaveValue("Coffee");
+  await expect(page.getByRole("group", { name: "Line 2" }).getByLabel("Description (as printed)", { exact: true })).toHaveValue("Bagel");
+
+  await page.getByRole("button", { name: "Discard draft" }).click();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("group", { name: "Line 2" })).toHaveCount(0);
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+  // Nothing was kept, so the screen opens on its default mode with an empty form behind the chip.
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("");
+});
+
+test("form: a sent receipt leaves no draft behind", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-SENT");
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Stapler");
+  await line1.getByLabel("Unit price", { exact: true }).fill("9.99");
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Accepted");
+  await page.waitForTimeout(700); // longer than the 400 ms save delay
+  await page.reload();
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+});
+
+test("form: revise opens the stored receipt in the form", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (JSON)" }).click();
+  await page.getByLabel("Receipt JSON or batch").fill(JSON.stringify(receipt("E2E-FORM-REV")));
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Accepted");
+
+  await page.goto("/intake?revise=E2E-FORM-REV");
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Merchant", { exact: true })).toHaveValue("E2E Stationers");
+  await expect(page.getByRole("group", { name: "Line 2" }).getByLabel("Line ID", { exact: true })).toHaveValue("E2E-FORM-REV-L2");
+  // Opening a receipt to revise it must not touch the draft, and the form must not invent a change.
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Already known");
+  await page.getByLabel("Merchant", { exact: true }).fill("Revised Stationers");
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("New revision");
+});
+
+test("form: the form and the JSON text convert both ways", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-JSON");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true }).fill("Tape");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Unit price", { exact: true }).fill("3.00");
+  await page.getByRole("button", { name: "Open as JSON" }).click();
+  await expect(page.getByRole("button", { name: "One receipt (JSON)" })).toHaveAttribute("aria-pressed", "true");
+  const box = page.getByLabel("Receipt JSON or batch");
+  await expect(box).toHaveValue(/"receipt_id": "E2E-FORM-JSON"/);
+
+  // An answer key in the text is not carried into the form, and the person is told.
+  const body = JSON.parse(await box.inputValue()) as Record<string, unknown>;
+  await box.fill(JSON.stringify({ ...body, labels: { x: 1 } }));
+  await page.getByRole("button", { name: "Edit in the form" }).click();
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("1 key not shown in the form was dropped")).toBeVisible();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("E2E-FORM-JSON");
+});
+
 test("history: events, what a revision changed, and the evaluation versions", async ({ page }) => {
   await page.goto("/history/E2E-REV");
   await expect(page.getByRole("heading", { name: /E2E-REV · history/ })).toBeVisible();
@@ -114,6 +267,9 @@ test("workbench: a category correction raises a finding with the policy text, an
 
   // Confirming the flag (reject) matches the proposal, so no reason is needed.
   await page.keyboard.press("r");
+  // Rejecting what the engine flagged agrees with it: only the optional note, no reason list (008 FR-020).
+  await expect(page.getByRole("dialog").getByLabel("Note (optional)")).toBeVisible();
+  await expect(page.getByRole("dialog").getByLabel("Reason")).toHaveCount(0);
   await page.getByRole("dialog").getByRole("button", { name: "Reject expense" }).click();
   await expect(pane.locator(".state-chip")).toHaveText("Rejected");
   await expect(pane.getByText("Rejected", { exact: true }).first()).toBeVisible();
@@ -134,6 +290,14 @@ test("workbench: approving a flag is an override and needs a reason", async ({ p
   await pane.getByRole("button", { name: /^Approve/ }).click();
   const dlg = page.getByRole("dialog");
   await expect(dlg).toContainText("goes against that proposal");
+  // Approve offers its own reasons, not "The engine missed an issue" (008 FR-019).
+  await expect(dlg.getByLabel("Reason").locator("option")).toHaveText([
+    "Choose a reason…",
+    "Policy exception granted",
+    "The engine flagged something that is fine",
+    "Documentation was provided",
+    "Other (note required)",
+  ]);
   await dlg.getByRole("button", { name: "Approve anyway" }).click();
   await expect(dlg.getByRole("alert")).toContainText("Choose a reason");
   await dlg.getByLabel("Reason").selectOption("policy_exception_granted");

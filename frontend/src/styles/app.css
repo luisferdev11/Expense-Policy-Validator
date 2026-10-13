@@ -227,3 +227,27 @@ th[scope=row] { text-align: left; font-weight: 500; padding: 0 var(--space-3); h
 .confusion tbody th { background: var(--surface-sunken); text-align: left; font: 500 13px/20px var(--font-sans); }
 .confusion td.is-diag { font-weight: 600; }
 .chart { max-width: 760px; }
+
+/* Guided intake form (spec 008) */
+.intake-grid--form { grid-template-columns: minmax(0, 1.7fr) minmax(300px, 1fr); }
+.receipt-form { display: flex; flex-direction: column; gap: var(--space-4); margin-top: var(--space-3); }
+.form-section { display: flex; flex-direction: column; gap: var(--space-2); }
+.form-grid, .line-row__grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: var(--space-3); align-items: start; }
+.form-grid .span-2, .line-row__grid .span-2 { grid-column: span 2; }
+.form-check { justify-content: end; }
+.form-check label { display: inline-flex; gap: var(--space-2); align-items: center; font-size: 13px; color: var(--ink); }
+.ll-input[aria-invalid="true"], .ll-select[aria-invalid="true"] { border-color: var(--critical); }
+.field-error { color: var(--critical); font-size: 12px; line-height: 16px; font-weight: 500; }
+.field-warn { color: var(--low); font-size: 12px; line-height: 16px; font-weight: 500; }
+.computed-tag { font-size: 11px; line-height: 16px; color: var(--ink-subtle); font-style: italic; }
+.derived-actions { min-height: 16px; font-size: 12px; }
+.line-row { border: 1px solid var(--border); border-radius: var(--radius-lg); padding: var(--space-3); margin: 0 0 var(--space-3); min-width: 0; display: flex; flex-direction: column; gap: var(--space-3); background: var(--surface); }
+.line-row legend { font-weight: 600; padding: 0 var(--space-2); }
+.line-row > .ll-btn { align-self: flex-end; }
+.lines { display: flex; flex-direction: column; }
+.lines > #add-line { align-self: flex-start; }
+.form-summary { display: block; }
+.form-summary ul { margin: var(--space-2) 0 0; padding-left: 18px; }
+.json-details summary { cursor: pointer; font-weight: 500; }
+.json-preview { margin: var(--space-2) 0 0; max-height: 320px; overflow: auto; background: var(--surface-sunken); border: 1px solid var(--border); border-radius: var(--radius-md); padding: var(--space-3); white-space: pre; }
+@media (max-width: 1100px) { .intake-grid--form { grid-template-columns: 1fr; } }

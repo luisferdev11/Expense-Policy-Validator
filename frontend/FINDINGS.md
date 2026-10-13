@@ -167,6 +167,18 @@ propose, and how the front end copes today. Luis reviews these after the backend
   reload), omits linked receipts, and its "How a receipt moves" page follows the API and the log's
   real event names.
 
+## F-12. Intake had no form and kept no draft (resolved 2026-10-12, spec 008)
+
+- **Date:** 2026-10-10
+- **Expected:** a person can type one receipt in a form and does not lose it by leaving the screen.
+- **What happened:** intake took pasted JSON or a file only, and the text was lost on reload.
+- **Resolved by:** [`specs/008-guided-intake/`](../specs/008-guided-intake/spec.md): a third mode
+  "One receipt (form)" with computed amounts, per-field errors and a JSON preview; a draft kept in
+  the browser; revise opens the stored receipt in the form; the form and the JSON convert both ways.
+- **Still open:** F-06. The server names the fields it refused but not the reason, so the form can
+  only say "The server refused this value" next to a mapped field. A per-field reason is a backend
+  change and was not part of 008.
+
 ## Assistant mistakes to merge into AI_NOTES.md
 
 Each one was caught during this iteration. `AI_NOTES.md` was not edited here (it is outside

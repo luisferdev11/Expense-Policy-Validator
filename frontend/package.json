@@ -1,7 +1,7 @@
 {
   "name": "epv-frontend",
   "private": true,
-  "version": "1.2.0",
+  "version": "1.3.0",
   "type": "module",
   "scripts": {
     "styles": "node scripts/build-styles.mjs",
@@ -15,6 +15,7 @@
     "pretest": "npm run styles",
     "test": "vitest run",
     "typecheck": "tsc --noEmit",
+    "pree2e": "npm run styles",
     "e2e": "playwright test"
   },
   "dependencies": {

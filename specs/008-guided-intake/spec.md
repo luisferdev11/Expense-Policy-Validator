@@ -270,10 +270,25 @@ and submitting gives "New revision".
   textarea in both directions without losing values (except keys the form does not have, which are
   reported).
 
+**Decision reasons** (added 2026-10-12, approved by Luis; the same front-end release, outside the
+intake form)
+
+- **FR-019**: In the Approve and Reject dialogs (`ActionDialog`) each action MUST offer only the
+  reasons that can describe it. Approve: `policy_exception_granted`, `engine_false_positive`,
+  `documentation_provided`, `other`. Reject: `engine_missed_issue`, `other`. The existing rule stays:
+  a reason is required only when the decision overrides the engine's proposal (ADR 0007 D8:
+  approving a `flag`, rejecting a `pass`), and `other` requires a note.
+- **FR-020**: When Reject agrees with the proposal (the engine proposed `flag` or `review`, so it is
+  not an override), the dialog MUST NOT show the reason list, only the optional note, and MUST NOT
+  send a `reason_code`.
+  - *Note.* This is a front-end change only. The API still accepts any reason code with any
+    decision; a dedicated "confirmed violation" code was deliberately **not** added, and Luis may
+    decide on it later. No ADR is needed for this.
+
 **Boundaries**
 
 - **FR-018**: The backend behaviour, the API contract and the policy engine MUST NOT change in this
-  feature. The only backend edits allowed are the release version (`pyproject.toml` and the
+  feature (FR-019 and FR-020 are front end only). The only backend edits allowed are the release version (`pyproject.toml` and the
   `version` passed in `create_app`, `src/expense_validator/app/api/__init__.py`) and the new
   contract test of FR-009.
 

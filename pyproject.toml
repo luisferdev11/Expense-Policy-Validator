@@ -1,6 +1,6 @@
 [project]
 name = "expense-policy-validator"
-version = "1.2.0"
+version = "1.3.0"
 description = "Classifies itemized expense receipts, applies written expense policies with a deterministic rule engine, and raises evidence-grounded exceptions."
 readme = "README.md"
 requires-python = ">=3.12"

@@ -79,6 +79,7 @@ export function IntakePage() {
   const [dragging, setDragging] = useState(false);
   const [form, setForm] = useState<ReceiptFormState>(() => restored?.form ?? emptyForm());
   const [attempted, setAttempted] = useState(false);
+  const [droppedKeys, setDroppedKeys] = useState<string[]>([]);
   const [serverFields, setServerFields] = useState<{ mapped: FieldError[]; unmapped: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
@@ -107,7 +108,26 @@ export function IntakePage() {
     edited();
     reset();
     setServerFields(null);
+    setDroppedKeys([]);
     setForm(next);
+  }
+
+  /** Form → text: the exact body the form would send, ready to edit by hand. */
+  function openAsJson() {
+    edited();
+    reset();
+    setFileName(null);
+    setText(JSON.stringify(formToReceipt(form), null, 2));
+    setMode("single");
+  }
+
+  /** Text → form: what the form knows fills it; the rest is dropped and counted. */
+  function editInForm() {
+    if (plan.kind !== "single") return;
+    const { form: loaded, dropped } = receiptToForm(plan.receipt);
+    changeForm(loaded);
+    setDroppedKeys(dropped);
+    setMode("form");
   }
 
   function discardDraft() {
@@ -148,7 +168,12 @@ export function IntakePage() {
     api
       .getReceipt(revise)
       .then((d) => {
-        if (!cancelled) setText(JSON.stringify(d.receipt, null, 2));
+        if (cancelled) return;
+        // The stored receipt opens in the form exactly as it is stored (derived values as overrides).
+        const { form: stored, dropped } = receiptToForm(d.receipt as unknown as Record<string, unknown>);
+        setForm(stored);
+        setDroppedKeys(dropped);
+        setMode("form");
       })
       .catch((e: Error) => !cancelled && setError({ message: e.message }));
     return () => {
@@ -279,6 +304,14 @@ export function IntakePage() {
               </button>
             </p>
           )}
+          {inForm && droppedKeys.length > 0 && (
+            <p className="callout callout--warm" role="status">
+              {droppedKeys.length} {droppedKeys.length === 1 ? "key not shown in the form was dropped" : "keys not shown in the form were dropped"}:{" "}
+              {droppedKeys.map((k) => (
+                <code key={k}>{k}</code>
+              ))}
+            </p>
+          )}
           {inForm && <ReceiptForm form={form} onChange={changeForm} errors={formErrors} unmapped={serverFields?.unmapped ?? []} />}
           {!inForm && (
           <div
@@ -333,6 +366,9 @@ export function IntakePage() {
           />
           {inForm ? (
             <div className="row gap" style={{ marginTop: 0 }}>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={openAsJson}>
+                Open as JSON
+              </button>
               <button type="button" className="ll-btn ll-btn--ghost" onClick={() => changeForm(receiptToForm(JSON.parse(SAMPLE_RECEIPT) as Record<string, unknown>).form)}>
                 Load a sample receipt
               </button>
@@ -343,6 +379,11 @@ export function IntakePage() {
                 <Icon name="upload" />
                 Choose a file
               </button>
+              {plan.kind === "single" && (
+                <button type="button" className="ll-btn ll-btn--secondary" onClick={editInForm}>
+                  Edit in the form
+                </button>
+              )}
               <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (edited(), reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
                 Load a sample receipt
               </button>

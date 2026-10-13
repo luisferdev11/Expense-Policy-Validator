@@ -188,6 +188,45 @@ test("form: a sent receipt leaves no draft behind", async ({ page }) => {
   await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
 });
 
+test("form: revise opens the stored receipt in the form", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (JSON)" }).click();
+  await page.getByLabel("Receipt JSON or batch").fill(JSON.stringify(receipt("E2E-FORM-REV")));
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Accepted");
+
+  await page.goto("/intake?revise=E2E-FORM-REV");
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByLabel("Merchant", { exact: true })).toHaveValue("E2E Stationers");
+  await expect(page.getByRole("group", { name: "Line 2" }).getByLabel("Line ID", { exact: true })).toHaveValue("E2E-FORM-REV-L2");
+  // Opening a receipt to revise it must not touch the draft, and the form must not invent a change.
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Already known");
+  await page.getByLabel("Merchant", { exact: true }).fill("Revised Stationers");
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("New revision");
+});
+
+test("form: the form and the JSON text convert both ways", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-JSON");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true }).fill("Tape");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Unit price", { exact: true }).fill("3.00");
+  await page.getByRole("button", { name: "Open as JSON" }).click();
+  await expect(page.getByRole("button", { name: "One receipt (JSON)" })).toHaveAttribute("aria-pressed", "true");
+  const box = page.getByLabel("Receipt JSON or batch");
+  await expect(box).toHaveValue(/"receipt_id": "E2E-FORM-JSON"/);
+
+  // An answer key in the text is not carried into the form, and the person is told.
+  const body = JSON.parse(await box.inputValue()) as Record<string, unknown>;
+  await box.fill(JSON.stringify({ ...body, labels: { x: 1 } }));
+  await page.getByRole("button", { name: "Edit in the form" }).click();
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText("1 key not shown in the form was dropped")).toBeVisible();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("E2E-FORM-JSON");
+});
+
 test("history: events, what a revision changed, and the evaluation versions", async ({ page }) => {
   await page.goto("/history/E2E-REV");
   await expect(page.getByRole("heading", { name: /E2E-REV · history/ })).toBeVisible();

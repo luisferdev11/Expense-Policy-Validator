@@ -368,6 +368,27 @@ zero extra billed calls; outcomes do not depend on arrival order. The engine's d
 change (alert Luis before any engine change).
 ```
 
+## 2026-10-12: "Implement spec 006, API hardening, test first"
+
+The implementation session of iteration 6, slice 006, started from a written directive (the specs
+were written in an earlier session, `specs/006-api-hardening/`). The directive, translated:
+
+```
+Implement spec 006 (api-hardening, release v1.1.0) in its own worktree on feat/006-api-hardening.
+Use the Spec Kit skill speckit-implement and follow tasks.md exactly, test first, ticking each task.
+Keep the documents current: if reality differs from spec, plan, research or contracts, edit them in
+the same commit with a one-line reason. Rules: English everywhere; small Conventional Commits; ruff,
+mypy and pytest green before every commit; never --no-verify; labels firewall; no key is read or
+printed; no Anthropic models; the policy engine's decisions must not change (stop and tell me if
+they must). Record every mistake or deviation in a notes draft, not in AI_NOTES.md. No billed model
+call: use the simulated or keyword classifier. Push the branch when green; do not open the PR.
+```
+
+Follow-ups, translated: a note that spec 007 bumps the version lines to 1.2.0, so the change to
+those lines had to stay minimal; a restart of the machine in the middle of the `peak` load run (the
+partial run was discarded and the three profiles were rerun on committed code, so no report comes
+from a killed run).
+
 ## Starter prompt for the Spec Kit session, as prepared
 
 The first message of the Spec Kit session, prepared in the previous session so the context

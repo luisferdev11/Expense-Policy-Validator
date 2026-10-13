@@ -146,10 +146,10 @@ Each phase is a vertical slice that ends green and committed. If time runs out, 
 
 ## Phase 8: Polish and cross-cutting
 
-- [ ] T067 [P] Add an `AI_NOTES.md` row for every assistant mistake caught during this feature (what, how it was caught, what changed), and a line under "Open issues" closing AI_NOTES 40's shared-cache issue for the backend (the dev runner still uses JSONL files)
-- [ ] T068 [P] Update `docs/roadmap.md` (iteration 6 status) and `README.md` if it lists the API fields or the cache (one line each)
-- [ ] T069 [P] Log the important prompts of this session in `docs/ai/prompt-log.md`
-- [ ] T070 Run the full verification below and fix what fails; commit `docs: iteration 6 API hardening notes`
+- [x] T067 [P] (rows are in `ai-notes-draft.md`; the coordinating session folds them into `AI_NOTES.md` and closes item 40 for the backend) Add an `AI_NOTES.md` row for every assistant mistake caught during this feature (what, how it was caught, what changed), and a line under "Open issues" closing AI_NOTES 40's shared-cache issue for the backend (the dev runner still uses JSONL files)
+- [x] T068 [P] Update `docs/roadmap.md` (iteration 6 status) and `README.md` if it lists the API fields or the cache (one line each)
+- [x] T069 [P] Log the important prompts of this session in `docs/ai/prompt-log.md`
+- [x] T070 Run the full verification below and fix what fails; commit `docs: iteration 6 API hardening notes`
 - [ ] T071 Open the PR `feat/006-api-hardening` → `main` with the SC table and the load reports linked; after Luis merges, tag `v1.1.0` and create the GitHub release
 
 ## Verification (before the PR)

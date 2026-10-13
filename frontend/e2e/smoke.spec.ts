@@ -143,6 +143,51 @@ test("form: errors are shown per field and nothing is sent", async ({ page }) =>
   expect(posts).toHaveLength(0);
 });
 
+test("form: a draft survives a reload and can be discarded", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await page.getByLabel("Receipt ID", { exact: true }).fill("E2E-FORM-DRAFT");
+  await page.getByLabel("Employee ID", { exact: true }).fill("E-DRAFT");
+  await page.getByLabel("Merchant", { exact: true }).fill("Draft Cafe");
+  await page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true }).fill("Coffee");
+  await page.getByRole("button", { name: "Add line" }).click();
+  await page.getByRole("group", { name: "Line 2" }).getByLabel("Description (as printed)", { exact: true }).fill("Bagel");
+
+  await page.reload();
+  await expect(page.getByRole("button", { name: "One receipt (form)" })).toHaveAttribute("aria-pressed", "true");
+  await expect(page.getByText(/Draft restored from/)).toBeVisible();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("E2E-FORM-DRAFT");
+  await expect(page.getByLabel("Employee ID", { exact: true })).toHaveValue("E-DRAFT");
+  await expect(page.getByLabel("Merchant", { exact: true })).toHaveValue("Draft Cafe");
+  await expect(page.getByRole("group", { name: "Line 1" }).getByLabel("Description (as printed)", { exact: true })).toHaveValue("Coffee");
+  await expect(page.getByRole("group", { name: "Line 2" }).getByLabel("Description (as printed)", { exact: true })).toHaveValue("Bagel");
+
+  await page.getByRole("button", { name: "Discard draft" }).click();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("");
+  await expect(page.getByRole("group", { name: "Line 2" })).toHaveCount(0);
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+
+  await page.reload();
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+  // Nothing was kept, so the screen opens on its default mode with an empty form behind the chip.
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await expect(page.getByLabel("Receipt ID", { exact: true })).toHaveValue("");
+});
+
+test("form: a sent receipt leaves no draft behind", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-SENT");
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Stapler");
+  await line1.getByLabel("Unit price", { exact: true }).fill("9.99");
+  await page.getByRole("button", { name: "Validate" }).click();
+  await expect(page.getByRole("region", { name: "Submission result" })).toContainText("Accepted");
+  await page.waitForTimeout(700); // longer than the 400 ms save delay
+  await page.reload();
+  await expect(page.getByText(/Draft restored from/)).toHaveCount(0);
+});
+
 test("history: events, what a revision changed, and the evaluation versions", async ({ page }) => {
   await page.goto("/history/E2E-REV");
   await expect(page.getByRole("heading", { name: /E2E-REV · history/ })).toBeVisible();

@@ -8,6 +8,8 @@ import { Icon } from "../components/Icon";
 import { ReceiptForm } from "../components/ReceiptForm";
 import { STATES, STATE_LABEL, isInProgress, sortFindings } from "../lib/domain";
 import { usd } from "../lib/format";
+import { clearDraft, loadDraft, saveDraft } from "../lib/draft";
+import type { IntakeDraft } from "../lib/draft";
 import { useDetails, usePolling, useToast } from "../lib/hooks";
 import { planIntake, refusedRowsText, sourceRows } from "../lib/intake";
 import { emptyForm, formToReceipt, receiptToForm, serverErrors, validateForm } from "../lib/receiptForm";
@@ -59,16 +61,23 @@ export function IntakePage() {
   const [params, setParams] = useSearchParams();
   const { reload } = useReceipts();
   const { toast } = useToast();
-  const [mode, setMode] = useState<Mode>("batch");
-  const [text, setText] = useState("");
+  const revise = params.get("revise");
+  // A draft is restored once, on arrival, unless the person came to revise a stored receipt.
+  const [restored] = useState(() => (revise ? null : loadDraft()));
+  const [restoredAt, setRestoredAt] = useState<string | null>(restored?.savedAt ?? null);
+  const [mode, setMode] = useState<Mode>(restored?.mode ?? "batch");
+  const [text, setText] = useState(restored?.text ?? "");
   const [fileName, setFileName] = useState<string | null>(null);
-  const [key, setKey] = useState("");
+  const [key, setKey] = useState(restored?.idempotencyKey ?? "");
+  // The draft is written only after the person has edited something this visit, and not again after a send.
+  const [touched, setTouched] = useState(false);
+  const sent = useRef(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<{ message: string; fields?: string[] } | null>(null);
   const [single, setSingle] = useState<SubmitResponse | null>(null);
   const [batch, setBatch] = useState<{ response: BatchResponse; rows: string[]; sentAt: Date; fileName: string | null } | null>(null);
   const [dragging, setDragging] = useState(false);
-  const [form, setForm] = useState<ReceiptFormState>(emptyForm);
+  const [form, setForm] = useState<ReceiptFormState>(() => restored?.form ?? emptyForm());
   const [attempted, setAttempted] = useState(false);
   const [serverFields, setServerFields] = useState<{ mapped: FieldError[]; unmapped: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
@@ -88,14 +97,51 @@ export function IntakePage() {
     [attempted, form, serverFields],
   );
 
+  /** Every edit by the person goes through here: it makes the draft worth saving again. */
+  function edited() {
+    sent.current = false;
+    setTouched(true);
+  }
+
   function changeForm(next: ReceiptFormState) {
+    edited();
     reset();
     setServerFields(null);
     setForm(next);
   }
 
+  function discardDraft() {
+    clearDraft();
+    sent.current = true;
+    setRestoredAt(null);
+    setForm(emptyForm());
+    setText("");
+    setKey("");
+    setFileName(null);
+    setAttempted(false);
+    setServerFields(null);
+    reset();
+  }
+
+  // Keep what is being typed in this browser: debounced while typing, flushed when the page goes away.
+  const latest = useRef<IntakeDraft | null>(null);
+  latest.current = { version: 1, mode, form, text, idempotencyKey: key, savedAt: new Date().toISOString() };
+  useEffect(() => {
+    if (!touched || sent.current) return;
+    const timer = setTimeout(() => {
+      if (!sent.current && latest.current) saveDraft(latest.current);
+    }, 400);
+    return () => clearTimeout(timer);
+  }, [mode, form, text, key, touched]);
+  useEffect(() => {
+    const flush = () => {
+      if (touched && !sent.current && latest.current) saveDraft(latest.current);
+    };
+    window.addEventListener("pagehide", flush);
+    return () => window.removeEventListener("pagehide", flush);
+  }, [touched]);
+
   // "Submit a corrected revision": prefill with the current stripped receipt.
-  const revise = params.get("revise");
   useEffect(() => {
     if (!revise) return;
     let cancelled = false;
@@ -137,6 +183,10 @@ export function IntakePage() {
         setBatch({ response: res, rows: sourceRows(plan), sentAt: new Date(), fileName });
         toast(`Batch ${res.batch_id}: ${res.total} row${res.total === 1 ? "" : "s"} processed.`);
       }
+      // Sent: the draft has done its job. It stays gone until the person edits again.
+      sent.current = true;
+      clearDraft();
+      setRestoredAt(null);
       void reload();
     } catch (e) {
       if (e instanceof ApiError) {
@@ -161,6 +211,7 @@ export function IntakePage() {
   }
 
   async function readFile(file: File) {
+    edited();
     reset();
     setFileName(file.name);
     setText(await file.text());
@@ -210,7 +261,7 @@ export function IntakePage() {
           >
           <div role="group" aria-label="What to send" className="row gap" style={{ marginTop: 0 }}>
             {(["form", "single", "batch"] as const).map((m) => (
-              <button key={m} type="button" className={`chip${mode === m ? " is-on" : ""}`} aria-pressed={mode === m} onClick={() => setMode(m)}>
+              <button key={m} type="button" className={`chip${mode === m ? " is-on" : ""}`} aria-pressed={mode === m} onClick={() => (edited(), setMode(m))}>
                 {MODE_LABEL[m]}
               </button>
             ))}
@@ -218,6 +269,14 @@ export function IntakePage() {
           {revise && (
             <p className="callout callout--accent">
               Editing a copy of <strong className="ll-num">{revise}</strong>. Change what is wrong and send it: it becomes a new revision of the same receipt.
+            </p>
+          )}
+          {restoredAt && (
+            <p className="callout callout--accent" role="status">
+              <span>Draft restored from {new Date(restoredAt).toLocaleString()}.</span>
+              <button type="button" className="ll-btn ll-btn--secondary" onClick={discardDraft}>
+                Discard draft
+              </button>
             </p>
           )}
           {inForm && <ReceiptForm form={form} onChange={changeForm} errors={formErrors} unmapped={serverFields?.unmapped ?? []} />}
@@ -254,6 +313,7 @@ export function IntakePage() {
               onChange={(e) => {
                 reset();
                 setFileName(null);
+                edited();
                 setText(e.target.value);
               }}
             />
@@ -273,7 +333,7 @@ export function IntakePage() {
           />
           {inForm ? (
             <div className="row gap" style={{ marginTop: 0 }}>
-              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setServerFields(null), setForm(receiptToForm(JSON.parse(SAMPLE_RECEIPT) as Record<string, unknown>).form))}>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => changeForm(receiptToForm(JSON.parse(SAMPLE_RECEIPT) as Record<string, unknown>).form)}>
                 Load a sample receipt
               </button>
             </div>
@@ -283,10 +343,10 @@ export function IntakePage() {
                 <Icon name="upload" />
                 Choose a file
               </button>
-              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (edited(), reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
                 Load a sample receipt
               </button>
-              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("batch"), setText(SAMPLE_BATCH))}>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (edited(), reset(), setFileName(null), setMode("batch"), setText(SAMPLE_BATCH))}>
                 Load a sample batch
               </button>
             </div>
@@ -300,7 +360,7 @@ export function IntakePage() {
           {(plan.kind === "single" || inForm) && (
             <div className="ll-field">
               <label htmlFor="idem">Idempotency key (optional)</label>
-              <input id="idem" className="ll-input" value={key} maxLength={255} onChange={(e) => setKey(e.target.value)} placeholder="e.g. upload-2026-10-10-001" />
+              <input id="idem" className="ll-input" value={key} maxLength={255} onChange={(e) => (edited(), setKey(e.target.value))} placeholder="e.g. upload-2026-10-10-001" />
               <span className="hint">Sending the same key again never creates a second receipt. Using it with different content is refused.</span>
             </div>
           )}

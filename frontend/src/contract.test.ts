@@ -1,6 +1,7 @@
 import { readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
+import { ENTITIES, KNOWN_EXPENSE_TYPES, LANGUAGES, MCC_SUGGESTIONS, emptyForm, formToReceipt } from "./lib/receiptForm";
 
 // The domain types in src/api/types.ts come from src/api/generated.ts, which is generated from
 // docs/api/openapi.json (generated.test.ts keeps it fresh); the rest are written by hand. This test
@@ -59,6 +60,33 @@ describe("API contract the front end relies on", () => {
 
   it.each(USED_ROUTES)("route %s %s exists", (path, method) => {
     expect(Object.keys(doc.paths[path] ?? {}), `${method.toUpperCase()} ${path}`).toContain(method);
+  });
+
+  // Spec 008: the intake form emits exactly the request schema and offers exactly its enums.
+  it("the form emits exactly the 20 keys of the request schema and the 7 of a line", () => {
+    const body = formToReceipt(emptyForm());
+    expect(Object.keys(body).sort()).toEqual(Object.keys(doc.components.schemas.ReceiptInputRequest.properties ?? {}).sort());
+    expect(Object.keys(body.line_items[0]).sort()).toEqual(Object.keys(doc.components.schemas.LineItemInputRequest.properties ?? {}).sort());
+  });
+
+  it("the form's entity and language options equal the request schema's enums", () => {
+    const entity = doc.components.schemas.ReceiptInputRequest.properties?.entity as { enum: string[] };
+    const language = doc.components.schemas.LineItemInputRequest.properties?.language as { enum: string[] };
+    expect([...ENTITIES].sort()).toEqual([...entity.enum].sort());
+    expect([...LANGUAGES].sort()).toEqual([...language.enum].sort());
+  });
+
+  it("the declared types the form suggests are the committed list the engine test keeps in step", () => {
+    const committed = JSON.parse(readFileSync(resolve(__dirname, "samples/expense-types.json"), "utf8")) as string[];
+    expect(KNOWN_EXPENSE_TYPES).toEqual(committed);
+    expect(committed).toEqual([...committed].sort());
+  });
+
+  it("the MCC suggestions are the rows of the merchant category table, without its risk column", () => {
+    const md = readFileSync(resolve(__dirname, "../../data/policy-docs/merchant-category-risk.md"), "utf8");
+    const rows = [...md.matchAll(/^\| (\d{4}) \| ([^|]+?) \|/gm)].map((m) => ({ mcc: Number(m[1]), description: m[2] }));
+    const byCode = (a: { mcc: number }, b: { mcc: number }) => a.mcc - b.mcc;
+    expect([...MCC_SUGGESTIONS].sort(byCode)).toEqual(rows.sort(byCode));
   });
 
   it("the list endpoint still takes the query parameters the front end sends", () => {

@@ -19,6 +19,13 @@ export function writeStore(key: string, value: string): void {
     /* ignore */
   }
 }
+export function removeStore(key: string): void {
+  try {
+    localStorage.removeItem(key);
+  } catch {
+    /* ignore */
+  }
+}
 
 /** Run `fn` now and every `intervalMs`; keeps the last data while refreshing. */
 export function usePolling<T>(fn: () => Promise<T>, deps: unknown[], intervalMs = 0) {

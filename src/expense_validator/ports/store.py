@@ -10,8 +10,8 @@ from __future__ import annotations
 from collections.abc import Callable, Collection, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
-from datetime import datetime
-from typing import Protocol
+from datetime import UTC, datetime
+from typing import Literal, Protocol
 
 from expense_validator.domain.events import Event
 from expense_validator.domain.lifecycle import Stage, State
@@ -23,6 +23,16 @@ from expense_validator.domain.models import (
 )
 
 Clock = Callable[[], datetime]
+ListOrder = Literal["receipt_id", "created_at", "updated_at"]
+
+
+def stamp(moment: datetime) -> str:
+    """The one timestamp format of the store: UTC, ISO 8601, microseconds, explicit offset, 32
+    characters (`2026-10-12T15:04:05.123456+00:00`), so text order is time order. A naive value
+    is taken as UTC, not as machine-local time; an aware value in another zone is converted."""
+    if moment.tzinfo is None:
+        moment = moment.replace(tzinfo=UTC)
+    return moment.astimezone(UTC).isoformat(timespec="microseconds")
 
 
 @dataclass(frozen=True)
@@ -40,6 +50,9 @@ class ReceiptRecord:
     failed_stage: Stage | None
     failed_reason: str | None
     updated_at: str
+    created_at: str  # when revision 1 was stored; written once, never changes
+    decided_by: str | None = None
+    decided_at: str | None = None
 
 
 @dataclass(frozen=True)
@@ -124,6 +137,7 @@ class StoreTx(Protocol):
         batch_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order: ListOrder = "receipt_id",
     ) -> tuple[list[ReceiptRecord], int]: ...
 
     # Revisions

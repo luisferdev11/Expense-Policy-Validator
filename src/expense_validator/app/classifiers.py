@@ -11,7 +11,6 @@ from __future__ import annotations
 from collections.abc import Mapping
 from typing import Any
 
-from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.hybrid_classifier import HybridClassifier
 from expense_validator.adapters.openrouter.classifier import CAP_USD, OpenRouterClassifier
 from expense_validator.adapters.openrouter.classifier import Transport as ChatTransport
@@ -26,6 +25,7 @@ from expense_validator.adapters.openrouter.models import (
 )
 from expense_validator.adapters.openrouter.prompt_sync import sync_decision_prompt, sync_prompt
 from expense_validator.adapters.tracing import GuardedTracer
+from expense_validator.ports.classification_cache import ClassificationCachePort
 from expense_validator.ports.classifier import ItemClassifier
 from expense_validator.ports.tracer import Tracer
 
@@ -50,7 +50,7 @@ def sync_prompt_links(name: str, tracer: GuardedTracer, offline: bool) -> dict[s
 def build_classifier(
     name: str,
     tracer: Tracer,
-    cache: ClassificationCache,
+    cache: ClassificationCachePort,
     *,
     offline: bool = False,
     prompt_links: Mapping[str, Any] | None = None,

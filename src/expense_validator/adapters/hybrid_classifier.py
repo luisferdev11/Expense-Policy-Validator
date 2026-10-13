@@ -16,7 +16,6 @@ from __future__ import annotations
 import hashlib
 from typing import Any
 
-from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.openrouter.classifier import OpenRouterClassifier
 from expense_validator.adapters.openrouter.decision_classifier import DecisionClassifier
 from expense_validator.adapters.openrouter.decision_prompt import DECISION_PROMPT_VERSION
@@ -27,6 +26,7 @@ from expense_validator.domain.models import (
     ClassificationSource,
     ClassifierRequest,
 )
+from expense_validator.ports.classification_cache import ClassificationCachePort
 
 TRANSIENT = ("gateway_error", "budget_refused")
 
@@ -59,11 +59,9 @@ class HybridClassifier:
         self.last_latency_s: float | None = None  # the category side's; the detail side is cached
 
     @property
-    def cache(self) -> ClassificationCache:
+    def cache(self) -> ClassificationCachePort:
         """The detail side's cache; the factory gives both sides the same one."""
-        cache = self.detail_source.cache
-        assert isinstance(cache, ClassificationCache)
-        return cache
+        return self.detail_source.cache
 
     @property
     def calls_made(self) -> int:

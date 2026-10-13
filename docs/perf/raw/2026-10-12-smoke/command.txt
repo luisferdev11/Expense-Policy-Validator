@@ -1,0 +1,1 @@
+uv run epv serve --port 8781 --db <temporary file> --with-worker --no-trace --classifier simulated --offline; 0 more `epv worker` processes on the same file; uv run locust -f perf/locustfile.py --headless --host http://127.0.0.1:8781 --profile smoke --csv docs/perf/raw/2026-10-12-smoke/locust

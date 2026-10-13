@@ -15,7 +15,8 @@ synthetic copies of line shapes; they carry no answer keys, except one that carr
 ones on purpose, to show that the backend discards them.
 
 Every run uses its own `run` id in receipt and employee ids, so the collection can be run again
-on the same database without earlier receipts joining the cross-receipt rules.
+on the same database without earlier receipts joining the cross-receipt rules. Employee ids start
+with `TEST-`, the prefix a developer may submit once roles exist (spec 009, ADR 0010 D6).
 """
 
 from __future__ import annotations
@@ -56,7 +57,8 @@ def receipt(
     receipt_id = rid(suffix)
     body: dict[str, Any] = {
         "receipt_id": receipt_id,
-        "employee_id": "PM-{{run}}-" + employee,
+        "employee_id": "TEST-PM-{{run}}-"
+        + employee,  # TEST- keeps the collection usable with roles
         "employee_country": "US",
         "entity": "GLOBAL",
         "submitted_expense_type": expense_type,
@@ -331,6 +333,12 @@ def build() -> dict[str, Any]:
                     '  pm.expect(body.disposition).to.eql("pass");',
                     '  pm.expect(body.allowed_actions).to.eql(["reject"]);',
                     "});",
+                    'pm.test("created once, decided by the system at the evaluation", () => {',
+                    "  pm.expect(body.created_at).to.have.length(32);",
+                    "  pm.expect(body.updated_at >= body.created_at).to.be.true;",
+                    '  pm.expect(body.decided_by).to.eql("system");',
+                    "  pm.expect(body.decided_at).to.have.length(32);",
+                    "});",
                     'pm.test("the result is what the batch run produces", () => {',
                     "  pm.expect(body.result.receipt_id).to.eql(body.receipt_id);",
                     '  pm.expect(body.result.run.model_id).to.be.a("string");',
@@ -419,6 +427,9 @@ def build() -> dict[str, Any]:
                     status(207),
                     "const body = pm.response.json();",
                     'pm.collectionVariables.set("batchId", body.batch_id);',
+                    'pm.collectionVariables.set("batchCreatedAt", body.created_at);',
+                    'pm.test("the batch says when it was received", () =>',
+                    "  pm.expect(body.created_at).to.have.length(32));",
                     'pm.test("row 2 is invalid and named, the others are accepted", () => {',
                     "  pm.expect(body.items.map(i => i.outcome)).to.eql(",
                     '    ["accepted", "invalid", "accepted"]);',
@@ -447,6 +458,7 @@ def build() -> dict[str, Any]:
                 [
                     'pm.test("two receipts at rest and one invalid row", () => {',
                     "  pm.expect(body.total).to.eql(3);",
+                    '  pm.expect(body.created_at).to.eql(pm.collectionVariables.get("batchCreatedAt"));',
                     "  pm.expect(body.counts.invalid).to.eql(1);",
                     "  pm.expect(body.counts.auto_approved).to.eql(2);",
                     "});",
@@ -649,6 +661,10 @@ def build() -> dict[str, Any]:
                     "  pm.expect(pm.response.json().agreement).to.eql(0);",
                     "  pm.expect(pm.response.json().allowed_actions).to.eql([]);",
                     "});",
+                    'pm.test("decided by alice, replacing the system", () => {',
+                    '  pm.expect(pm.response.json().decided_by).to.eql("alice");',
+                    "  pm.expect(pm.response.json().decided_at).to.have.length(32);",
+                    "});",
                 ],
             ),
         ],
@@ -818,6 +834,10 @@ def build() -> dict[str, Any]:
                     '  pm.expect(pm.response.json().state).to.eql("approved");',
                     "  pm.expect(pm.response.json().agreement).to.eql(0);",
                     "});",
+                    'pm.test("decided by alice, with a time", () => {',
+                    '  pm.expect(pm.response.json().decided_by).to.eql("alice");',
+                    "  pm.expect(pm.response.json().decided_at).to.have.length(32);",
+                    "});",
                 ],
             ),
             act(
@@ -846,6 +866,26 @@ def build() -> dict[str, Any]:
                 tests=[status(404), error_code("not_found")],
             ),
             request(
+                "List ordered by when each receipt arrived",
+                "GET",
+                "/receipts",
+                query={"order": "created_at", "limit": "50"},
+                tests=[
+                    status(200),
+                    'pm.test("oldest first, by created_at", () => {',
+                    "  const times = pm.response.json().items.map(i => i.created_at);",
+                    "  pm.expect(times).to.eql([...times].sort());",
+                    "});",
+                ],
+            ),
+            request(
+                "An unknown order is refused",
+                "GET",
+                "/receipts",
+                query={"order": "bogus"},
+                tests=[status(422), error_code("invalid_request")],
+            ),
+            request(
                 "List what is still waiting for a person",
                 "GET",
                 "/receipts",
@@ -870,6 +910,9 @@ def build() -> dict[str, Any]:
                 tests=[
                     status(200),
                     'pm.test("ok", () => pm.expect(pm.response.json().status).to.eql("ok"));',
+                    'pm.test("schema 2", () => pm.expect(pm.response.json().schema_version).to.eql(2));',
+                    'pm.test("open_work counts the queue", () =>',
+                    '  pm.expect(pm.response.json().open_work).to.be.a("number"));',
                 ],
             )
         ],

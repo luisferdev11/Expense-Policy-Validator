@@ -18,7 +18,7 @@ import re
 import time
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, Protocol
+from typing import Any
 
 import httpx
 
@@ -40,6 +40,7 @@ from expense_validator.domain.models import (
 )
 from expense_validator.domain.taxonomy import restricted_for
 from expense_validator.paths import RAW_CACHE_DIR
+from expense_validator.ports.classification_cache import ClassificationCachePort
 from expense_validator.ports.tracer import Tracer
 
 URL = "https://openrouter.ai/api/alpha/decisions"
@@ -50,15 +51,6 @@ MAX_ATTEMPTS = 6
 RETRY_STATUSES = (429, 502, 503)
 
 Transport = Callable[[dict[str, Any]], tuple[dict[str, Any], str]]
-
-
-class AnswerCache(Protocol):
-    """What this adapter needs from a cache: the JSONL `ClassificationCache` has it today, and
-    spec 006's `ClassificationCachePort` has it after 006 merges."""
-
-    def get(self, key: str) -> CacheEntry | None: ...
-
-    def put(self, entry: CacheEntry) -> None: ...
 
 
 def httpx_transport(
@@ -102,7 +94,7 @@ class DecisionClassifier:
 
     def __init__(
         self,
-        cache: AnswerCache,
+        cache: ClassificationCachePort,
         tracer: Tracer,
         transport: Transport | None = None,
         offline: bool = False,
@@ -257,5 +249,9 @@ class DecisionClassifier:
             reasoning=f"confidence_source={source}",
             served_by=body.get("provider"),
         )
-        self.cache.put(entry)
-        return self._from_entry(line_id, entry, cache_hit=False)
+        if self.cache.put(entry):
+            return self._from_entry(line_id, entry, cache_hit=False)
+        # Another worker stored this key while the call was in flight: its row wins, so every
+        # receipt sees the same answer. This call was billed and is counted in `calls_made`.
+        stored = self.cache.get(key)
+        return self._from_entry(line_id, stored if stored is not None else entry, cache_hit=True)

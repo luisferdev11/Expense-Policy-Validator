@@ -27,9 +27,9 @@ Five slices on the iteration-3 backend, with no change to the engine:
 **Language/Version**: Python 3.12 (uv); TypeScript 5.6 for the front end
 
 **Primary Dependencies**: existing FastAPI, pydantic 2, stdlib `sqlite3`; new dev dependency
-`locust` (pin the version `uv add --dev` resolves, at least two weeks old, record it here at
-implementation time); new front-end dev dependency `openapi-typescript` (exact 7.x version, at least
-two weeks old, recorded here)
+`locust==2.46.6` (uploaded 2026-09-17; `uv add --dev` first resolved 2.46.7, uploaded 2026-10-04,
+which is under the two-week rule, so the pin was lowered); new front-end dev dependency
+`openapi-typescript` 7.13.0 exact (uploaded 2026-02-11)
 
 **Storage**: the same SQLite file (`var/epv.sqlite3`); schema version 2
 

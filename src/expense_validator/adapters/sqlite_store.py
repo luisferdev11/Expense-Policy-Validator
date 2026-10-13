@@ -9,9 +9,10 @@ processes, share the file. The log of events is protected from update and delete
 from __future__ import annotations
 
 import json
+import logging
 import re
 import sqlite3
-from collections.abc import Collection, Iterator, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from contextlib import closing, contextmanager
 from datetime import UTC, datetime
 from pathlib import Path
@@ -29,13 +30,15 @@ from expense_validator.ports.store import (
     BatchRecord,
     EvaluationRecord,
     EventRecord,
+    ListOrder,
     ReceiptRecord,
     RevisionRecord,
     SubmissionRecord,
     WorkItem,
+    stamp,
 )
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 MIN_SQLITE = (3, 35, 0)  # UPDATE ... RETURNING
 BUSY_TIMEOUT_MS = 10_000
 
@@ -75,9 +78,14 @@ CREATE TABLE receipts (
     qa_sample INTEGER NOT NULL DEFAULT 0,
     failed_stage TEXT,
     failed_reason TEXT,
-    updated_at TEXT NOT NULL
+    updated_at TEXT NOT NULL,
+    created_at TEXT NOT NULL DEFAULT '',
+    decided_by TEXT,
+    decided_at TEXT
 );
 CREATE INDEX receipts_state ON receipts (state);
+CREATE INDEX receipts_created ON receipts (created_at, receipt_id);
+CREATE INDEX receipts_updated ON receipts (updated_at, receipt_id);
 CREATE TABLE classifications (
     receipt_id TEXT NOT NULL,
     revision INTEGER NOT NULL,
@@ -133,7 +141,115 @@ CREATE TABLE batch_items (
     error TEXT,
     PRIMARY KEY (batch_id, row)
 );
+CREATE TABLE classification_cache (
+    cache_key TEXT PRIMARY KEY,
+    entry TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    cost_usd REAL,
+    seeded INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+);
+CREATE INDEX classification_cache_model ON classification_cache (model_id, prompt_version);
 """
+
+# DDL of the step from schema 1 to 2: the three receipt columns, the two list indexes and the cache
+# table. Statements are the ones of `_SCHEMA`, so a migrated file and a fresh one match.
+_V2_DDL = (
+    "ALTER TABLE receipts ADD COLUMN created_at TEXT NOT NULL DEFAULT ''",
+    "ALTER TABLE receipts ADD COLUMN decided_by TEXT",
+    "ALTER TABLE receipts ADD COLUMN decided_at TEXT",
+    "CREATE INDEX receipts_created ON receipts (created_at, receipt_id)",
+    "CREATE INDEX receipts_updated ON receipts (updated_at, receipt_id)",
+    """CREATE TABLE classification_cache (
+    cache_key TEXT PRIMARY KEY,
+    entry TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    cost_usd REAL,
+    seeded INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL
+)""",
+    "CREATE INDEX classification_cache_model ON classification_cache (model_id, prompt_version)",
+)
+
+
+Migration = Callable[[sqlite3.Connection], None]
+
+
+class MigrationError(RuntimeError):
+    """A migration step found data it cannot carry over; the file stays at its old schema."""
+
+
+log = logging.getLogger(__name__)
+
+
+def _migrate_1_to_2(conn: sqlite3.Connection) -> None:
+    for statement in _V2_DDL:
+        conn.execute(statement)
+    _backfill_created_at(conn)
+    _normalise_updated_at(conn)
+    _backfill_decisions(conn)
+
+
+def _backfill_created_at(conn: sqlite3.Connection) -> None:
+    """`created_at` is the earliest revision's time (data-model.md 3.3). A receipt with no
+    revision at all cannot exist, so one stops the migration; one whose revision 1 is gone takes
+    the earliest revision that remains, and is logged."""
+    orphans = conn.execute(
+        "SELECT receipt_id FROM receipts r WHERE NOT EXISTS"
+        " (SELECT 1 FROM revisions v WHERE v.receipt_id = r.receipt_id) ORDER BY receipt_id"
+    ).fetchall()
+    if orphans:
+        names = ", ".join(row[0] for row in orphans)
+        raise MigrationError(f"receipts with no revision, cannot date them: {names}")
+    for row in conn.execute(
+        "SELECT receipt_id FROM receipts r WHERE NOT EXISTS"
+        " (SELECT 1 FROM revisions v WHERE v.receipt_id = r.receipt_id AND v.revision = 1)"
+    ).fetchall():
+        log.warning("migration 1 to 2: %s has no revision 1; created_at uses its earliest", row[0])
+    conn.execute(
+        "UPDATE receipts SET created_at = (SELECT MIN(v.created_at) FROM revisions v"
+        " WHERE v.receipt_id = receipts.receipt_id)"
+    )
+
+
+def _backfill_decisions(conn: sqlite3.Connection) -> None:
+    """Who decided the current revision and when (data-model.md 3.5 and 3.6): the latest
+    approve or reject event of an approved or rejected receipt, and `system` at the latest
+    evaluation of an auto-approved one. Receipts in any other state keep both null."""
+    conn.execute(
+        "UPDATE receipts SET decided_by = d.actor, decided_at = d.at FROM ("
+        " SELECT receipt_id, revision, actor, at, ROW_NUMBER() OVER ("
+        "  PARTITION BY receipt_id, revision ORDER BY seq DESC) AS rn"
+        " FROM events WHERE type IN ('ReceiptApproved', 'ReceiptRejected')) AS d"
+        " WHERE d.receipt_id = receipts.receipt_id AND d.revision = receipts.current_revision"
+        " AND d.rn = 1 AND receipts.state IN ('approved', 'rejected')"
+    )
+    conn.execute(
+        "UPDATE receipts SET decided_by = 'system', decided_at = ("
+        " SELECT MAX(e.created_at) FROM evaluations e WHERE e.receipt_id = receipts.receipt_id"
+        " AND e.revision = receipts.current_revision) WHERE state = 'auto_approved'"
+    )
+
+
+def _normalise_updated_at(conn: sqlite3.Connection) -> None:
+    """Rewrite every `updated_at` in the one format of `stamp` (data-model.md 3.4). Done in
+    Python: SQLite's `strftime` cannot keep microseconds and the offset together."""
+    for receipt_id, text in conn.execute("SELECT receipt_id, updated_at FROM receipts").fetchall():
+        try:
+            fixed = stamp(datetime.fromisoformat(text))
+        except ValueError as exc:
+            raise MigrationError(f"{receipt_id}: updated_at {text!r} is not a timestamp") from exc
+        if fixed != text:
+            conn.execute(
+                "UPDATE receipts SET updated_at = ? WHERE receipt_id = ?", (fixed, receipt_id)
+            )
+
+
+# Steps in order: (the version a step produces, the step). A file at schema N runs every step
+# whose version is above N, inside the transaction that opens the store.
+MIGRATIONS: list[tuple[int, Migration]] = [(2, _migrate_1_to_2)]
 
 
 class SchemaTooNewError(Exception):
@@ -146,7 +262,7 @@ def utc_now() -> datetime:
 
 def _ts(moment: datetime) -> str:
     """Fixed-width UTC text, so comparisons in SQL are comparisons in time."""
-    return moment.astimezone(UTC).isoformat(timespec="microseconds")
+    return stamp(moment)
 
 
 def _receipt(row: sqlite3.Row) -> ReceiptRecord:
@@ -162,6 +278,9 @@ def _receipt(row: sqlite3.Row) -> ReceiptRecord:
         failed_stage=row["failed_stage"],
         failed_reason=row["failed_reason"],
         updated_at=row["updated_at"],
+        created_at=row["created_at"],
+        decided_by=row["decided_by"],
+        decided_at=row["decided_at"],
     )
 
 
@@ -174,6 +293,14 @@ def _evaluation(row: sqlite3.Row) -> EvaluationRecord:
         result_hash=row["result_hash"],
         created_at=row["created_at"],
     )
+
+
+# ORDER BY clauses by name: the only text that reaches the query, never the caller's value.
+_ORDERS: dict[str, str] = {
+    "receipt_id": "receipt_id",
+    "created_at": "created_at, receipt_id",
+    "updated_at": "updated_at, receipt_id",
+}
 
 
 class SqliteTx:
@@ -220,16 +347,19 @@ class SqliteTx:
         return None if found is None else _receipt(found)
 
     def put_receipt(self, record: ReceiptRecord) -> None:
+        # `created_at` is inserted and never updated: an upsert leaves it as it was.
         self._c.execute(
             "INSERT INTO receipts (receipt_id, current_revision, state, disposition,"
             " evaluation_version, human_acted, notice, qa_sample, failed_stage, failed_reason,"
-            " updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+            " updated_at, created_at, decided_by, decided_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
             " ON CONFLICT (receipt_id) DO UPDATE SET current_revision = excluded.current_revision,"
             " state = excluded.state, disposition = excluded.disposition,"
             " evaluation_version = excluded.evaluation_version,"
             " human_acted = excluded.human_acted, notice = excluded.notice,"
             " qa_sample = excluded.qa_sample, failed_stage = excluded.failed_stage,"
-            " failed_reason = excluded.failed_reason, updated_at = excluded.updated_at",
+            " failed_reason = excluded.failed_reason, updated_at = excluded.updated_at,"
+            " decided_by = excluded.decided_by, decided_at = excluded.decided_at",
             (
                 record.receipt_id,
                 record.current_revision,
@@ -242,6 +372,9 @@ class SqliteTx:
                 record.failed_stage,
                 record.failed_reason,
                 record.updated_at,
+                record.created_at,
+                record.decided_by,
+                record.decided_at,
             ),
         )
 
@@ -253,7 +386,10 @@ class SqliteTx:
         batch_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order: ListOrder = "receipt_id",
     ) -> tuple[list[ReceiptRecord], int]:
+        if order not in _ORDERS:
+            raise ValueError(f"order must be one of {', '.join(_ORDERS)}, got {order!r}")
         where: list[str] = []
         args: list[Any] = []
         if state is not None:
@@ -268,7 +404,7 @@ class SqliteTx:
         clause = f" WHERE {' AND '.join(where)}" if where else ""
         total = self._c.execute(f"SELECT COUNT(*) FROM receipts{clause}", args).fetchone()[0]
         rows = self._c.execute(
-            f"SELECT * FROM receipts{clause} ORDER BY receipt_id LIMIT ? OFFSET ?",
+            f"SELECT * FROM receipts{clause} ORDER BY {_ORDERS[order]} LIMIT ? OFFSET ?",
             [*args, limit, offset],
         ).fetchall()
         return [_receipt(r) for r in rows], int(total)
@@ -564,7 +700,12 @@ class SqliteStore:
                 if found == 0:
                     for statement in _split(_SCHEMA):
                         conn.execute(statement)
-                    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")
+                else:
+                    for version, step in MIGRATIONS:
+                        if found < version:
+                            step(conn)
+                if found < SCHEMA_VERSION:
+                    conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION}")  # last, with the steps
                 conn.execute("COMMIT")
             except BaseException:
                 conn.execute("ROLLBACK")

@@ -37,11 +37,12 @@ from expense_validator.domain.events import (
 )
 from expense_validator.domain.lifecycle import (
     Stage,
+    decision_after,
     reevaluation_outcome,
     state_for_evaluation,
 )
 from expense_validator.ports.classifier import ItemClassifier
-from expense_validator.ports.store import Clock, ReceiptStore, WorkItem
+from expense_validator.ports.store import Clock, ReceiptStore, WorkItem, stamp
 from expense_validator.ports.tracer import Tracer
 
 WORKER = "worker"
@@ -138,7 +139,7 @@ class Worker:
                         state="classifying",
                         failed_stage=None,
                         failed_reason=None,
-                        updated_at=now.isoformat(),
+                        updated_at=stamp(now),
                     )
                 )
         calls_before = getattr(self.classifier, "calls_made", 0)
@@ -200,7 +201,7 @@ class Worker:
                             record,
                             failed_stage=None,
                             failed_reason=None,
-                            updated_at=now.isoformat(),
+                            updated_at=stamp(now),
                         )
                     )
                 return
@@ -249,13 +250,20 @@ class Worker:
                 # disappear because a later re-evaluation failed); the failure is shown on it and
                 # a retry runs the stage again. Only a receipt with no evaluation is `failed`.
                 evaluated = record.evaluation_version is not None
+                decided_by, decided_at = record.decided_by, record.decided_at
+                if not evaluated:  # a state change, so the decision rule applies
+                    decided_by, decided_at = decision_after(
+                        "failed", actor=WORKER, at=stamp(now), by_human_action=False
+                    )
                 tx.put_receipt(
                     replace(
                         record,
                         state=record.state if evaluated else "failed",
                         failed_stage=stage,
                         failed_reason=reason,
-                        updated_at=now.isoformat(),
+                        updated_at=stamp(now),
+                        decided_by=decided_by,
+                        decided_at=decided_at,
                     )
                 )
                 tx.append_event(

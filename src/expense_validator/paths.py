@@ -19,4 +19,6 @@ DEV_OUTPUTS_DIR = OUTPUTS_DIR / "dev"
 RAW_CACHE_DIR = REPO_ROOT / ".cache" / "raw"
 VAR_DIR = REPO_ROOT / "var"
 DEFAULT_DB_FILE = VAR_DIR / "epv.sqlite3"
+# Iterations 3 and 4 kept the backend's answers here. The backend now stores them in the
+# `classification_cache` table of its database (spec 006); nothing writes this file.
 APP_CLASSIFICATION_CACHE = REPO_ROOT / ".cache" / "app_classifications.jsonl"

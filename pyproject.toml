@@ -28,6 +28,7 @@ packages = ["src/expense_validator", "eval", "viewer"]
 
 [dependency-groups]
 dev = [
+    "locust==2.46.6",
     "mypy>=1.11",
     "pre-commit>=3.8",
     "pytest>=8.3",
@@ -49,11 +50,11 @@ select = ["E", "F", "W", "I", "B", "UP", "SIM", "RUF"]
 [tool.mypy]
 python_version = "3.12"
 strict = true
-files = ["src", "eval", "viewer"]
+files = ["src", "eval", "viewer", "perf"]
 plugins = ["pydantic.mypy"]
 
 [[tool.mypy.overrides]]
-module = ["streamlit.*", "langfuse.*", "pandas.*"]
+module = ["streamlit.*", "langfuse.*", "pandas.*", "locust.*", "gevent.*", "requests.*"]
 ignore_missing_imports = true
 
 [tool.pytest.ini_options]

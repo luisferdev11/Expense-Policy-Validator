@@ -22,7 +22,8 @@ from expense_validator.adapters.openrouter.classifier import OpenRouterClassifie
 from expense_validator.adapters.openrouter.models import PINS
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
-from expense_validator.adapters.sqlite_store import SqliteStore
+from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
+from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
 from expense_validator.adapters.tracing import NoopTracer
 from expense_validator.app.composition import build_service, build_worker
 from expense_validator.app.service import ReceiptService
@@ -88,13 +89,12 @@ def test_the_dataset_through_the_backend_equals_the_batch_run(
 
 def test_the_wiring_that_ships_equals_the_batch_run(tmp_path: Path) -> None:
     """The same proof through the composition root `epv worker` uses: its configured classifier
-    (with the config's flags), the persisting wrapper, and the answer cache seeded from the
-    committed one. Nothing is built by hand here."""
+    (with the config's flags) over the database's answer table, seeded from the committed file.
+    Nothing is built by hand here."""
     store = SqliteStore(tmp_path / "epv.sqlite3")
     service = build_service(store)
-    worker = build_worker(
-        store, offline=True, no_trace=True, cache_path=tmp_path / "app_classifications.jsonl"
-    )
+    committed_before = CLASSIFICATIONS_FILE.read_bytes()
+    worker = build_worker(store, offline=True, no_trace=True)
     receipts = load_receipts()
     random.Random(7).shuffle(receipts)
     for r in receipts:
@@ -102,9 +102,8 @@ def test_the_wiring_that_ships_equals_the_batch_run(tmp_path: Path) -> None:
     worker.run_once()
 
     assert written_results(service, receipts, tmp_path / "out.jsonl") == RESULTS_FILE.read_bytes()
-    assert (
-        tmp_path / "app_classifications.jsonl"
-    ).exists()  # seeded; the committed one is untouched
+    assert len(SqliteClassificationCache(store.path, utc_now)) == 78  # seeded from the file
+    assert CLASSIFICATIONS_FILE.read_bytes() == committed_before  # which is left untouched
 
 
 def test_submitting_everything_again_starts_no_new_work(tmp_path: Path) -> None:

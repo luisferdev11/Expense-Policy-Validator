@@ -47,6 +47,7 @@ from expense_validator.domain.lifecycle import (
     Action,
     NotAllowedError,
     allowed_actions,
+    decision_after,
     require_allowed,
     state_after_action,
     state_after_correction,
@@ -55,7 +56,7 @@ from expense_validator.domain.lifecycle import (
 from expense_validator.domain.models import Disposition, RunMetadata
 from expense_validator.domain.review import REASON_CODES, agreement, requires_reason
 from expense_validator.domain.taxonomy import CATEGORIES
-from expense_validator.ports.store import Clock, ReceiptRecord, ReceiptStore, StoreTx
+from expense_validator.ports.store import Clock, ReceiptRecord, ReceiptStore, StoreTx, stamp
 from expense_validator.ports.tracer import Tracer
 
 AGREEMENT_SCORE = "auditor_agreement"
@@ -173,13 +174,19 @@ class ReviewService:
             reason = _required(request.reason, "a reason to escalate")
             event = EscalatedToCompliance(reason=reason, based_on_version=version, agreement=agree)
         tx.append_event(rid, revision, event, actor, now)
+        new_state = state_after_action(action)
+        decided_by, decided_at = decision_after(
+            new_state, actor=actor, at=stamp(now), by_human_action=True
+        )
         tx.put_receipt(
             replace(
                 record,
-                state=state_after_action(action),
+                state=new_state,
                 human_acted=True,
                 notice=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
+                decided_by=decided_by,
+                decided_at=decided_at,
             )
         )
 

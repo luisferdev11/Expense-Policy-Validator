@@ -4,6 +4,9 @@ The batch run saves once at the end. A worker can be killed at any line of a rec
 billed answer that was never written would be paid for again on resume. Saving after each billed
 call (and replacing the file atomically) makes "no extra billed call after a crash" true for the
 real classifier, not only for a model of it.
+
+The backend no longer uses it: its answer cache is a table written per row (spec 006), so every
+billed answer is durable when it is stored. It stays for caches that are files.
 """
 
 from __future__ import annotations

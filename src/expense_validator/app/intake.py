@@ -20,6 +20,7 @@ from typing import Any
 
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
+from expense_validator.adapters.openrouter.classifier import CAP_USD
 from expense_validator.adapters.results_files import write_results
 from expense_validator.app.classifiers import build_classifier
 from expense_validator.app.errors import InvalidReceiptError
@@ -27,6 +28,7 @@ from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.service import parse_receipt
 from expense_validator.domain.models import ReceiptInput, ReceiptResult
 from expense_validator.paths import CLASSIFICATIONS_FILE, REPO_ROOT
+from expense_validator.ports.classification_cache import ClassificationCachePort
 from expense_validator.ports.classifier import ItemClassifier
 from expense_validator.ports.tracer import Tracer
 
@@ -90,25 +92,33 @@ def run_id(receipts: list[ReceiptInput]) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()[:12]
 
 
+def upload_cache(path: Path = UPLOAD_CACHE) -> ClassificationCache:
+    """The uploads' own gitignored JSONL cache, seeded from the committed one, so uploads never
+    change committed outputs and known lines cost nothing."""
+    if not path.exists() and CLASSIFICATIONS_FILE.exists():
+        path.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copy(CLASSIFICATIONS_FILE, path)
+    return ClassificationCache(path)
+
+
 def default_classifier(
     tracer: Tracer,
-    cache_path: Path = UPLOAD_CACHE,
+    cache: ClassificationCachePort | None = None,
     offline: bool = False,
     prompt_links: Mapping[str, Any] | None = None,
+    cap_usd: float = CAP_USD,
 ) -> ItemClassifier:
-    """The configured classifier (`classifier_model`, through the one factory) on a gitignored
-    cache, seeded from the committed one, so uploads never change committed outputs and known
-    lines cost nothing."""
-    if not cache_path.exists() and CLASSIFICATIONS_FILE.exists():
-        cache_path.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copy(CLASSIFICATIONS_FILE, cache_path)
+    """The configured classifier (`classifier_model`, through the one factory) over `cache`;
+    without one, over the uploads' JSONL cache. `cap_usd` is the most this classifier may bill in
+    its lifetime."""
     config = load_pipeline_config()
     return build_classifier(
         config.classifier_model,
         tracer,
-        ClassificationCache(cache_path),
+        upload_cache() if cache is None else cache,
         offline=offline,
         prompt_links=prompt_links,
+        cap_usd=cap_usd,
         null_subtype_as_none=config.null_subtype_as_none,
     )
 

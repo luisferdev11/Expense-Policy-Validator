@@ -25,7 +25,9 @@ ClassificationStatus = Literal["classified", "unclassified"]
 
 
 class _Frozen(BaseModel):
-    model_config = ConfigDict(frozen=True, extra="forbid")
+    model_config = ConfigDict(
+        frozen=True, extra="forbid", json_schema_serialization_defaults_required=True
+    )
 
 
 # Inputs (produced by loader.py, answer fields already stripped)

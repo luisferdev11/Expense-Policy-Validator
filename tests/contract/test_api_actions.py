@@ -134,3 +134,82 @@ def test_a_malformed_body_is_422_with_the_fields(client: TestClient) -> None:
     assert extra.status_code == 422  # unknown fields are refused, answer keys included
     blank = act(client, "SYN-A", "reject", actor=" ")
     assert blank.status_code == 422 and blank.json()["error"]["code"] == "invalid_action"
+
+
+# Decision fields on the eight transitions of SC-005 (spec 006)
+
+
+def submit(client: TestClient, rid: str, amount: str, description: str, employee: str) -> None:
+    body = receipt_json(rid, amount, description, employee_id=employee, **MEAL)
+    client.post("/receipts", content=body)
+
+
+def _fields(client: TestClient, receipt_id: str) -> tuple[str | None, str | None]:
+    """decided_by and decided_at from the list and from the detail, which must agree."""
+    listed = next(
+        i
+        for i in client.get("/receipts", params={"limit": 100}).json()["items"]
+        if i["receipt_id"] == receipt_id
+    )
+    detail = client.get(f"/receipts/{receipt_id}").json()
+    assert (listed["decided_by"], listed["decided_at"]) == (
+        detail["decided_by"],
+        detail["decided_at"],
+    )
+    return detail["decided_by"], detail["decided_at"]
+
+
+def _last_event_time(client: TestClient, receipt_id: str) -> str:
+    return str(client.get(f"/receipts/{receipt_id}/events").json()["items"][-1]["at"])
+
+
+def test_decision_fields_follow_the_eight_transitions(stack: Stack, client: TestClient) -> None:
+    worker = stack.worker(BillingClassifier(CATEGORIES))
+
+    # 1. approve, 2. reject: the reviewer and the time of the event
+    act(client, "SYN-A", "approve", reason_code="policy_exception_granted", actor="alice")
+    assert _fields(client, "SYN-A") == ("alice", _last_event_time(client, "SYN-A"))
+    act(client, "SYN-B", "reject", actor="bob")
+    assert _fields(client, "SYN-B") == ("bob", _last_event_time(client, "SYN-B"))
+
+    # 3. auto-approve: the system, at the evaluation
+    by, at = _fields(client, "SYN-U")
+    assert by == "system" and at is not None
+
+    # 4. reject after auto-approve: the reviewer replaces the system
+    act(client, "SYN-U", "reject", reason_code="engine_missed_issue", actor="carol")
+    assert _fields(client, "SYN-U") == ("carol", _last_event_time(client, "SYN-U"))
+
+    # 5. new revision of a decided receipt: nobody has decided it yet
+    client.post("/receipts", content=receipt_json("SYN-A", "41", "Lunch A", **MEAL))
+    assert _fields(client, "SYN-A") == (None, None)
+
+    # 6. re-evaluation into review: SYN-C is approved, then its day shrinks
+    client.post(
+        "/receipts", content=receipt_json("SYN-C", "40", "Lunch A", employee_id="E-C", **MEAL)
+    )
+    client.post(
+        "/receipts", content=receipt_json("SYN-D", "50", "Lunch B", employee_id="E-C", **MEAL)
+    )
+    worker.run_once()
+    act(client, "SYN-C", "approve", reason_code="policy_exception_granted")
+    assert _fields(client, "SYN-C")[0] == "alice"
+    client.post(
+        "/receipts", content=receipt_json("SYN-D", "10", "Lunch B", employee_id="E-C", **MEAL)
+    )
+    worker.run_once()
+    assert client.get("/receipts/SYN-C").json()["state"] == "in_review"
+    assert _fields(client, "SYN-C") == (None, None)
+
+    # 7. request-info, 8. escalate: neither is a decision
+    client.post(
+        "/receipts", content=receipt_json("SYN-E", "40", "Lunch A", employee_id="E-E", **MEAL)
+    )
+    client.post(
+        "/receipts", content=receipt_json("SYN-F", "50", "Lunch B", employee_id="E-E", **MEAL)
+    )
+    worker.run_once()
+    act(client, "SYN-E", "request-info", question="Who attended?")
+    act(client, "SYN-F", "escalate", reason="possible split bill")
+    assert _fields(client, "SYN-E") == (None, None)
+    assert _fields(client, "SYN-F") == (None, None)

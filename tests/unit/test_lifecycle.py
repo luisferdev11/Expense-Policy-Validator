@@ -6,8 +6,10 @@ import pytest
 
 from expense_validator.domain.lifecycle import (
     ACTIONS,
+    SYSTEM_ACTOR,
     NotAllowedError,
     allowed_actions,
+    decision_after,
     reevaluation_outcome,
     require_allowed,
     state_after_action,
@@ -99,3 +101,45 @@ def test_a_human_decision_is_never_silently_overwritten(previous: str) -> None:
     assert reevaluation_outcome(previous, True, "auto_approved") == ("in_review", True)  # type: ignore[arg-type]
     assert reevaluation_outcome(previous, True, "in_review") == ("in_review", True)  # type: ignore[arg-type]
     assert reevaluation_outcome(previous, True, "compliance") == ("compliance", True)  # type: ignore[arg-type]
+
+
+# Who decided and when (spec 006, data-model.md section 4)
+
+AT = "2026-10-12T15:00:00.000000+00:00"
+
+
+@pytest.mark.parametrize("new_state", ["approved", "rejected"])
+def test_a_reviewers_closing_action_keeps_the_actor_and_the_time(new_state: str) -> None:
+    # `rejected` is reached from in_review, compliance, auto_approved and needs_info alike: the
+    # rule sees only the new state, so one case stands for all four.
+    assert decision_after(new_state, actor="alice", at=AT, by_human_action=True) == ("alice", AT)  # type: ignore[arg-type]
+
+
+def test_an_evaluation_that_auto_approves_is_the_systems_decision() -> None:
+    assert decision_after("auto_approved", actor="worker", at=AT, by_human_action=False) == (
+        SYSTEM_ACTOR,
+        AT,
+    )
+    assert SYSTEM_ACTOR == "system"
+
+
+@pytest.mark.parametrize("by_human", [False, True])
+@pytest.mark.parametrize(
+    "new_state",
+    ["in_review", "compliance", "needs_info", "submitted", "classifying", "failed"],
+)
+def test_every_other_state_has_no_decision(new_state: str, by_human: bool) -> None:
+    # in_review and compliance after an evaluation or a correction; needs_info after request-info;
+    # compliance after escalate; submitted after a new revision or a retry; failed after a failure.
+    assert decision_after(new_state, actor="alice", at=AT, by_human_action=by_human) == (  # type: ignore[arg-type]
+        None,
+        None,
+    )
+
+
+@pytest.mark.parametrize("new_state", ["approved", "rejected"])
+def test_approved_and_rejected_are_only_reached_by_a_human_action(new_state: str) -> None:
+    with pytest.raises(ValueError, match="human"):
+        decision_after(new_state, actor="alice", at=AT, by_human_action=False)  # type: ignore[arg-type]
+    with pytest.raises(ValueError, match="actor"):
+        decision_after(new_state, actor=None, at=AT, by_human_action=True)  # type: ignore[arg-type]

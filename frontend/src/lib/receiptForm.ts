@@ -9,7 +9,7 @@ import { add, canonical, equals, isDecimal, isPositive, mul, roundHalfUp } from 
 // ---- Options typed against the API: a missing or extra entry is a type error ----
 
 const ENTITY_LABEL: Record<Entity, string> = {
-  GLOBAL: "Global",
+  GLOBAL: "all other countries",
   APAC: "Asia-Pacific",
   EMEA: "Europe, Middle East and Africa",
 };

@@ -5,10 +5,13 @@ import { ApiError, api } from "../api/client";
 import type { BatchResponse, ReceiptDetail, RowOutcome, State, SubmitResponse } from "../api/types";
 import { DispositionBadge, StateChip } from "../components/Badges";
 import { Icon } from "../components/Icon";
+import { ReceiptForm } from "../components/ReceiptForm";
 import { STATES, STATE_LABEL, isInProgress, sortFindings } from "../lib/domain";
 import { usd } from "../lib/format";
 import { useDetails, usePolling, useToast } from "../lib/hooks";
 import { planIntake, refusedRowsText, sourceRows } from "../lib/intake";
+import { emptyForm, formToReceipt, receiptToForm, serverErrors, validateForm } from "../lib/receiptForm";
+import type { FieldError, ReceiptFormState } from "../lib/receiptForm";
 import { useReceipts } from "../lib/receipts";
 import { SAMPLE_BATCH, SAMPLE_RECEIPT } from "../samples/samples";
 
@@ -35,7 +38,13 @@ const STATE_NOTE: Partial<Record<State, string>> = {
   needs_info: "Waiting for information from the employee",
 };
 
-type Mode = "single" | "batch";
+type Mode = "form" | "single" | "batch";
+
+const MODE_LABEL: Record<Mode, string> = {
+  form: "One receipt (form)",
+  single: "One receipt (JSON)",
+  batch: "A batch",
+};
 
 function download(name: string, text: string) {
   const url = URL.createObjectURL(new Blob([text], { type: "application/x-ndjson" }));
@@ -59,15 +68,31 @@ export function IntakePage() {
   const [single, setSingle] = useState<SubmitResponse | null>(null);
   const [batch, setBatch] = useState<{ response: BatchResponse; rows: string[]; sentAt: Date; fileName: string | null } | null>(null);
   const [dragging, setDragging] = useState(false);
+  const [form, setForm] = useState<ReceiptFormState>(emptyForm);
+  const [attempted, setAttempted] = useState(false);
+  const [serverFields, setServerFields] = useState<{ mapped: FieldError[]; unmapped: string[] } | null>(null);
   const fileRef = useRef<HTMLInputElement>(null);
 
   const plan = useMemo(() => planIntake(text), [text]);
+  const inForm = mode === "form";
 
-  // The mode follows what was pasted or loaded; with nothing there, the person's choice stands.
+  // The mode follows what was pasted or loaded between the two text modes; the form is never left on its own.
   useEffect(() => {
+    if (mode === "form") return;
     if (plan.kind === "single") setMode("single");
     else if (plan.kind === "batch") setMode("batch");
-  }, [plan.kind]);
+  }, [plan.kind, mode]);
+
+  const formErrors = useMemo(
+    () => (attempted ? [...validateForm(form), ...(serverFields?.mapped ?? [])] : (serverFields?.mapped ?? [])),
+    [attempted, form, serverFields],
+  );
+
+  function changeForm(next: ReceiptFormState) {
+    reset();
+    setServerFields(null);
+    setForm(next);
+  }
 
   // "Submit a corrected revision": prefill with the current stripped receipt.
   const revise = params.get("revise");
@@ -93,14 +118,21 @@ export function IntakePage() {
 
   async function submit() {
     reset();
-    if (plan.kind === "empty" || plan.kind === "invalid") return;
+    setServerFields(null);
+    if (inForm) {
+      setAttempted(true);
+      if (validateForm(form).length > 0) return;
+    } else if (plan.kind === "empty" || plan.kind === "invalid") {
+      return;
+    }
     setBusy(true);
     try {
-      if (plan.kind === "single") {
-        const res = await api.submitReceipt(plan.receipt, key.trim() || undefined);
+      if (inForm || plan.kind === "single") {
+        const body = inForm ? formToReceipt(form) : plan.kind === "single" ? plan.receipt : null;
+        const res = await api.submitReceipt(body, key.trim() || undefined);
         setSingle(res);
         toast(`${res.receipt_id}: ${OUTCOME_TEXT[res.outcome].toLowerCase()}.`);
-      } else {
+      } else if (plan.kind === "batch") {
         const res = await api.submitBatch(plan.body, plan.contentType);
         setBatch({ response: res, rows: sourceRows(plan), sentAt: new Date(), fileName });
         toast(`Batch ${res.batch_id}: ${res.total} row${res.total === 1 ? "" : "s"} processed.`);
@@ -109,6 +141,13 @@ export function IntakePage() {
     } catch (e) {
       if (e instanceof ApiError) {
         const fields = (e.body.details as { fields?: string[] }).fields;
+        if (inForm && e.code === "invalid_receipt") {
+          const placed = serverErrors(fields ?? [], form);
+          if (placed.mapped.length + placed.unmapped.length > 0) {
+            setServerFields(placed);
+            return;
+          }
+        }
         const messages: Record<string, string> = {
           idempotency_key_reuse: "This idempotency key was already used with different content. Use a new key, or leave it empty.",
         };
@@ -157,15 +196,22 @@ export function IntakePage() {
         </p>
       </div>
 
-      <div className="intake-grid">
+      <div className={`intake-grid${inForm ? " intake-grid--form" : ""}`}>
         <section className="ll-panel" aria-labelledby="send-h">
           <h2 className="ll-heading" id="send-h">
             Send receipts
           </h2>
+          <form
+            noValidate
+            onSubmit={(e) => {
+              e.preventDefault();
+              void submit();
+            }}
+          >
           <div role="group" aria-label="What to send" className="row gap" style={{ marginTop: 0 }}>
-            {(["single", "batch"] as const).map((m) => (
+            {(["form", "single", "batch"] as const).map((m) => (
               <button key={m} type="button" className={`chip${mode === m ? " is-on" : ""}`} aria-pressed={mode === m} onClick={() => setMode(m)}>
-                {m === "single" ? "One receipt" : "A batch"}
+                {MODE_LABEL[m]}
               </button>
             ))}
           </div>
@@ -174,6 +220,8 @@ export function IntakePage() {
               Editing a copy of <strong className="ll-num">{revise}</strong>. Change what is wrong and send it: it becomes a new revision of the same receipt.
             </p>
           )}
+          {inForm && <ReceiptForm form={form} onChange={changeForm} errors={formErrors} unmapped={serverFields?.unmapped ?? []} />}
+          {!inForm && (
           <div
             className={`drop${dragging ? " is-over" : ""}`}
             onDragOver={(e) => {
@@ -210,6 +258,7 @@ export function IntakePage() {
               }}
             />
           </div>
+          )}
           <input
             ref={fileRef}
             type="file"
@@ -222,25 +271,33 @@ export function IntakePage() {
               e.target.value = "";
             }}
           />
-          <div className="row gap" style={{ marginTop: 0 }}>
-            <button type="button" className="ll-btn ll-btn--secondary" onClick={() => fileRef.current?.click()}>
-              <Icon name="upload" />
-              Choose a file
-            </button>
-            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
-              Load a sample receipt
-            </button>
-            <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("batch"), setText(SAMPLE_BATCH))}>
-              Load a sample batch
-            </button>
-          </div>
-          {summary && (
+          {inForm ? (
+            <div className="row gap" style={{ marginTop: 0 }}>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setServerFields(null), setForm(receiptToForm(JSON.parse(SAMPLE_RECEIPT) as Record<string, unknown>).form))}>
+                Load a sample receipt
+              </button>
+            </div>
+          ) : (
+            <div className="row gap" style={{ marginTop: 0 }}>
+              <button type="button" className="ll-btn ll-btn--secondary" onClick={() => fileRef.current?.click()}>
+                <Icon name="upload" />
+                Choose a file
+              </button>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("single"), setText(SAMPLE_RECEIPT))}>
+                Load a sample receipt
+              </button>
+              <button type="button" className="ll-btn ll-btn--ghost" onClick={() => (reset(), setFileName(null), setMode("batch"), setText(SAMPLE_BATCH))}>
+                Load a sample batch
+              </button>
+            </div>
+          )}
+          {!inForm && summary && (
             <p className={`intake-summary${plan.kind === "invalid" ? " is-bad" : ""}`} aria-live="polite">
               {summary}
               {mismatch ? ` — switched to ${plan.kind === "batch" ? "“A batch”" : "“One receipt”"}.` : ""}
             </p>
           )}
-          {plan.kind === "single" && (
+          {(plan.kind === "single" || inForm) && (
             <div className="ll-field">
               <label htmlFor="idem">Idempotency key (optional)</label>
               <input id="idem" className="ll-input" value={key} maxLength={255} onChange={(e) => setKey(e.target.value)} placeholder="e.g. upload-2026-10-10-001" />
@@ -248,11 +305,12 @@ export function IntakePage() {
             </div>
           )}
           <div className="row">
-            <button type="button" className="ll-btn ll-btn--primary" disabled={busy || plan.kind === "empty" || plan.kind === "invalid"} onClick={submit}>
+            <button type="submit" className="ll-btn ll-btn--primary" disabled={busy || (!inForm && (plan.kind === "empty" || plan.kind === "invalid"))}>
               {busy ? "Validating…" : "Validate"}
             </button>
-            <span className="hint">Answer fields such as labels are ignored if present.</span>
+            <span className="hint">{inForm ? "The form checks only what the server would refuse; the policy checks run after you send." : "Answer fields such as labels are ignored if present."}</span>
           </div>
+          </form>
           {error && (
             <div role="alert" className="callout callout--error">
               <div>

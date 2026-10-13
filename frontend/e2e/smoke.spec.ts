@@ -74,6 +74,75 @@ test("intake: one receipt, repeated, then revised", async ({ page }) => {
   await expect(page.getByRole("heading", { name: "Revisions" })).toBeVisible();
 });
 
+// Spec 008: the guided form. Each test uses its own receipt ID and does not need the others.
+async function fillHeader(page: Page, id: string) {
+  await page.getByLabel("Receipt ID", { exact: true }).fill(id);
+  await page.getByLabel("Employee ID", { exact: true }).fill("E-FORM");
+  await page.getByLabel("Employee's home country", { exact: true }).fill("US");
+  await page.getByLabel("Declared expense type", { exact: true }).fill("Office Supplies");
+  await page.getByLabel("Merchant", { exact: true }).fill("Form Stationers");
+  await page.getByLabel("MCC", { exact: true }).fill("5943");
+  await page.getByLabel("MCC description", { exact: true }).fill("Office supply stores");
+}
+
+test("form: fill and submit a two-line receipt", async ({ page }) => {
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-1");
+  await expect(page.getByLabel("Regional entity", { exact: true })).toHaveValue("GLOBAL");
+
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Pens box of 12");
+  await line1.getByLabel("Quantity", { exact: true }).fill("2");
+  await line1.getByLabel("Unit price", { exact: true }).fill("15.00");
+  await page.getByRole("button", { name: "Add line" }).click();
+  const line2 = page.getByRole("group", { name: "Line 2" });
+  await expect(line2.getByLabel("Description (as printed)", { exact: true })).toBeFocused();
+  await line2.getByLabel("Description (as printed)", { exact: true }).fill("Legal pads");
+  await line2.getByLabel("Unit price", { exact: true }).fill("12.50");
+
+  await expect(line1.getByLabel("Amount", { exact: true })).toHaveValue("30.00");
+  await expect(page.getByLabel("Total (receipt currency)", { exact: true })).toHaveValue("42.50");
+  await expect(page.getByLabel("Total in USD", { exact: true })).toHaveValue("42.50");
+
+  await page.getByText("Preview JSON").click();
+  await expect(page.locator("pre.json-preview")).toContainText('"line_id": "E2E-FORM-1-L2"');
+
+  // Keyboard only: Enter in an input sends the form.
+  await page.getByLabel("Merchant", { exact: true }).press("Enter");
+  const result = page.getByRole("region", { name: "Submission result" });
+  await expect(result).toContainText("Accepted");
+  await page.getByLabel("Merchant", { exact: true }).press("Enter");
+  await expect(result).toContainText("Already known");
+  await shot(page, "09-intake-form");
+});
+
+test("form: errors are shown per field and nothing is sent", async ({ page }) => {
+  const posts: string[] = [];
+  page.on("request", (r) => {
+    if (r.method() === "POST" && r.url().includes("/api/receipts")) posts.push(r.url());
+  });
+  await page.goto("/intake");
+  await page.getByRole("button", { name: "One receipt (form)" }).click();
+  await fillHeader(page, "E2E-FORM-ERR");
+  await page.getByLabel("Employee ID", { exact: true }).fill("");
+  const line1 = page.getByRole("group", { name: "Line 1" });
+  await line1.getByLabel("Description (as printed)", { exact: true }).fill("Pens");
+  await line1.getByLabel("Quantity", { exact: true }).fill("0");
+  await line1.getByLabel("Unit price", { exact: true }).fill("5");
+
+  await page.getByRole("button", { name: "Validate" }).click();
+  const summary = page.getByRole("alert");
+  await expect(summary).toContainText("Fix these before sending");
+  await expect(summary.getByRole("link")).toHaveCount(2);
+  await expect(page.getByLabel("Employee ID", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(line1.getByLabel("Quantity", { exact: true })).toHaveAttribute("aria-invalid", "true");
+  await expect(line1).toContainText("Must be greater than 0");
+  await summary.getByRole("link", { name: /Employee ID/ }).click();
+  await expect(page.getByLabel("Employee ID", { exact: true })).toBeFocused();
+  expect(posts).toHaveLength(0);
+});
+
 test("history: events, what a revision changed, and the evaluation versions", async ({ page }) => {
   await page.goto("/history/E2E-REV");
   await expect(page.getByRole("heading", { name: /E2E-REV · history/ })).toBeVisible();

@@ -7,7 +7,7 @@ the port is the seam to DynamoDB and SQS on AWS, not a speculative abstraction.
 
 from __future__ import annotations
 
-from collections.abc import Callable, Collection, Sequence
+from collections.abc import Callable, Collection, Iterator, Sequence
 from contextlib import AbstractContextManager
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -104,6 +104,21 @@ class WorkItem:
 
 
 @dataclass(frozen=True)
+class ShadowRecord:
+    """What a shadow classifier answered for one line of one revision (spec 007). The deciding
+    classifier's answer is in `classifications`; the engine never reads these rows."""
+
+    receipt_id: str
+    revision: int
+    line_id: str
+    classifier: str  # the factory name, for example `jev-hybrid`
+    model_id: str
+    prompt_version: str
+    classification: Classification
+    created_at: str
+
+
+@dataclass(frozen=True)
 class BatchItemRecord:
     row: int
     receipt_id: str | None
@@ -189,6 +204,14 @@ class StoreTx(Protocol):
     def complete_work(self, item_id: int) -> None: ...
     def fail_work(self, item_id: int, error: str) -> None: ...
     def open_work_count(self) -> int: ...
+
+    # Shadow classifications (never read by the engine or the evaluate stage)
+    def save_shadow(self, records: Sequence[ShadowRecord]) -> None:
+        """Store the rows; a line that already has a row for that classifier keeps the first."""
+        ...
+
+    def shadow_for(self, receipt_id: str, revision: int) -> list[ShadowRecord]: ...
+    def iter_shadow(self, classifier: str | None = None) -> Iterator[ShadowRecord]: ...
 
     # Batches
     def add_batch(self, batch_id: str, items: Sequence[BatchItemRecord], now: datetime) -> None: ...

@@ -16,6 +16,7 @@ that shares a key with it, so the result at rest does not depend on arrival orde
 
 from __future__ import annotations
 
+import contextlib
 import re
 import threading
 from dataclasses import replace
@@ -41,8 +42,9 @@ from expense_validator.domain.lifecycle import (
     reevaluation_outcome,
     state_for_evaluation,
 )
+from expense_validator.domain.models import Classification, ClassificationSource
 from expense_validator.ports.classifier import ItemClassifier
-from expense_validator.ports.store import Clock, ReceiptStore, WorkItem, stamp
+from expense_validator.ports.store import Clock, ReceiptStore, ShadowRecord, WorkItem, stamp
 from expense_validator.ports.tracer import Tracer
 
 WORKER = "worker"
@@ -76,9 +78,13 @@ class Worker:
         *,
         lease: timedelta = LEASE,
         max_attempts: int = MAX_ATTEMPTS,
+        shadow: ItemClassifier | None = None,
+        shadow_name: str | None = None,
     ) -> None:
         self.store = store
         self.classifier = classifier
+        self.shadow = shadow  # a second classifier whose answers are stored and decide nothing
+        self.shadow_name = shadow_name or (shadow.name if shadow is not None else "")
         self.tracer = tracer
         self.settings = settings
         self.clock = clock
@@ -95,6 +101,9 @@ class Worker:
             item = tx.claim_work(now, now + self.lease)
         if item is None:
             return False
+        if item.stage == "shadow":
+            self._run_shadow(item)  # never reaches `_fail`: a shadow failure is not the receipt's
+            return True
         if item.attempts > self.max_attempts:
             self._fail(item, f"gave up after {self.max_attempts} attempts")
             return True
@@ -180,6 +189,8 @@ class Worker:
             )
             tx.complete_work(item.id)
             tx.enqueue(rid, revision, "evaluate", now)
+            if self.shadow is not None:  # beside `evaluate`, so evaluation never waits for it
+                tx.enqueue(rid, revision, "shadow", now)
             queue_neighbours(tx, rid, now)
 
     def _evaluate(self, item: WorkItem) -> None:
@@ -236,6 +247,90 @@ class Worker:
                 f"app-r{revision}",
                 stored_version,
             )
+
+    # Shadow
+
+    def _run_shadow(self, item: WorkItem) -> None:
+        """Run a shadow item. A failure leaves it leased, so it is claimed again once the lease
+        expires; the last attempt records the lines as unclassified instead. Nothing here changes a
+        receipt, and nothing raises."""
+        with contextlib.suppress(Exception):
+            self._shadow(item)
+
+    def _shadow_line(self, shadow: ItemClassifier, line_id: str, reason: str) -> Classification:
+        return Classification(
+            line_id=line_id,
+            status="unclassified",
+            category=None,
+            restricted=None,
+            confidence=None,
+            unclassified_reason=reason,
+            source=ClassificationSource(
+                classifier=shadow.name,
+                model_id=shadow.model_id,
+                provider_endpoint=shadow.provider_endpoint,
+                prompt_version=shadow.prompt_version,
+                cache_key="",
+                request_id=None,
+                cost_usd=None,
+                prompt_tokens=None,
+                completion_tokens=None,
+                cache_hit=False,
+            ),
+        )
+
+    def _shadow(self, item: WorkItem) -> None:
+        rid, revision = item.receipt_id, item.revision
+        shadow = self.shadow
+        with self.store.transaction(write=False) as tx:
+            record = tx.get_receipt(rid)
+            found = tx.get_revision(rid, revision)
+        if shadow is None or record is None or found is None or record.current_revision != revision:
+            with self.store.transaction() as tx:  # a newer revision (or no shadow here): nothing
+                tx.complete_work(item.id)
+            return
+        final = item.attempts >= self.max_attempts
+        try:
+            classified = classify_receipt(
+                found.receipt,
+                shadow,
+                self.tracer,
+                f"app-r{revision}",
+                name="shadow-classify-receipt",
+            )
+            lines = classified.classifications
+            outage = sorted(
+                {c.unclassified_reason for c in lines if c.unclassified_reason == "gateway_error"}
+            )
+            if outage and not final:
+                raise ClassificationUnavailableError("the shadow could not answer: gateway_error")
+        except Exception:
+            if not final:
+                raise  # leased: claimed again after the lease expires
+            lines = tuple(
+                self._shadow_line(shadow, line.line_id, "shadow_error")
+                for line in found.receipt.line_items
+            )
+        now = self.clock()
+        with self.store.transaction() as tx:
+            current = tx.get_receipt(rid)
+            if current is not None and current.current_revision == revision:
+                tx.save_shadow(
+                    [
+                        ShadowRecord(
+                            receipt_id=rid,
+                            revision=revision,
+                            line_id=c.line_id,
+                            classifier=self.shadow_name,
+                            model_id=shadow.model_id,
+                            prompt_version=shadow.prompt_version,
+                            classification=c,
+                            created_at=stamp(now),
+                        )
+                        for c in lines
+                    ]
+                )
+            tx.complete_work(item.id)
 
     # Failure
 

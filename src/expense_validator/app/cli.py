@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -22,7 +24,12 @@ from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
 from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.adapters.tracing import make_tracer
-from expense_validator.app.classifiers import build_classifier, sync_prompt_links
+from expense_validator.app.classifiers import (
+    SHADOW_CAP_USD,
+    SHADOW_NAMES,
+    build_classifier,
+    sync_prompt_links,
+)
 from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.worker import Worker
 from expense_validator.paths import (
@@ -157,6 +164,8 @@ class WorkerOptions:
     classifier: str = "openrouter"
     simulated_latency_ms: int = 0
     cap_usd: float = CAP_USD
+    shadow: str | None = None  # a second classifier stored beside the deciding one (spec 007)
+    shadow_cap_usd: float = SHADOW_CAP_USD
 
 
 def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
@@ -171,6 +180,8 @@ def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
         cap_usd=options.cap_usd,
         classifier=options.classifier,
         simulated_latency_ms=options.simulated_latency_ms,
+        shadow=options.shadow,
+        shadow_cap_usd=options.shadow_cap_usd,
     )
 
 
@@ -240,6 +251,16 @@ def worker_command(
     return 0
 
 
+def shadow_name(chosen: str | None, env: Mapping[str, str] | None = None) -> str | None:
+    """The shadow classifier: the flag, else `EPV_SHADOW`, else none. An unknown value is refused
+    with the accepted ones, whichever way it arrived."""
+    env = os.environ if env is None else env
+    name = chosen or env.get("EPV_SHADOW") or None
+    if name is not None and name not in SHADOW_NAMES:
+        raise SystemExit(f"unknown shadow classifier {name!r}; accepted: {', '.join(SHADOW_NAMES)}")
+    return name
+
+
 def worker_options(args: argparse.Namespace) -> WorkerOptions:
     return WorkerOptions(
         offline=args.offline,
@@ -248,6 +269,8 @@ def worker_options(args: argparse.Namespace) -> WorkerOptions:
         classifier=args.classifier,
         simulated_latency_ms=args.simulated_latency_ms,
         cap_usd=args.cap_usd,
+        shadow=shadow_name(args.shadow),
+        shadow_cap_usd=args.shadow_cap_usd,
     )
 
 
@@ -305,6 +328,18 @@ def _add_worker_options(parser: argparse.ArgumentParser) -> None:
     parser.add_argument(
         "--cache",
         help="JSONL file that seeds an empty answer table (default: outputs/classifications.jsonl)",
+    )
+    parser.add_argument(
+        "--shadow",
+        choices=list(SHADOW_NAMES),
+        help="also classify every revision with this classifier and store its answers beside the "
+        "deciding one's; it decides nothing (default: $EPV_SHADOW, else off)",
+    )
+    parser.add_argument(
+        "--shadow-cap-usd",
+        type=_non_negative_float,
+        default=SHADOW_CAP_USD,
+        help="the most the shadow classifier may bill in this process (default 0.25)",
     )
 
 

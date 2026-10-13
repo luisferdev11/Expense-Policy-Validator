@@ -29,7 +29,18 @@ from expense_validator.ports.classification_cache import ClassificationCachePort
 from expense_validator.ports.classifier import ItemClassifier
 from expense_validator.ports.tracer import Tracer
 
-__all__ = ["CLASSIFIER_NAMES", "build_classifier", "sync_prompt_links"]
+__all__ = [
+    "CLASSIFIER_NAMES",
+    "SHADOW_CAP_USD",
+    "SHADOW_NAMES",
+    "build_classifier",
+    "sync_prompt_links",
+]
+
+# What `epv worker --shadow` accepts, and the most a shadow classifier may bill in one process
+# (spec 007, FR-010 and FR-014). The shadow decides nothing, so only the jev classifiers apply.
+SHADOW_NAMES: tuple[str, ...] = (JEV, HYBRID)
+SHADOW_CAP_USD = 0.25
 
 CHAT = "chat"
 DECISION = "decision"

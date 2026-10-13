@@ -1,8 +1,8 @@
-"""The decision adapter (jev) with a fake transport and the JSONL cache (spec 007, T009).
+"""The decision adapter (jev) with a fake transport, on both cache adapters (spec 007, T009).
 
 No billed call and no network: the transport is a fake, and the real httpx transport runs over
-`httpx.MockTransport`. After spec 006 merges, the cache fixture gets a second parametrisation over
-the table adapter.
+`httpx.MockTransport`. The cache is the JSONL adapter and spec 006's table adapter, behind the
+same port (`ClassificationCachePort`).
 """
 
 from __future__ import annotations
@@ -22,7 +22,9 @@ from expense_validator.adapters.openrouter.decision_classifier import (
 )
 from expense_validator.adapters.openrouter.decision_prompt import decision_cache_key
 from expense_validator.adapters.openrouter.prompt import PROMPT_VERSION
-from expense_validator.domain.models import ClassifierRequest
+from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
+from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
+from expense_validator.domain.models import CacheEntry, ClassifierRequest
 from tests.fakes import RecordingTracer
 
 REQ = ClassifierRequest(description_clean="Arnold Palmer", merchant_name="Diner", mcc=5812)
@@ -71,6 +73,87 @@ def make(
         **kw,
     )
     return clf, tracer
+
+
+def table_cache(tmp_path: Path) -> SqliteClassificationCache:
+    """The answer table of a fresh database (the store creates it)."""
+    store = SqliteStore(tmp_path / "epv.sqlite3")
+    return SqliteClassificationCache(store.path, utc_now)
+
+
+def test_the_table_adapter_gives_the_same_answers_hits_and_replays(tmp_path: Path) -> None:
+    transport = FakeTransport()
+    tracer = RecordingTracer()
+    clf = DecisionClassifier(
+        table_cache(tmp_path), tracer, transport=transport, raw_dir=tmp_path / "raw"
+    )
+    first = clf.classify("L1", REQ)
+    again = clf.classify("L1", REQ)
+    assert (first.status, first.category, first.confidence) == ("classified", "food_beverage", 0.97)
+    assert again.source.cache_hit is True and again.category == first.category
+    assert len(transport.payloads) == 1 and len(tracer.named("classify-item")) == 1
+    entry = clf.cache.get(first.source.cache_key)
+    assert entry is not None and entry.reasoning == "confidence_source=top_probability"
+    # a second classifier over the same table (another worker) reads the stored answer
+    other = DecisionClassifier(
+        SqliteClassificationCache(tmp_path / "epv.sqlite3", utc_now),
+        RecordingTracer(),
+        offline=True,
+    )
+    replay = other.classify("L1", REQ)
+    assert (replay.status, replay.category, replay.source.cache_hit) == (
+        "classified",
+        "food_beverage",
+        True,
+    )
+
+
+class RaceCache:
+    """A cache whose `put` loses a race: another worker stored the key during the call."""
+
+    def __init__(self, winner: CacheEntry) -> None:
+        self.winner = winner
+        self.stored: dict[str, CacheEntry] = {}
+
+    def get(self, key: str) -> CacheEntry | None:
+        return self.stored.get(key)
+
+    def put(self, entry: CacheEntry) -> bool:
+        self.stored[entry.cache_key] = self.winner.model_copy(update={"cache_key": entry.cache_key})
+        return False
+
+    def __len__(self) -> int:
+        return len(self.stored)
+
+
+def test_a_lost_put_race_returns_the_stored_row_and_the_call_is_still_counted(
+    tmp_path: Path,
+) -> None:
+    winning = json.dumps(
+        {"id": "other-worker", "answers": {"category": {"choice": "alcohol", "confidence": 0.7}}}
+    )
+    winner = CacheEntry(
+        cache_key="x",
+        content=winning,
+        model_id="typesafe/jev-1.13",
+        provider_endpoint="openrouter",
+        prompt_version="dec-v1",
+        request_id="other-worker",
+        cost_usd=0.0001,
+        prompt_tokens=1,
+        completion_tokens=1,
+        reasoning="confidence_source=confidence",
+    )
+    clf = DecisionClassifier(
+        RaceCache(winner), RecordingTracer(), transport=FakeTransport(), raw_dir=tmp_path / "raw"
+    )
+    c = clf.classify("L1", REQ)
+    assert (c.category, c.source.cache_hit, c.source.request_id) == (
+        "alcohol",
+        True,
+        "other-worker",
+    )
+    assert clf.calls_made == 1 and clf.run_spend_usd == 0.0002  # this call was billed
 
 
 def test_a_miss_makes_one_call_one_generation_and_caches_the_literal_body(tmp_path: Path) -> None:

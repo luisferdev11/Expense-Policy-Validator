@@ -46,10 +46,16 @@ def run_metadata(
 
 
 def classify_receipt(
-    receipt: ReceiptInput, classifier: ItemClassifier, tracer: Tracer, run_label: str
+    receipt: ReceiptInput,
+    classifier: ItemClassifier,
+    tracer: Tracer,
+    run_label: str,
+    name: str = "validate-receipt",
 ) -> ClassifiedReceipt:
+    """Normalise and classify a receipt in one trace observation. `name` is the observation's
+    name: the deciding classifier's is `validate-receipt`, a shadow's is its own."""
     with tracer.receipt_trace(
-        receipt.receipt_id, run_label, input=receipt.model_dump(mode="json")
+        receipt.receipt_id, run_label, input=receipt.model_dump(mode="json"), name=name
     ) as root:
         with tracer.span("normalise-receipt") as span:
             items = normalise(receipt)

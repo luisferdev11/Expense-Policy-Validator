@@ -88,7 +88,7 @@ for the migration list. If they are missing, stop and implement them first.
 **Goal**: with `--shadow`, every classified revision gets shadow rows; receipts are unaffected.
 **Independent test**: parity with shadow on (fake transports); a shadow failure leaves the receipt untouched.
 
-- [ ] T028 [P] [US2] Extend `tests/unit/test_sqlite_store.py` with a new fixture `tests/fixtures/schema_v2.sql`: a v2 database (spec 006's end state) holding a `pending`, a `claimed` and a `done` outbox item. The migration v2→v3:
+- [x] T028 [P] [US2] Extend `tests/unit/test_sqlite_store.py` with a new fixture `tests/fixtures/schema_v2.sql`: a v2 database (spec 006's end state) holding a `pending`, a `claimed` and a `done` outbox item. The migration v2→v3:
   - rebuilds `outbox` with the `shadow` stage allowed, keeping every row and id;
   - re-creates `outbox_open`, which still rejects a duplicate pending item;
   - creates `shadow_classifications` and its index;
@@ -96,19 +96,19 @@ for the migration list. If they are missing, stop and implement them first.
   - a forced failure mid-step leaves the database at v2, unchanged.
 
   Also test that `save_shadow` is idempotent; `shadow_for` returns the current revision's rows; a `shadow` outbox row is claimed, leased and retried like the others; and `created_at` uses spec 006's `_ts()` format (`+00:00`, 32 characters)
-- [ ] T029 [US2] Add `"shadow"` to `Stage` in `src/expense_validator/domain/lifecycle.py:25`. Add `ShadowRecord` and the three methods to `src/expense_validator/ports/store.py`. Implement them, and the v2→v3 migration step of `data-model.md` §3a–3b (outbox rebuild in the migration transaction, then the shadow table; `SCHEMA_VERSION = 3`; fresh `_SCHEMA` updated to match), in `src/expense_validator/adapters/sqlite_store.py`
-- [ ] T030 [P] [US2] Write `tests/unit/test_worker_shadow.py` with `tests/fakes.py` doubles: shadow off → no shadow work; shadow on → `_classify` queues `evaluate` and `shadow` in one transaction; the shadow stage stores one row per line; a shadow transport that raises ends after `MAX_ATTEMPTS` with `unclassified` rows and the receipt's state, `failed_stage`, events and evaluations unchanged; a newer revision makes the old shadow item complete without storing anything; the shadow classifier's spend cap is separate from the primary's; `failed_stage` is never `shadow`. Tracing:
+- [x] T029 [US2] Add `"shadow"` to `Stage` in `src/expense_validator/domain/lifecycle.py:25`. Add `ShadowRecord` and the three methods to `src/expense_validator/ports/store.py`. Implement them, and the v2→v3 migration step of `data-model.md` §3a–3b (outbox rebuild in the migration transaction, then the shadow table; `SCHEMA_VERSION = 3`; fresh `_SCHEMA` updated to match), in `src/expense_validator/adapters/sqlite_store.py`
+- [x] T030 [P] [US2] Write `tests/unit/test_worker_shadow.py` with `tests/fakes.py` doubles: shadow off → no shadow work; shadow on → `_classify` queues `evaluate` and `shadow` in one transaction; the shadow stage stores one row per line; a shadow transport that raises ends after `MAX_ATTEMPTS` with `unclassified` rows and the receipt's state, `failed_stage`, events and evaluations unchanged; a newer revision makes the old shadow item complete without storing anything; the shadow classifier's spend cap is separate from the primary's; `failed_stage` is never `shadow`. Tracing:
   - with `tests/fakes.py`'s recording tracer, the shadow stage opens a top-level span `shadow-classify-receipt` in the revision's trace (`app-r<revision>`, same seed);
   - it emits one `classify-item` generation per billed shadow call and none on a cache hit;
   - no observation name contains a model name.
 
   Langfuse down: with a tracer that raises on every call (wrapped in `GuardedTracer`, as in `tests/integration/test_langfuse_down.py`), the shadow stage still stores its rows and the receipt is unchanged (SC-007)
-- [ ] T031 [US2] Implement the shadow stage in `src/expense_validator/app/worker.py` (`Worker(..., shadow: ItemClassifier | None = None)`, `_shadow(item)`, trace span `shadow-classify-receipt` in the revision's trace `app-r<revision>`) and wire `build_worker(..., shadow=name)` in `src/expense_validator/app/composition.py` through the factory, with its own cache counters and the cap
-- [ ] T032 [US2] Add `--shadow {jev-1.13,jev-hybrid}` (default from `EPV_SHADOW`) and `--shadow-cap-usd` to `epv worker` and to `epv serve --with-worker` in `src/expense_validator/app/cli.py`; extend `tests/smoke/test_worker.py`
-- [ ] T033 [US2] Write `tests/integration/test_shadow_parity.py`: the 32 receipts through the backend with shadow on (a fake shadow transport, the offline primary) equal `outputs/results.jsonl` byte for byte, with zero billed primary calls and one shadow row per line (78)
-- [ ] T034 [P] [US2] Extend `tests/integration/test_crash_resume.py`: a shadow item interrupted mid-receipt resumes after the lease expires, with no duplicate rows
-- [ ] T034a [P] [US2] Extend `tests/integration/test_firewall_scan.py` (already extended to the cache table by spec 006 T022): run the 32 receipts with shadow on (fake shadow transport), then scan `shadow_classifications`, the `GET /receipts/{id}/shadow` responses and the recorded shadow trace inputs for the answer keys (`labels`, `notes`). Zero occurrences (FR-028)
-- [ ] T035 Verify and commit: `feat: shadow classification stage beside the deciding classifier`
+- [x] T031 [US2] Implement the shadow stage in `src/expense_validator/app/worker.py` (`Worker(..., shadow: ItemClassifier | None = None)`, `_shadow(item)`, trace span `shadow-classify-receipt` in the revision's trace `app-r<revision>`) and wire `build_worker(..., shadow=name)` in `src/expense_validator/app/composition.py` through the factory, with its own cache counters and the cap
+- [x] T032 [US2] Add `--shadow {jev-1.13,jev-hybrid}` (default from `EPV_SHADOW`) and `--shadow-cap-usd` to `epv worker` and to `epv serve --with-worker` in `src/expense_validator/app/cli.py`; extend `tests/smoke/test_worker.py`
+- [x] T033 [US2] Write `tests/integration/test_shadow_parity.py`: the 32 receipts through the backend with shadow on (a fake shadow transport, the offline primary) equal `outputs/results.jsonl` byte for byte, with zero billed primary calls and one shadow row per line (78)
+- [x] T034 [P] [US2] Extend `tests/integration/test_crash_resume.py`: a shadow item interrupted mid-receipt resumes after the lease expires, with no duplicate rows
+- [x] T034a [P] [US2] Extend `tests/integration/test_firewall_scan.py` (already extended to the cache table by spec 006 T022): run the 32 receipts with shadow on (fake shadow transport), then scan `shadow_classifications`, the `GET /receipts/{id}/shadow` responses and the recorded shadow trace inputs for the answer keys (`labels`, `notes`). Zero occurrences (FR-028)
+- [x] T035 Verify and commit: `feat: shadow classification stage beside the deciding classifier`
 
 ## Phase 6: Shadow read side, US2 (slice 6)
 

@@ -21,10 +21,12 @@ from expense_validator.domain.idempotency import content_hash
 from expense_validator.ports.store import (
     BatchItemRecord,
     ReceiptRecord,
+    ShadowRecord,
     StoreTx,
     SubmissionRecord,
+    stamp,
 )
-from tests.factories import receipt
+from tests.factories import cls, receipt
 
 T0 = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
 V1_FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "schema_v1.sql"
@@ -98,12 +100,12 @@ def test_a_newer_schema_is_refused(tmp_path: Path) -> None:
         SqliteStore(path)
 
 
-def test_a_fresh_file_is_schema_two_with_the_cache_table_and_the_new_columns(
+def test_a_fresh_file_has_the_cache_table_and_the_schema_two_columns(
     tmp_path: Path,
 ) -> None:
     path = tmp_path / "fresh.sqlite3"
-    assert SqliteStore(path).schema_version == 2
-    assert _version(path) == 2
+    assert SqliteStore(path).schema_version == SCHEMA_VERSION == 3
+    assert _version(path) == 3
     assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
     assert _columns(path, "classification_cache") == {
         "cache_key",
@@ -119,10 +121,10 @@ def test_a_fresh_file_is_schema_two_with_the_cache_table_and_the_new_columns(
     assert {"receipts_created", "receipts_updated"} <= indexes
 
 
-def test_a_schema_one_file_is_migrated_to_two_in_place(tmp_path: Path) -> None:
+def test_a_schema_one_file_is_migrated_in_place_through_every_step(tmp_path: Path) -> None:
     path = _v1_database(tmp_path)
-    assert SqliteStore(path).schema_version == 2
-    assert _version(path) == 2
+    assert SqliteStore(path).schema_version == SCHEMA_VERSION
+    assert _version(path) == SCHEMA_VERSION
     assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
     with closing(sqlite3.connect(path)) as conn:
         tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
@@ -149,10 +151,10 @@ def test_a_migration_step_that_fails_leaves_schema_one_and_the_data_intact(
         assert conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 5
 
 
-def test_a_schema_three_file_is_still_refused(tmp_path: Path) -> None:
-    path = tmp_path / "three.sqlite3"
+def test_a_schema_four_file_is_refused(tmp_path: Path) -> None:
+    path = tmp_path / "four.sqlite3"
     with closing(sqlite3.connect(path)) as conn:
-        conn.execute("PRAGMA user_version = 3")
+        conn.execute("PRAGMA user_version = 4")
     with pytest.raises(SchemaTooNewError):
         SqliteStore(path)
 
@@ -471,3 +473,222 @@ def test_a_batch_summarises_its_items_by_receipt_state(store: SqliteStore) -> No
         assert found is not None and found.total == 3 and found.items[2].error == "not valid JSON"
         assert tx.list_receipts(batch_id="bat_1")[1] == 2
         assert tx.get_batch("missing") is None
+
+
+# Schema 3 (spec 007): the `shadow` stage in the outbox and the shadow table
+
+
+V2_FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "schema_v2.sql"
+
+
+def _v2_database(tmp_path: Path, name: str = "v2.sqlite3") -> Path:
+    """A schema-2 file (spec 006's end state) with a pending, a claimed and a done outbox item,
+    the done one holding the highest id (`schema_v2.sql`)."""
+    path = tmp_path / name
+    with closing(sqlite3.connect(path)) as conn:
+        conn.executescript(V2_FIXTURE.read_text(encoding="utf-8"))
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 2
+    return path
+
+
+def _master(path: Path) -> list[tuple[str, str, str, str]]:
+    """Every table, index and trigger with its SQL text, in a stable order."""
+    with closing(sqlite3.connect(path)) as conn:
+        return [
+            (r[0], r[1], r[2], r[3])
+            for r in conn.execute(
+                "SELECT type, name, tbl_name, sql FROM sqlite_master"
+                " WHERE name NOT LIKE 'sqlite_%' ORDER BY type, name"
+            )
+        ]
+
+
+def _outbox(path: Path) -> list[tuple[object, ...]]:
+    with closing(sqlite3.connect(path)) as conn:
+        return conn.execute("SELECT * FROM outbox ORDER BY id").fetchall()
+
+
+def test_the_v2_to_v3_migration_keeps_every_outbox_row_and_id(tmp_path: Path) -> None:
+    path = _v2_database(tmp_path)
+    before = _outbox(path)
+    assert [row[4] for row in before] == ["pending", "claimed", "done"]
+    assert SqliteStore(path).schema_version == 3
+    assert _version(path) == 3
+    assert _outbox(path) == before
+
+
+def test_the_rebuilt_outbox_allows_the_shadow_stage_and_keeps_its_guards(tmp_path: Path) -> None:
+    path = _v2_database(tmp_path)
+    store = SqliteStore(path)
+    with store.transaction() as tx:
+        assert tx.enqueue("R-A", 1, "shadow", T0) is True
+        assert tx.enqueue("R-A", 1, "shadow", T0) is False  # outbox_open still refuses a duplicate
+        assert tx.enqueue("R-A", 1, "classify", T0) is False  # R-A's classify is still pending
+    with closing(sqlite3.connect(path)) as conn, pytest.raises(sqlite3.IntegrityError):
+        conn.execute(
+            "INSERT INTO outbox (receipt_id, revision, stage, state, created_at)"
+            " VALUES ('R-Z', 1, 'bogus', 'pending', 'x')"
+        )
+    with closing(sqlite3.connect(path)) as conn:
+        names = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='index'")}
+    assert "outbox_open" in names
+
+
+def test_new_outbox_ids_continue_above_the_old_maximum_and_the_pending_item_is_claimable(
+    tmp_path: Path,
+) -> None:
+    path = _v2_database(tmp_path)
+    store = SqliteStore(path)
+    with store.transaction() as tx:
+        tx.enqueue("R-N", 1, "shadow", T0)
+        claimed = tx.claim_work(T0, T0 + timedelta(seconds=60))
+    assert claimed is not None and (claimed.id, claimed.receipt_id) == (1, "R-A")  # the old one
+    new_ids = [row[0] for row in _outbox(path) if row[1] == "R-N"]
+    assert new_ids == [4]  # above the highest id the migration found (3)
+
+
+def test_the_migration_creates_the_shadow_table_and_its_index(tmp_path: Path) -> None:
+    path = _v2_database(tmp_path)
+    SqliteStore(path)
+    assert _columns(path, "shadow_classifications") == {
+        "receipt_id",
+        "revision",
+        "line_id",
+        "classifier",
+        "model_id",
+        "prompt_version",
+        "status",
+        "payload",
+        "created_at",
+    }
+    with closing(sqlite3.connect(path)) as conn:
+        indexes = {r[1] for r in conn.execute("PRAGMA index_list(shadow_classifications)")}
+    assert "shadow_by_classifier" in indexes
+
+
+def test_a_fresh_v3_file_and_a_migrated_one_have_the_same_schema(tmp_path: Path) -> None:
+    fresh = tmp_path / "fresh.sqlite3"
+    SqliteStore(fresh)
+    migrated = _v2_database(tmp_path)
+    SqliteStore(migrated)
+    assert _master(migrated) == _master(fresh)
+
+
+def test_a_v1_file_migrated_through_both_steps_has_the_v3_tables(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    SqliteStore(path)
+    names = {row[1] for row in _master(path) if row[0] == "table"}
+    assert {"shadow_classifications", "classification_cache", "outbox"} <= names
+    with closing(sqlite3.connect(path)) as conn:
+        sql = conn.execute("SELECT sql FROM sqlite_master WHERE name = 'outbox'").fetchone()[0]
+    assert "'shadow'" in sql
+
+
+def test_a_failure_in_the_v3_step_leaves_the_database_at_v2_unchanged(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _v2_database(tmp_path)
+    before_master, before_rows = _master(path), _outbox(path)
+
+    def broken(conn: sqlite3.Connection) -> None:
+        sqlite_store._migrate_2_to_3(conn)  # the whole step runs, then fails
+        raise RuntimeError("step failed")
+
+    monkeypatch.setattr(sqlite_store, "MIGRATIONS", [*sqlite_store.MIGRATIONS[:1], (3, broken)])
+    with pytest.raises(RuntimeError, match="step failed"):
+        SqliteStore(path)
+    assert _version(path) == 2
+    assert _master(path) == before_master
+    assert _outbox(path) == before_rows
+
+
+def _shadow_rows(receipt_id: str = "R-1", revision: int = 1, n: int = 2) -> list[ShadowRecord]:
+    return [
+        ShadowRecord(
+            receipt_id=receipt_id,
+            revision=revision,
+            line_id=f"{receipt_id}-L{i}",
+            classifier="jev-hybrid",
+            model_id="typesafe/jev-1.13+openai/gpt-oss-120b",
+            prompt_version="hyb-v1(dec-v1+cls-v2)",
+            classification=cls(f"{receipt_id}-L{i}", "alcohol"),
+            created_at=stamp(T0),
+        )
+        for i in range(1, n + 1)
+    ]
+
+
+def test_saving_shadow_rows_is_idempotent(store: SqliteStore) -> None:
+    rows = _shadow_rows()
+    with store.transaction() as tx:
+        tx.save_shadow(rows)
+        tx.save_shadow(rows)
+        tx.save_shadow(_shadow_rows())  # an equal batch built again
+        assert tx.shadow_for("R-1", 1) == rows
+
+
+def test_a_second_answer_for_the_same_line_does_not_replace_the_first(store: SqliteStore) -> None:
+    first = _shadow_rows(n=1)
+    other = [
+        ShadowRecord(**{**first[0].__dict__, "classification": cls("R-1-L1", "tobacco")})  # type: ignore[arg-type]
+    ]
+    with store.transaction() as tx:
+        tx.save_shadow(first)
+        tx.save_shadow(other)
+        (kept,) = tx.shadow_for("R-1", 1)
+    assert kept.classification.category == "alcohol"
+
+
+def test_shadow_rows_come_back_for_their_revision_and_in_line_order(store: SqliteStore) -> None:
+    with store.transaction() as tx:
+        tx.save_shadow(_shadow_rows("R-1", 1, 2))
+        tx.save_shadow(_shadow_rows("R-1", 2, 1))
+        tx.save_shadow(_shadow_rows("R-2", 1, 1))
+        assert [r.line_id for r in tx.shadow_for("R-1", 1)] == ["R-1-L1", "R-1-L2"]
+        assert [r.revision for r in tx.shadow_for("R-1", 2)] == [2]
+        assert tx.shadow_for("R-9", 1) == []
+
+
+def test_iter_shadow_filters_by_classifier_in_a_stable_order(store: SqliteStore) -> None:
+    hybrid = _shadow_rows("R-1", 1, 1)
+    jev = [ShadowRecord(**{**hybrid[0].__dict__, "classifier": "jev-1.13"})]  # type: ignore[arg-type]
+    with store.transaction() as tx:
+        tx.save_shadow(hybrid)
+        tx.save_shadow(jev)
+        tx.save_shadow(_shadow_rows("R-2", 1, 1))
+        assert [r.classifier for r in tx.iter_shadow("jev-1.13")] == ["jev-1.13"]
+        assert len(list(tx.iter_shadow())) == 3
+        assert [r.receipt_id for r in tx.iter_shadow("jev-hybrid")] == ["R-1", "R-2"]
+
+
+def test_shadow_created_at_uses_the_store_format(store: SqliteStore) -> None:
+    with store.transaction() as tx:
+        tx.save_shadow(_shadow_rows(n=1))
+        (row,) = tx.shadow_for("R-1", 1)
+    assert len(row.created_at) == 32 and row.created_at.endswith("+00:00")
+    assert row.created_at == "2026-10-10T12:00:00.000000+00:00"
+
+
+def test_a_shadow_outbox_item_is_claimed_leased_and_retried_like_the_others(
+    store: SqliteStore,
+) -> None:
+    with store.transaction() as tx:
+        assert tx.enqueue("R-1", 1, "shadow", T0)
+        item = tx.claim_work(T0, T0 + timedelta(seconds=60))
+    assert item is not None and (item.stage, item.attempts) == ("shadow", 1)
+    with store.transaction() as tx:
+        assert tx.claim_work(T0 + timedelta(seconds=30), T0 + timedelta(seconds=90)) is None
+        again = tx.claim_work(T0 + timedelta(seconds=61), T0 + timedelta(seconds=120))
+    assert again is not None and (again.id, again.attempts) == (item.id, 2)
+    with store.transaction() as tx:
+        tx.complete_work(again.id)
+        assert tx.open_work_count() == 0
+
+
+def test_shadow_work_and_classify_work_for_one_revision_are_separate_items(
+    store: SqliteStore,
+) -> None:
+    with store.transaction() as tx:
+        assert tx.enqueue("R-1", 1, "evaluate", T0)
+        assert tx.enqueue("R-1", 1, "shadow", T0)
+        assert tx.open_work_count() == 2

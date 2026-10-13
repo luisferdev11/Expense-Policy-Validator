@@ -32,3 +32,9 @@ PINS: dict[str, ModelPin] = {
     "gemma-3-12b": ModelPin("gemma-3-12b", "google/gemma-3-12b-it", ROUTED, None),
 }
 REFERENCE = PINS["gpt-oss-120b"]
+
+# The names `classifier_model` and the factory accept: the chat pins above, a decision model
+# (jev, category only) and the hybrid (jev's category with the reference's subtype and recipient).
+JEV = "jev-1.13"
+HYBRID = "jev-hybrid"
+CLASSIFIER_NAMES: tuple[str, ...] = (*PINS, JEV, HYBRID)

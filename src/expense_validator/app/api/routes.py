@@ -18,6 +18,7 @@ from expense_validator.app.api.schemas import (
     ReceiptList,
     ReceiptSummary,
     RevisionDetail,
+    ShadowView,
     SubmitResponse,
 )
 from expense_validator.app.batching import BatchService
@@ -144,6 +145,15 @@ def build_router(
     @router.get("/receipts/{receipt_id}/events", response_model=EventList, tags=["receipts"])
     def get_events(receipt_id: str) -> EventList:
         return EventList(items=[EventItem.of(e) for e in service.list_events(receipt_id)])
+
+    @router.get(
+        "/receipts/{receipt_id}/shadow",
+        response_model=ShadowView,
+        tags=["receipts"],
+        summary="The shadow classifier's answers beside the deciding one's (404 no_shadow if none)",
+    )
+    def get_shadow(receipt_id: str) -> ShadowView:
+        return ShadowView.of(service.get_shadow(receipt_id))
 
     @router.get(
         "/receipts/{receipt_id}/revisions/{revision}",

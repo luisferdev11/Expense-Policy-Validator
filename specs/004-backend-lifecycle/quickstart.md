@@ -62,7 +62,7 @@ npx --yes newman run docs/api/epv.postman_collection.json \
   -e docs/api/epv.local.postman_environment.json
 ```
 
-Expected: 51 requests, 99 assertions, 0 failed, in about 20 seconds. It covers every endpoint, a
+Expected: 55 requests, 114 assertions, 0 failed, in about 20 seconds (spec 007 added two shadow requests). It covers every endpoint, a
 repeated POST, a revision, a batch with a bad row, a cascade, each reviewer action, a decision that
 returns to review, and a critical finding. Each run uses its own id, so it can be run again on the
 same database. `docs/api/build_collection.py` generates the files; `uv run epv openapi` prints the

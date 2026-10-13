@@ -22,7 +22,9 @@ State = Literal[
     "failed",
 ]
 Action = Literal["approve", "reject", "correct-category", "request-info", "escalate"]
-Stage = Literal["classify", "evaluate"]
+# `shadow` is the second classifier's work (spec 007). It is queued beside `evaluate`, stores rows
+# of its own, and never changes a receipt: it never fails one, so `failed_stage` is never `shadow`.
+Stage = Literal["classify", "evaluate", "shadow"]
 
 ACTIONS: tuple[Action, ...] = get_args(Action)
 SYSTEM_ACTOR = "system"

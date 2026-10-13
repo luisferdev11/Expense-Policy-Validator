@@ -82,3 +82,36 @@ def test_resuming_never_repeats_a_stage_that_already_committed(tmp_path: Path) -
             kinds = [e.event.type for e in tx.list_events(rid)]
         assert kinds.count("ReceiptClassified") == 1
         assert kinds.count("ReceiptEvaluated") == 1
+
+
+@pytest.mark.parametrize("crash_after", [0, 2, 5])
+def test_a_shadow_item_interrupted_mid_receipt_resumes_with_no_duplicate_rows(
+    tmp_path: Path, crash_after: int
+) -> None:
+    """A shadow classifier that dies leaves its item leased; once the lease expires another worker
+    finishes the work, stores one row per line, and nothing about any receipt is repeated."""
+    stack = build_stack(tmp_path)
+    submit_all(stack)
+    primary = BillingClassifier(DESCRIPTIONS)
+    shadow_answers = {description: "tobacco" for description in DESCRIPTIONS}
+    shadow_cache: dict[tuple[str, str, int], Classification] = {}
+
+    first = BillingClassifier(shadow_answers, shadow_cache, crash_after=crash_after)
+    with pytest.raises(SimulatedCrash):
+        stack.worker(primary, shadow=first, shadow_name="jev-1.13").run_once()
+    stack.clock.advance(timedelta(seconds=61))
+    second = BillingClassifier(shadow_answers, shadow_cache)
+    stack.worker(primary, shadow=second, shadow_name="jev-1.13").run_once()
+
+    with stack.store.transaction(write=False) as tx:
+        rows = [row for rid in IDS for row in tx.shadow_for(rid, 1)]
+    assert len(rows) == len(IDS)  # one row per line, six receipts of one line
+    assert len({(r.receipt_id, r.line_id, r.classifier) for r in rows}) == len(IDS)
+    assert {r.classification.category for r in rows} == {"tobacco"}
+    assert first.calls_made + second.calls_made == len(IDS)  # no shadow answer paid for twice
+    for rid in IDS:
+        record = stack.service.get_receipt(rid).record
+        assert record.state != "failed" and record.failed_stage is None
+        with stack.store.transaction(write=False) as tx:
+            kinds = [e.event.type for e in tx.list_events(rid)]
+        assert kinds.count("ReceiptClassified") == 1 and "StageFailed" not in kinds

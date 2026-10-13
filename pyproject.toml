@@ -1,11 +1,12 @@
 [project]
 name = "expense-policy-validator"
-version = "1.1.0"
+version = "1.2.0"
 description = "Classifies itemized expense receipts, applies written expense policies with a deterministic rule engine, and raises evidence-grounded exceptions."
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
     "fastapi>=0.143.0",
+    "httpx>=0.28.1",
     "langfuse>=3",
     "openai>=1.40",
     "pydantic>=2.7",
@@ -27,7 +28,6 @@ packages = ["src/expense_validator", "eval", "viewer"]
 
 [dependency-groups]
 dev = [
-    "httpx>=0.28.1",
     "locust==2.46.6",
     "mypy>=1.11",
     "pre-commit>=3.8",

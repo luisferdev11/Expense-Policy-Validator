@@ -20,6 +20,7 @@ STATUS_BY_CODE: dict[str, int] = {
     "invalid_action": 422,
     "invalid_batch": 422,
     "not_found": 404,
+    "no_shadow": 404,
     "action_not_allowed": 409,
     "stale_evaluation": 409,
 }

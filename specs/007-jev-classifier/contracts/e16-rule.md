@@ -5,7 +5,9 @@ conversation, to decide with real measurements which classifier spends less and 
 results in a test environment with low traffic. The registration below therefore carries
 `approved_by: Luis`; `eval/experiments/run_dev.py` still refuses to run without it (FR-021). The
 text is written on 2026-10-12, before any E16 run, and after the demonstrative jev-1.13 run of
-2026-10-11, whose numbers are known. That run decides nothing; E16 calls jev again.
+2026-10-11, whose numbers are known. That run decides nothing; E16 calls jev again. Wording
+amended on 2026-10-12 with Luis's approval, before any E16 run: the reference's answers are the
+committed E14 rows; the rule is unchanged.
 
 ## Registration text (to append under `iteration_2:` in `explorations/research/experiments_plan.yaml`)
 
@@ -17,8 +19,8 @@ text is written on 2026-10-12, before any E16 run, and after the demonstrative j
     reference: gpt-oss-120b   # its committed E14 answers on this set; no new call
     held_fixed: >-
       Frozen dev set (all 130 items decide). Decision prompt dec-v1 (the E13 payload, moved into
-      the package unchanged); cls-v2 for gpt-oss-120b, whose answers are the committed E14 cache
-      (explorations/results/iter2/cache/gpt-oss-120b.jsonl), so the hybrid's detail side makes no
+      the package unchanged); cls-v2 for gpt-oss-120b, whose answers are the committed E14 rows
+      (explorations/results/iter2/E14/gpt-oss-120b.jsonl), so the hybrid's detail side makes no
       new call. OpenRouter routing; serving provider recorded. Input: item text, merchant, MCC;
       never the declared expense type or attendee count.
     why: >-
@@ -59,6 +61,30 @@ text is written on 2026-10-12, before any E16 run, and after the demonstrative j
     data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
     approved_by: Luis   # approved in conversation on 2026-10-12, before any E16 run
 ```
+
+## Implementation notes (2026-10-12, phase 4)
+
+None of these changes the approved rule text above; the registration in
+`explorations/research/experiments_plan.yaml` is verbatim (a test compares them).
+
+- **Where the reference's answers come from.** The first draft of `held_fixed` named
+  `explorations/results/iter2/cache/gpt-oss-120b.jsonl` as the "committed E14 cache", but that
+  directory is gitignored (`explorations/.gitignore`), so a clone does not have it. Luis approved a
+  wording-only correction on 2026-10-12, before any E16 run: the reference's answers are the
+  committed E14 rows, `explorations/results/iter2/E14/gpt-oss-120b.jsonl` (the literal
+  `raw_content`, request id, cost and serving provider of each item). The runner rebuilds the cache
+  entries from those rows, keyed as E14 keyed them. The rule, metrics, budget and hash are
+  unchanged.
+- **The hybrid's detail side is offline.** An item with no committed answer is an
+  `offline_cache_miss`, never a billed gpt-oss call.
+- **One jev pass.** Both variants share one jev cache (`cache/jev-1.13.jsonl`), so jev is asked once
+  per item; the repeat pass writes to its own file, `cache/jev-1.13.repeat.jsonl`, and counts in the
+  budget.
+- **Rows carry both confidence sources**: `top_probability` and `reported_confidence`, plus the
+  `confidence` the pipeline would use. E7's threshold procedure is run on the better-calibrated one.
+- **Latency** is timed on the billed jev call. A variant answered from the cache borrows the other
+  jev variant's timings (the hybrid's other side is a cached E14 answer, so its latency is the jev
+  call's). E14 did not record the reference's latency.
 
 ## How the rule differs from E14, and why
 

@@ -11,6 +11,7 @@ word for word; a result that contradicts intuition is reported, never overridden
 from __future__ import annotations
 
 import json
+import statistics
 from collections.abc import Mapping, Sequence
 from pathlib import Path
 from typing import Any
@@ -22,6 +23,8 @@ from expense_validator.adapters.openrouter.prompt import ParseError, parse
 from expense_validator.paths import EVAL_DIR
 
 REFERENCE = "gpt-oss-120b"
+E16_VARIANTS = ("jev-1.13", "jev-hybrid")
+E16_SEED = 20261012
 MARGIN = -0.02
 SCHEMA_LIMIT = 0.02
 A6A9_SLACK = 2
@@ -83,25 +86,88 @@ def _complete(results: Mapping[str, Rows]) -> None:
 
 
 def _loss(v: dict[str, Any]) -> str:
+    if v["status"] == "reference":
+        return "a superior challenger is chosen before the reference"
     if v["status"] == "excluded":
         sv = v["schema_violations"]
         return f"excluded: {sv['k']}/{sv['n']} schema violations, over 2 %"
     if v["status"] == "fails_a6a9_guard":
         return f"more than 2 extra A6/A9 items wrong ({v['a6a9_wrong']}/{v['a6a9_n']})"
+    if v["status"] == "fails_restricted_guard":
+        return f"restricted F1 {v['restricted_f1']} below the reference's minus 0.01"
     lo = v["difference"]["interval"][0]
     if lo <= -0.02:
         return f"non-inferiority not shown: bootstrap lower bound {lo} < -0.02"
     return f"restricted F1 {v['restricted_f1']} below the reference's minus 0.01"
 
 
-def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
+def _median_latency(pred: Rows) -> float | None:
+    values = [r["latency_s"] for r in pred if r.get("latency_s") is not None]
+    return statistics.median(values) if values else None
+
+
+def _status(
+    *,
+    violations_share: float,
+    superior: bool,
+    a6a9_fails: bool,
+    restricted_fails: bool,
+    lo: float,
+    strict: bool,
+) -> str:
+    """One challenger's status.
+
+    `strict` is E16's registered order: exclusion, the A6/A9 guard, the restricted guard,
+    superiority, non-inferiority, so a guard failure is reported as such whatever the accuracy.
+
+    Without it, E14's registered labels are kept, so the committed `experiments.json` is
+    byte-identical: a challenger that is not superior is `worse` unless it is non-inferior on
+    accuracy. The one change is that a superior challenger must pass both guards first, and
+    otherwise is labelled with the guard it fails (it used to be `superior` regardless).
+    """
+    if violations_share > SCHEMA_LIMIT:
+        return "excluded"
+    if strict:
+        if a6a9_fails:
+            return "fails_a6a9_guard"
+        if restricted_fails:
+            return "fails_restricted_guard"
+        if superior:
+            return "superior"
+        return "non_inferior" if lo > MARGIN else "worse"
+    if superior:
+        if a6a9_fails:
+            return "fails_a6a9_guard"
+        if restricted_fails:
+            return "fails_restricted_guard"
+        return "superior"
+    if lo > MARGIN and not restricted_fails:
+        return "fails_a6a9_guard" if a6a9_fails else "non_inferior"
+    return "worse"
+
+
+def judge(
+    results: Mapping[str, Rows],
+    items: Sequence[dict[str, Any]],
+    *,
+    strict: bool = False,
+    seed: int | None = None,
+    latencies: Mapping[str, float | None] | None = None,
+) -> dict[str, Any]:
+    """Compare each challenger with the reference and pick the winner (E14 and E16).
+
+    A superior challenger that passes every guard wins outright (the cheapest, then the lowest
+    median latency, then the name, among several). Only when none is superior is the cheapest of
+    the reference and the non-inferior challengers chosen. If nothing qualifies, the reference
+    stays.
+    """
     _complete(results)
     ref = results[REFERENCE]
     ref_correct = _correct(ref, items)
     ref_f1 = _restricted_f1(ref, items)
     ref_a6a9 = _a6a9_wrong(ref, items)
     variants = []
-    qualifying = [REFERENCE]
+    latency: dict[str, float | None] = {}
     for name in sorted(results):
         pred = results[name]
         correct = _correct(pred, items)
@@ -120,41 +186,43 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
             "schema_violations": _proportion(violations, len(items)),
             "cost_per_1000_usd": round(_cost_per_1000(pred), 6),
         }
+        latency[name] = latencies[name] if latencies is not None else _median_latency(pred)
         if name == REFERENCE:
             entry["status"] = "reference"
             variants.append(entry)
             continue
         b = sum(1 for x, y in zip(correct, ref_correct, strict=True) if x and not y)
         c = sum(1 for x, y in zip(correct, ref_correct, strict=True) if y and not x)
-        diff, lo, hi = paired_bootstrap(correct, ref_correct)
+        diff, lo, hi = (
+            paired_bootstrap(correct, ref_correct)
+            if seed is None
+            else paired_bootstrap(correct, ref_correct, seed=seed)
+        )
         p_value = mcnemar_exact(b, c)
         entry |= {
             "mcnemar": {"b_challenger_only": b, "c_reference_only": c, "p": round(p_value, 4)},
             "difference": {"value": round(diff, 4), "interval": [round(lo, 4), round(hi, 4)]},
         }
-        if violations / len(items) > SCHEMA_LIMIT:
-            entry["status"] = "excluded"
-        elif p_value < 0.05 and b > c and lo > 0:
-            entry["status"] = "superior"
-        elif (
-            lo > MARGIN
-            and entry["restricted_f1"] >= ref_f1 - 0.01
-            and entry["a6a9_wrong"] <= ref_a6a9 + A6A9_SLACK
-        ):
-            entry["status"] = "non_inferior"
-        elif lo > MARGIN and entry["restricted_f1"] >= ref_f1 - 0.01:
-            entry["status"] = "fails_a6a9_guard"
-        else:
-            entry["status"] = "worse"
-        if entry["status"] in {"superior", "non_inferior"}:
-            qualifying.append(name)
+        entry["status"] = _status(
+            violations_share=violations / len(items),
+            superior=p_value < 0.05 and b > c and lo > 0,
+            a6a9_fails=entry["a6a9_wrong"] > ref_a6a9 + A6A9_SLACK,
+            restricted_fails=entry["restricted_f1"] < ref_f1 - 0.01,
+            lo=lo,
+            strict=strict,
+        )
         variants.append(entry)
     costs = {v["variant"]: v["cost_per_1000_usd"] for v in variants}
-    winner = min(qualifying, key=lambda n: (costs[n], n))
+    superior = [v["variant"] for v in variants if v["status"] == "superior"]
+    non_inferior = [v["variant"] for v in variants if v["status"] == "non_inferior"]
+    qualifying = superior or [REFERENCE, *non_inferior]
+
+    def rank(name: str) -> tuple[float, float, str]:
+        seen = latency[name]
+        return (costs[name], float("inf") if seen is None else seen, name)
+
+    winner = min(qualifying, key=rank)
     return {
-        "id": "E14",
-        "factor": "item classifier model",
-        "n": len(items),
         "variants": variants,
         "winner": winner,
         "why_others_lost": {
@@ -162,8 +230,53 @@ def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[st
             for v in variants
             if v["variant"] != winner
         },
+    }
+
+
+def e14(results: Mapping[str, Rows], items: Sequence[dict[str, Any]]) -> dict[str, Any]:
+    outcome = judge(results, items)
+    return {
+        "id": "E14",
+        "factor": "item classifier model",
+        "n": len(items),
+        "variants": outcome["variants"],
+        "winner": outcome["winner"],
+        "why_others_lost": outcome["why_others_lost"],
         "note": "Latency was not recorded; ties on cost break by model name.",
     }
+
+
+def _source_stats(conf: Sequence[float], correct: Sequence[bool]) -> dict[str, Any]:
+    """Calibration of one confidence source: Brier, ECE, and how many of the ten bins hold at least
+    10 items (calibration is reported as measurable only with three or more such bins)."""
+    bins_ok = sum(1 for k in range(10) if sum(1 for p in conf if min(int(p * 10), 9) == k) >= 10)
+    return {
+        "brier": round(brier(conf, correct), 5),
+        "ece": round(ece(conf, correct), 5),
+        "bins_with_10_items": bins_ok,
+        "calibration_measurable": bins_ok >= 3,
+    }
+
+
+def _threshold(
+    conf: Sequence[float], correct: Sequence[bool]
+) -> tuple[float, list[dict[str, Any]]]:
+    """E7's registered threshold: among every distinct confidence plus 0, keep those that send at
+    most 10 % of the correct items to review, take the highest accuracy on the items kept (ties to
+    the lower threshold). A threshold of 0 is a valid outcome. Returns it with the coverage
+    curve."""
+    total_correct = sum(correct)
+    candidates = sorted({0.0, *conf})
+    best: tuple[float, float] | None = None
+    for t in candidates:
+        sent = sum(1 for p, c in zip(conf, correct, strict=True) if p < t and c)
+        kept_items = [c for p, c in zip(conf, correct, strict=True) if p >= t]
+        if not kept_items or (total_correct and sent / total_correct > REVIEW_BUDGET):
+            continue
+        accuracy = sum(kept_items) / len(kept_items)
+        if best is None or accuracy > best[1]:
+            best = (t, accuracy)
+    return (best[0] if best else 0.0), coverage_accuracy(conf, correct)
 
 
 def e7(
@@ -177,16 +290,8 @@ def e7(
     agree = [
         1.0 if a[r["item_id"]]["category"] == b[r["item_id"]]["category"] else 0.0 for r in kept
     ]
-    bins_ok = sum(
-        1 for k in range(10) if sum(1 for p in self_conf if min(int(p * 10), 9) == k) >= 10
-    )
     sources = {
-        "self_reported": {
-            "brier": round(brier(self_conf, correct), 5),
-            "ece": round(ece(self_conf, correct), 5),
-            "bins_with_10_items": bins_ok,
-            "calibration_measurable": bins_ok >= 3,
-        },
+        "self_reported": _source_stats(self_conf, correct),
         "agreement_120b_20b": {
             "brier": round(brier(agree, correct), 5),
             "ece": round(ece(agree, correct), 5),
@@ -196,19 +301,7 @@ def e7(
     threshold: float | None = None
     curve: list[dict[str, Any]] = []
     if winner == "self_reported":
-        total_correct = sum(correct)
-        candidates = sorted({0.0, *self_conf})
-        best: tuple[float, float] | None = None
-        for t in candidates:
-            sent = sum(1 for p, c in zip(self_conf, correct, strict=True) if p < t and c)
-            kept_items = [c for p, c in zip(self_conf, correct, strict=True) if p >= t]
-            if not kept_items or (total_correct and sent / total_correct > REVIEW_BUDGET):
-                continue
-            accuracy = sum(kept_items) / len(kept_items)
-            if best is None or accuracy > best[1]:
-                best = (t, accuracy)
-        threshold = best[0] if best else 0.0
-        curve = coverage_accuracy(self_conf, correct)
+        threshold, curve = _threshold(self_conf, correct)
     fires = (
         sum(1 for p in self_conf if threshold is not None and p < threshold)
         if winner == "self_reported"
@@ -223,6 +316,115 @@ def e7(
         "threshold": threshold,
         "fires_on_dev": _proportion(fires, len(kept)),
         "curve": [{k: round(v, 4) for k, v in p.items()} for p in curve],
+    }
+
+
+def _confidences(
+    pred: Rows, labels: Mapping[str, str], field: str
+) -> tuple[list[float], list[bool]]:
+    kept = [r for r in pred if r["status"] == "classified" and r.get(field) is not None]
+    return [float(r[field]) for r in kept], [r["category"] == labels[r["item_id"]] for r in kept]
+
+
+def _percentile(values: Sequence[float], q: float) -> float:
+    ordered = sorted(values)
+    return ordered[min(len(ordered) - 1, int(q * len(ordered)))]
+
+
+def e16(
+    results: Mapping[str, Rows],
+    items: Sequence[dict[str, Any]],
+    repeat: Rows | None = None,
+) -> dict[str, Any]:
+    """Experiment E16, jev for the category (contracts/e16-rule.md, word for word).
+
+    `results` holds the reference's committed E14 rows and the rows of `jev-1.13` and `jev-hybrid`.
+    The order is exclusion, the A6/A9 guard, the restricted guard, superiority (McNemar exact and
+    the bootstrap with seed 20261012), non-inferiority; a superior challenger wins outright. For a
+    jev winner, E7's threshold procedure runs on the better-calibrated of its two confidence
+    sources. Latency is the median and p95 of the timed calls; the hybrid's category side is the
+    same jev call and its other side is a cached answer, so a variant answered from the cache
+    borrows the other jev variant's timings.
+    """
+    labels = {i["item_id"]: i["category"] for i in items}
+    timed = {
+        name: [r["latency_s"] for r in rows if r.get("latency_s") is not None]
+        for name, rows in results.items()
+    }
+    measured_on: dict[str, str | None] = {}
+    for name in results:
+        if timed[name]:
+            measured_on[name] = name
+        elif name in E16_VARIANTS:
+            measured_on[name] = next((n for n in E16_VARIANTS if n != name and timed.get(n)), None)
+        else:
+            measured_on[name] = None
+    latency = {
+        name: statistics.median(timed[source]) if source else None
+        for name, source in measured_on.items()
+    }
+    outcome = judge(results, items, strict=True, seed=E16_SEED, latencies=latency)
+    variants = outcome["variants"]
+    for v in variants:
+        name = v["variant"]
+        source = measured_on[name]
+        values = timed[source] if source else []
+        v["latency_s"] = (
+            {
+                "n": len(values),
+                "median": round(statistics.median(values), 3),
+                "p95": round(_percentile(values, 0.95), 3),
+                "measured_on": source,
+            }
+            if values
+            else None
+        )
+        fields = (
+            ("top_probability", "reported_confidence") if name in E16_VARIANTS else ("confidence",)
+        )
+        calibration = {}
+        for field in fields:
+            conf, correct = _confidences(results[name], labels, field)
+            if conf:
+                calibration[field] = _source_stats(conf, correct)
+        v["calibration"] = calibration
+    winner = outcome["winner"]
+    chosen: str | None = None
+    threshold: float | None = None
+    fires: dict[str, Any] | None = None
+    curve: list[dict[str, Any]] = []
+    sources: dict[str, Any] = {}
+    if winner in E16_VARIANTS:
+        (won,) = [v for v in variants if v["variant"] == winner]
+        sources = won["calibration"]
+        chosen = min(sources, key=lambda s: (sources[s]["brier"], s))
+        conf, correct = _confidences(results[winner], labels, chosen)
+        threshold, raw_curve = _threshold(conf, correct)
+        fires = _proportion(sum(1 for p in conf if p < threshold), len(conf))
+        curve = [{k: round(v, 4) for k, v in p.items()} for p in raw_curve]
+    spend = sum(r.get("cost_usd") or 0.0 for r in results.get(E16_VARIANTS[0], ()))
+    spend += sum(r.get("cost_usd") or 0.0 for r in repeat or ())
+    return {
+        "id": "E16",
+        "factor": "item classifier, a decision model for the category",
+        "n": len(items),
+        "reference": REFERENCE,
+        "variants": variants,
+        "winner": winner,
+        "why_others_lost": outcome["why_others_lost"],
+        "sources": sources,
+        "confidence_source": chosen,
+        "threshold": threshold,
+        "fires_on_dev": fires,
+        "curve": curve,
+        "repeatability": (
+            _proportion(sum(1 for r in repeat if r["changed"]), len(repeat)) if repeat else None
+        ),
+        "spend_usd": round(spend, 6),
+        "note": (
+            "Latency is timed on the jev call; the hybrid's gpt-oss side is a cached E14 answer, "
+            "so its latency is the jev call's. E14 did not record the reference's latency."
+        ),
     }
 
 
@@ -329,9 +531,12 @@ def _frac(p: dict[str, Any]) -> str:
 
 
 def _evidence(o: dict[str, Any]) -> str:
-    if o["id"] == "E14":
+    if o["id"] in {"E14", "E16"}:
         (w,) = [v for v in o["variants"] if v["variant"] == o["winner"]]
-        return f"accuracy {_frac(w['accuracy'])}, restricted F1 {w['restricted_f1']}"
+        text = f"accuracy {_frac(w['accuracy'])}, restricted F1 {w['restricted_f1']}"
+        if o["id"] == "E16":
+            text += f", E16 spend USD {o['spend_usd']:.4f}"
+        return text
     if o["id"] == "E7":
         brier = o["sources"][o["winner"]]["brier"]
         return f"threshold {o['threshold']}, Brier {brier}, fires on {_frac(o['fires_on_dev'])}"
@@ -381,6 +586,21 @@ def main() -> int:
         e15(e14_rows, items),
         ret(json.loads((RESULTS / "RET" / "check.json").read_text(encoding="utf-8"))),
     ]
+    e16_dir = RESULTS / "E16"
+    if all((e16_dir / f"{v}.jsonl").exists() for v in E16_VARIANTS):
+        repeat_path = e16_dir / "repeat.jsonl"
+        outcomes.append(
+            e16(
+                {
+                    REFERENCE: e14_rows[REFERENCE],
+                    **{v: _load(e16_dir / f"{v}.jsonl") for v in E16_VARIANTS},
+                },
+                items,
+                _load(repeat_path) if repeat_path.exists() else None,
+            )
+        )
+    else:
+        print("E16: registered, not run")
     kept = [*e14_rows.values(), _load(RESULTS / "E5" / "translate.jsonl")]
     spend = sum(r.get("cost_usd") or 0.0 for rows in kept for r in rows)
     doc = {

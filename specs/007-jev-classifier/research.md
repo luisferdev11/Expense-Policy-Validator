@@ -113,6 +113,11 @@ repository, read on 2026-10-12.
   the registered text ("becomes the reference").
 - **Fix:** guards first, then superiority, and a superior challenger wins outright. A test shows
   that E14's committed outcome is unchanged (no E14 challenger was superior).
+- **Implementation note (2026-10-12):** applying the guards-first order to every E14 challenger
+  would relabel `gemma-3-12b` from `worse` to `fails_a6a9_guard` and change the committed
+  `outputs/eval/experiments.json`, which FR-026 forbids. So `decide.judge` has two label modes:
+  E14 keeps its registered labels and gains the two fixes (a superior challenger must pass both
+  guards, and wins outright); E16 (`strict=True`) uses the order of its registered text.
 - **What the 2026-10-11 numbers would have said under the fixed rule:** jev-1.13 →
   `fails_a6a9_guard`, so the reference is kept. Under the buggy rule: jev-1.13 superior and
   cheaper, so jev wins, although it cannot feed six rules.

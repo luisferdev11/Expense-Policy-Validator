@@ -84,7 +84,7 @@ bills itself (spec 006 FR-008: cached and seeded answers never count).
 |---|---|---|---|
 | Primary (`classifier_model: jev-1.13` or `jev-hybrid`) | USD 1.00 per process | USD 1.00 per process | `CAP_USD` of `openrouter/classifier.py`, the same as today's primary |
 | Shadow (`--shadow`) | `--shadow-cap-usd`, default USD 0.25 per process | Same value, counted separately | The shadow flag |
-| E16 (`run_dev.py`) | The USD 0.10 that remains of E16's budget | Not billed: committed E14 cache | The registration |
+| E16 (`run_dev.py`) | The USD 0.10 that remains of E16's budget | Not billed: the committed E14 answers (rebuilt from `E14/gpt-oss-120b.jsonl`; the cache directory is gitignored) | The registration |
 
 For a hybrid, each side has its own counter, and a line is refused (`budget_refused`) when the
 side that would bill has reached its cap.
@@ -164,3 +164,13 @@ does the following:
 
 `default_classifier` (`app/intake.py:93`), `build_worker` (`app/composition.py:76`), the shadow
 stage and `epv run` call only this factory.
+
+As built (phase 3): `prompt_links` is a mapping with the keys `chat` and `decision`, and
+`app/classifiers.py` also provides `sync_prompt_links(name, tracer, offline)`, which syncs only the
+prompts the named classifier needs (a pin: `cls-v2`; `jev-1.13`: `dec-v1`; the hybrid: both).
+`default_classifier(tracer, cache_path, offline, prompt_links)` returns an `ItemClassifier` and its
+callers read `calls_made` and `run_spend_usd` with `getattr`. `CLASSIFIER_NAMES` lives in
+`adapters/openrouter/models.py`, so `load_pipeline_config` (an adapter) can validate against it,
+and `app/classifiers.py` re-exports it. The hybrid exposes `last_flags`, `last_keys` and
+`last_latency_s` after every call (the span output, the E16 runner), and the merged source's
+`prompt_version` is the hybrid's own, `hyb-v1(dec-v1+cls-v2)`.

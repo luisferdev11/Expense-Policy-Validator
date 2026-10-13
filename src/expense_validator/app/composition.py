@@ -15,12 +15,12 @@ from typing import Any
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.keyword_classifier import KeywordClassifier
 from expense_validator.adapters.openrouter.classifier import CAP_USD
-from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
 from expense_validator.adapters.simulated_classifier import LatencyClassifier, SimulatedClassifier
 from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
 from expense_validator.adapters.sqlite_store import SqliteStore, utc_now
 from expense_validator.adapters.tracing import make_tracer
 from expense_validator.app.api import DEFAULT_CORS_ORIGINS
+from expense_validator.app.classifiers import SHADOW_CAP_USD, build_classifier, sync_prompt_links
 from expense_validator.app.intake import default_classifier
 from expense_validator.app.reviewing import ReviewService
 from expense_validator.app.service import ReceiptService
@@ -86,6 +86,8 @@ def build_worker(
     cap_usd: float = CAP_USD,
     classifier: str = "openrouter",
     simulated_latency_ms: int = 0,
+    shadow: str | None = None,
+    shadow_cap_usd: float = SHADOW_CAP_USD,
 ) -> Worker:
     """The worker with the configured classifier over the database's answer table.
 
@@ -97,15 +99,20 @@ def build_worker(
     `classifier` is `openrouter` (the default), `keyword` or `simulated`; the last two make no model
     call and are for baselines and load tests. `simulated_latency_ms` adds a sleep per line to any
     of them, to reproduce a model's latency without paying for it.
+
+    `shadow` names a second classifier (`jev-1.13` or `jev-hybrid`) whose answers are stored beside
+    the deciding one's and decide nothing. It is built through the same factory over the same
+    answer table, with its own counters and its own cap, `shadow_cap_usd`. Off by default.
     """
     tracer = make_tracer(disabled=no_trace)
+    config = load_pipeline_config()
     chosen: ItemClassifier
     if classifier == "openrouter":
-        prompt_link = None if offline else sync_prompt(tracer)
+        links = sync_prompt_links(config.classifier_model, tracer, offline)
         cache = SqliteClassificationCache(store.path, utc_now)
         cache.seed_from(seed_path)
         chosen = default_classifier(
-            tracer, cache, offline=offline, prompt_link=prompt_link, cap_usd=cap_usd
+            tracer, cache, offline=offline, prompt_links=links, cap_usd=cap_usd
         )
     elif classifier == "keyword":
         chosen = KeywordClassifier()
@@ -115,4 +122,24 @@ def build_worker(
         raise ValueError(f"unknown classifier: {classifier!r}")
     if simulated_latency_ms > 0:
         chosen = LatencyClassifier(chosen, simulated_latency_ms)
-    return Worker(store, chosen, tracer, load_settings(), utc_now, load_pipeline_config())
+    shadow_classifier: ItemClassifier | None = None
+    if shadow:
+        shadow_classifier = build_classifier(
+            shadow,
+            tracer,
+            SqliteClassificationCache(store.path, utc_now),
+            offline=offline,
+            prompt_links=sync_prompt_links(shadow, tracer, offline),
+            null_subtype_as_none=config.null_subtype_as_none,
+            cap_usd=shadow_cap_usd,
+        )
+    return Worker(
+        store,
+        chosen,
+        tracer,
+        load_settings(),
+        utc_now,
+        config,
+        shadow=shadow_classifier,
+        shadow_name=shadow,
+    )

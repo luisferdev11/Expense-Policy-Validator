@@ -16,6 +16,7 @@ from expense_validator.app.decide import decide_receipt
 from expense_validator.domain.engine.context import build_context
 from expense_validator.domain.engine.settings import Settings
 from expense_validator.domain.models import (
+    Classification,
     ClassifiedReceipt,
     ReceiptInput,
     ReceiptResult,
@@ -45,18 +46,31 @@ def run_metadata(
 
 
 def classify_receipt(
-    receipt: ReceiptInput, classifier: ItemClassifier, tracer: Tracer, run_label: str
+    receipt: ReceiptInput,
+    classifier: ItemClassifier,
+    tracer: Tracer,
+    run_label: str,
+    name: str = "validate-receipt",
 ) -> ClassifiedReceipt:
+    """Normalise and classify a receipt in one trace observation. `name` is the observation's
+    name: the deciding classifier's is `validate-receipt`, a shadow's is its own."""
     with tracer.receipt_trace(
-        receipt.receipt_id, run_label, input=receipt.model_dump(mode="json")
+        receipt.receipt_id, run_label, input=receipt.model_dump(mode="json"), name=name
     ) as root:
         with tracer.span("normalise-receipt") as span:
             items = normalise(receipt)
             span.update(output=[i.model_dump(mode="json") for i in items])
         with tracer.span("classify-receipt") as span:
-            classifications = tuple(
-                classifier.classify(i.line_id, build_request(receipt, i)) for i in items
-            )
+            answered: list[Classification] = []
+            flags: dict[str, dict[str, bool]] = {}
+            for i in items:
+                answered.append(classifier.classify(i.line_id, build_request(receipt, i)))
+                # Only the hybrid exposes flags (a conflict between its two sides); they appear
+                # in the span output when true and change nothing else.
+                raised = {k: v for k, v in getattr(classifier, "last_flags", {}).items() if v}
+                if raised:
+                    flags[i.line_id] = raised
+            classifications = tuple(answered)
             span.update(
                 output=[
                     {
@@ -68,6 +82,7 @@ def classify_receipt(
                         "cache_key": c.source.cache_key,
                         "request_id": c.source.request_id,
                         "unclassified_reason": c.unclassified_reason,
+                        **flags.get(c.line_id, {}),
                     }
                     for c in classifications
                 ]

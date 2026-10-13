@@ -12,8 +12,8 @@ from pydantic import BaseModel, ConfigDict
 
 from expense_validator.app.batching import BatchView
 from expense_validator.app.reviewing import ActionResult
-from expense_validator.app.service import ReceiptView, RevisionView, SubmitOutcome
-from expense_validator.domain.models import ReceiptInput, ReceiptResult
+from expense_validator.app.service import ReceiptView, RevisionView, ShadowComparison, SubmitOutcome
+from expense_validator.domain.models import Classification, ReceiptInput, ReceiptResult
 from expense_validator.ports.store import EventRecord, ReceiptRecord
 
 
@@ -177,6 +177,98 @@ class RevisionDetail(BaseModel):
                 )
                 for e in view.evaluations
             ],
+        )
+
+
+class ShadowIdentity(BaseModel):
+    """Who answered: the classifier, its model and its prompt version."""
+
+    classifier: str
+    model_id: str
+    prompt_version: str
+
+
+class ShadowAnswer(BaseModel):
+    status: str
+    category: str | None
+    confidence: float | None
+    subtype: str
+    recipient_kind: str
+    recipient_name: str | None
+    unclassified_reason: str | None
+
+    @classmethod
+    def of(cls, c: Classification) -> ShadowAnswer:
+        return cls(
+            status=c.status,
+            category=c.category,
+            confidence=c.confidence,
+            subtype=c.subtype,
+            recipient_kind=c.recipient_kind,
+            recipient_name=c.recipient_name,
+            unclassified_reason=c.unclassified_reason,
+        )
+
+
+class ShadowLine(BaseModel):
+    line_id: str
+    primary: ShadowAnswer
+    shadow: ShadowAnswer
+    agrees_category: bool
+    agrees_all: bool
+
+
+class ShadowSummary(BaseModel):
+    lines: int
+    comparable: int  # lines where both sides classified
+    agree_category: int
+    agree_all: int
+
+
+class ShadowView(BaseModel):
+    """The deciding classifier's answers beside a shadow's, for the current revision."""
+
+    receipt_id: str
+    revision: int
+    primary: ShadowIdentity
+    shadow: ShadowIdentity
+    lines: list[ShadowLine]
+    summary: ShadowSummary
+    created_at: str
+
+    @classmethod
+    def of(cls, view: ShadowComparison) -> ShadowView:
+        first = view.shadow[0]
+        return cls(
+            receipt_id=view.receipt_id,
+            revision=view.revision,
+            primary=ShadowIdentity(
+                classifier=view.primary.classifier,
+                model_id=view.primary.model_id,
+                prompt_version=view.primary.prompt_version,
+            ),
+            shadow=ShadowIdentity(
+                classifier=first.classifier,
+                model_id=first.model_id,
+                prompt_version=first.prompt_version,
+            ),
+            lines=[
+                ShadowLine(
+                    line_id=c.line_id,
+                    primary=ShadowAnswer.of(c.primary),
+                    shadow=ShadowAnswer.of(c.shadow),
+                    agrees_category=c.agrees_category,
+                    agrees_all=c.agrees_all,
+                )
+                for c in view.lines
+            ],
+            summary=ShadowSummary(
+                lines=len(view.lines),
+                comparable=sum(1 for c in view.lines if c.comparable),
+                agree_category=sum(1 for c in view.lines if c.agrees_category),
+                agree_all=sum(1 for c in view.lines if c.agrees_all),
+            ),
+            created_at=max(r.created_at for r in view.shadow),
         )
 
 

@@ -17,11 +17,11 @@ from typing import Any
 
 import pytest
 from fastapi.testclient import TestClient
-from perf import tasks
-from perf.receipts import make_batch, make_receipt
 
 from expense_validator.adapters.simulated_classifier import SimulatedClassifier
 from expense_validator.app.api import create_app
+from perf import tasks
+from perf.receipts import make_batch, make_receipt
 from tests.support import build_stack
 
 ROOT = Path(__file__).resolve().parents[2]

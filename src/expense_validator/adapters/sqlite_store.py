@@ -33,12 +33,13 @@ from expense_validator.ports.store import (
     ListOrder,
     ReceiptRecord,
     RevisionRecord,
+    ShadowRecord,
     SubmissionRecord,
     WorkItem,
     stamp,
 )
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 MIN_SQLITE = (3, 35, 0)  # UPDATE ... RETURNING
 BUSY_TIMEOUT_MS = 10_000
 
@@ -119,7 +120,7 @@ CREATE TABLE outbox (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     receipt_id TEXT NOT NULL,
     revision INTEGER NOT NULL,
-    stage TEXT NOT NULL CHECK (stage IN ('classify', 'evaluate')),
+    stage TEXT NOT NULL CHECK (stage IN ('classify', 'evaluate', 'shadow')),
     state TEXT NOT NULL CHECK (state IN ('pending', 'claimed', 'done', 'cancelled', 'failed')),
     lease_until TEXT,
     attempts INTEGER NOT NULL DEFAULT 0,
@@ -151,6 +152,19 @@ CREATE TABLE classification_cache (
     created_at TEXT NOT NULL
 );
 CREATE INDEX classification_cache_model ON classification_cache (model_id, prompt_version);
+CREATE TABLE shadow_classifications (
+    receipt_id TEXT NOT NULL,
+    revision INTEGER NOT NULL,
+    line_id TEXT NOT NULL,
+    classifier TEXT NOT NULL,
+    model_id TEXT NOT NULL,
+    prompt_version TEXT NOT NULL,
+    status TEXT NOT NULL CHECK (status IN ('classified', 'unclassified')),
+    payload TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (receipt_id, revision, line_id, classifier)
+);
+CREATE INDEX shadow_by_classifier ON shadow_classifications (classifier, created_at);
 """
 
 # DDL of the step from schema 1 to 2: the three receipt columns, the two list indexes and the cache
@@ -247,9 +261,70 @@ def _normalise_updated_at(conn: sqlite3.Connection) -> None:
             )
 
 
+def _statement(prefix: str) -> str:
+    """The statement of `_SCHEMA` that starts with `prefix`, so a migrated file gets exactly the
+    SQL text of a fresh one."""
+    (found,) = [s for s in _split(_SCHEMA) if s.startswith(prefix)]
+    return found
+
+
+def _migrate_2_to_3(conn: sqlite3.Connection) -> None:
+    """The `shadow` stage and the shadow table (spec 007, data-model.md 3a and 3b).
+
+    SQLite cannot alter a CHECK constraint, so `outbox` is rebuilt: the old table is renamed, the
+    new one is created from the statement of `_SCHEMA`, every row is copied with its id, the old
+    table is dropped with its indexes, and every index it had is created again. The sequence keeps
+    the highest id ever used, so new items continue above it. The caller's transaction makes the
+    whole step one unit: if any statement fails the file stays at schema 2.
+    """
+    indexes = {
+        name
+        for (name,) in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'outbox'"
+            " AND sql IS NOT NULL"
+        )
+    }
+    conn.execute("ALTER TABLE outbox RENAME TO outbox_v2")
+    row = conn.execute("SELECT seq FROM sqlite_sequence WHERE name = 'outbox_v2'").fetchone()
+    last_id = int(row[0]) if row else 0
+    conn.execute(_statement("CREATE TABLE outbox ("))
+    conn.execute(
+        "INSERT INTO outbox (id, receipt_id, revision, stage, state, lease_until, attempts,"
+        " last_error, created_at) SELECT id, receipt_id, revision, stage, state, lease_until,"
+        " attempts, last_error, created_at FROM outbox_v2 ORDER BY id"
+    )
+    conn.execute("DROP TABLE outbox_v2")  # also drops its indexes
+    for name in sorted(indexes):
+        (statement,) = [
+            s
+            for s in _split(_SCHEMA)
+            if s.startswith((f"CREATE INDEX {name} ", f"CREATE UNIQUE INDEX {name} "))
+        ]
+        conn.execute(statement)
+    after = {
+        name
+        for (name,) in conn.execute(
+            "SELECT name FROM sqlite_master WHERE type = 'index' AND tbl_name = 'outbox'"
+            " AND sql IS NOT NULL"
+        )
+    }
+    if after != indexes:
+        raise MigrationError(f"outbox indexes changed: {sorted(indexes)} became {sorted(after)}")
+    conn.execute(
+        "UPDATE sqlite_sequence SET seq = ? WHERE name = 'outbox' AND seq < ?", (last_id, last_id)
+    )
+    conn.execute(
+        "INSERT INTO sqlite_sequence (name, seq) SELECT 'outbox', ? WHERE ? > 0 AND NOT EXISTS"
+        " (SELECT 1 FROM sqlite_sequence WHERE name = 'outbox')",
+        (last_id, last_id),
+    )
+    conn.execute(_statement("CREATE TABLE shadow_classifications ("))
+    conn.execute(_statement("CREATE INDEX shadow_by_classifier "))
+
+
 # Steps in order: (the version a step produces, the step). A file at schema N runs every step
 # whose version is above N, inside the transaction that opens the store.
-MIGRATIONS: list[tuple[int, Migration]] = [(2, _migrate_1_to_2)]
+MIGRATIONS: list[tuple[int, Migration]] = [(2, _migrate_1_to_2), (3, _migrate_2_to_3)]
 
 
 class SchemaTooNewError(Exception):
@@ -291,6 +366,19 @@ def _evaluation(row: sqlite3.Row) -> EvaluationRecord:
         version=row["version"],
         result=ReceiptResult.model_validate_json(row["result"]),
         result_hash=row["result_hash"],
+        created_at=row["created_at"],
+    )
+
+
+def _shadow(row: sqlite3.Row) -> ShadowRecord:
+    return ShadowRecord(
+        receipt_id=row["receipt_id"],
+        revision=row["revision"],
+        line_id=row["line_id"],
+        classifier=row["classifier"],
+        model_id=row["model_id"],
+        prompt_version=row["prompt_version"],
+        classification=Classification.model_validate_json(row["payload"]),
         created_at=row["created_at"],
     )
 
@@ -620,6 +708,51 @@ class SqliteTx:
     def open_work_count(self) -> int:
         cur = self._c.execute("SELECT COUNT(*) FROM outbox WHERE state IN ('pending', 'claimed')")
         return int(cur.fetchone()[0])
+
+    # Shadow classifications
+
+    def save_shadow(self, records: Sequence[ShadowRecord]) -> None:
+        self._c.executemany(
+            "INSERT OR IGNORE INTO shadow_classifications (receipt_id, revision, line_id,"
+            " classifier, model_id, prompt_version, status, payload, created_at)"
+            " VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            [
+                (
+                    r.receipt_id,
+                    r.revision,
+                    r.line_id,
+                    r.classifier,
+                    r.model_id,
+                    r.prompt_version,
+                    r.classification.status,
+                    r.classification.model_dump_json(),
+                    r.created_at,
+                )
+                for r in records
+            ],
+        )
+
+    def shadow_for(self, receipt_id: str, revision: int) -> list[ShadowRecord]:
+        cur = self._c.execute(
+            "SELECT * FROM shadow_classifications WHERE receipt_id = ? AND revision = ?"
+            " ORDER BY rowid",
+            (receipt_id, revision),
+        )
+        return [_shadow(r) for r in cur.fetchall()]
+
+    def iter_shadow(self, classifier: str | None = None) -> Iterator[ShadowRecord]:
+        if classifier is None:
+            cur = self._c.execute(
+                "SELECT * FROM shadow_classifications ORDER BY receipt_id, revision, rowid"
+            )
+        else:
+            cur = self._c.execute(
+                "SELECT * FROM shadow_classifications WHERE classifier = ?"
+                " ORDER BY receipt_id, revision, rowid",
+                (classifier,),
+            )
+        for row in cur:
+            yield _shadow(row)
 
     # Batches
 

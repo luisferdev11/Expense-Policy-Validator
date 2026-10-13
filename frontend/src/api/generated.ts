@@ -158,6 +158,23 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/receipts/{receipt_id}/shadow": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The shadow classifier's answers beside the deciding one's (404 no_shadow if none) */
+        get: operations["get_shadow_receipts__receipt_id__shadow_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -617,6 +634,74 @@ export interface components {
             /** Rules Version */
             rules_version: string;
         };
+        /** ShadowAnswer */
+        ShadowAnswer: {
+            /** Category */
+            category: string | null;
+            /** Confidence */
+            confidence: number | null;
+            /** Recipient Kind */
+            recipient_kind: string;
+            /** Recipient Name */
+            recipient_name: string | null;
+            /** Status */
+            status: string;
+            /** Subtype */
+            subtype: string;
+            /** Unclassified Reason */
+            unclassified_reason: string | null;
+        };
+        /**
+         * ShadowIdentity
+         * @description Who answered: the classifier, its model and its prompt version.
+         */
+        ShadowIdentity: {
+            /** Classifier */
+            classifier: string;
+            /** Model Id */
+            model_id: string;
+            /** Prompt Version */
+            prompt_version: string;
+        };
+        /** ShadowLine */
+        ShadowLine: {
+            /** Agrees All */
+            agrees_all: boolean;
+            /** Agrees Category */
+            agrees_category: boolean;
+            /** Line Id */
+            line_id: string;
+            primary: components["schemas"]["ShadowAnswer"];
+            shadow: components["schemas"]["ShadowAnswer"];
+        };
+        /** ShadowSummary */
+        ShadowSummary: {
+            /** Agree All */
+            agree_all: number;
+            /** Agree Category */
+            agree_category: number;
+            /** Comparable */
+            comparable: number;
+            /** Lines */
+            lines: number;
+        };
+        /**
+         * ShadowView
+         * @description The deciding classifier's answers beside a shadow's, for the current revision.
+         */
+        ShadowView: {
+            /** Created At */
+            created_at: string;
+            /** Lines */
+            lines: components["schemas"]["ShadowLine"][];
+            primary: components["schemas"]["ShadowIdentity"];
+            /** Receipt Id */
+            receipt_id: string;
+            /** Revision */
+            revision: number;
+            shadow: components["schemas"]["ShadowIdentity"];
+            summary: components["schemas"]["ShadowSummary"];
+        };
         /** SubmitResponse */
         SubmitResponse: {
             /** Outcome */
@@ -950,6 +1035,37 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RevisionDetail"];
+                };
+            };
+            /** @description Validation Error */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["HTTPValidationError"];
+                };
+            };
+        };
+    };
+    get_shadow_receipts__receipt_id__shadow_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                receipt_id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Successful Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ShadowView"];
                 };
             };
             /** @description Validation Error */

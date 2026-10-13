@@ -4,8 +4,9 @@
 
 **Created**: 2026-10-12
 
-**Status**: Designed, deferred. Not implemented in iteration 6. Implementation needs Luis's answers
-to the open questions R1 to R5 in ADR 0010.
+**Status**: Designed, deferred. Not implemented in iteration 6. Luis answered R1 to R4 on
+2026-10-12 (see Clarifications) and R5 is open but does not block the design. The next step is
+`/speckit-plan`, when Luis schedules it.
 
 **Release**: none yet (candidate for the first iteration after delivery)
 
@@ -39,6 +40,25 @@ Constitution principles that frame it:
 - Q: How far do roles go in iteration 6? → A: ADR plus specification, not implemented.
 - Q: Should a client-declared role (no authentication) be built as a stopgap? → A: No. It would
   make `decided_by` look trustworthy when anyone can forge it (ADR 0010, alternatives).
+
+### Session 2026-10-12 (Luis's answers to R1 to R5)
+
+- R1: Which reason codes win? → A: The API's five (`policy_exception_granted`,
+  `engine_false_positive`, `engine_missed_issue`, `documentation_provided`, `other`). The brand
+  book is aligned to them when this is implemented. The closed list does not change, so
+  `auditor_agreement` is unaffected.
+- R2: Compliance outcomes? → A: One new action only, `return-to-review` (Compliance sends a
+  receipt back to `in_review`), a new transition and a new event. There is no "rejected and
+  referred" outcome; the lifecycle board is corrected to match.
+- R3: Four eyes on the quality sample? → A: Yes as the target rule: the reviewer who approved a
+  receipt does not clear it from the sample; a second person does. It cannot be checked until
+  roles and sessions exist, so it is enforced only by this spec's implementation and not before.
+  Until then the same person may clear it.
+- R4: Does a submitter see the engine's findings before a human decides? → A: No. A submitter sees
+  the status ("in review", "needs information") and, after the decision, the decision and its
+  reason. Findings stay with reviewers (Q3, recipient abuse).
+- R5: Whose identity provider? → A: Not known yet. The design reads the groups claim of a token
+  and does not depend on the answer; it is settled before real deployment.
 
 ## User Scenarios & Testing *(mandatory)*
 
@@ -173,7 +193,9 @@ in dev mode with `EPV_ENV=production` and see a refusal with a non-zero exit cod
   expires. The token lifetime is short (at most 1 hour) and is documented.
 - **The worker and the system.** Background events keep the system actors `system` and `worker`.
   They are not principals, and no token can claim them.
-- **The QA sample when the only available reviewer approved the receipt.** This depends on R3.
+- **The QA sample when the only available reviewer approved the receipt.** R3 says a second person
+  clears it, so the receipt stays in the sample until another reviewer does. With one reviewer
+  the sample item waits; it is never cleared by the same person.
 - **Langfuse.** `auditor_agreement` scores carry the opaque id. Display names never reach a trace.
 
 ## Requirements *(mandatory)*
@@ -206,6 +228,14 @@ in dev mode with `EPV_ENV=production` and see a refusal with a non-zero exit cod
   test prefix.
 - **FR-010**: The role matrix MUST live in one pure, tested module in `domain/`, beside the state
   rules, and MUST NOT be duplicated in routes.
+- **FR-010a** (R2): The `compliance` role MUST be able to return a receipt in `compliance` to
+  `in_review` with a reason, as a new transition and a new event, and a reviewer MUST see it
+  back in the queue with a notice. No "rejected and referred" outcome exists.
+- **FR-010b** (R3): The principal who approved a receipt MUST NOT clear that receipt from the
+  quality sample (403 `own_decision`); a different `reviewer` can.
+- **FR-010c** (R4): A `submitter` MUST see, for their own receipts, only the state and, after a
+  human decision, the decision and its reason code. The findings and the engine's disposition
+  MUST NOT be in any response to a submitter.
 
 **Records and observability**
 
@@ -247,8 +277,8 @@ in dev mode with `EPV_ENV=production` and see a refusal with a non-zero exit cod
 
 ## Assumptions
 
-- Production identity is OIDC through Amazon Cognito, possibly federated to the company's IdP
-  (ADR 0009, open question R5).
+- Production identity is OIDC through Amazon Cognito, possibly federated to the company's IdP.
+  Whose IdP it is (R5) is not decided; the design only reads the groups claim.
 - Group names in the IdP map one to one to the five roles.
 - Display names are available as a token claim (`name` or `email`).
 - Employees and reviewers have an employee-id claim. It is required for separation of duties.
@@ -257,4 +287,4 @@ in dev mode with `EPV_ENV=production` and see a refusal with a non-zero exit cod
 
 - Managing users or groups inside the application.
 - Row-level security in the database. Authorisation is enforced in the application layer.
-- The answers to R1 to R5. They are product decisions for Luis before implementation.
+- The identity provider's ownership (R5), which stays open until a deployment is planned.

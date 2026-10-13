@@ -156,9 +156,10 @@ bottom.
    transport, the cache and the tracing. Contract tests with a fake transport.
 3. **Hybrid and factory.** The merge table, the factory, and `classifier_model` validation. All
    three entry points use the factory. Parity is byte-identical with `gpt-oss-120b`.
-4. **E16 registration and runner.** The registration text goes in `experiments_plan.yaml` without
-   `approved_by`; `run_dev.py` gets E16; `decide.e16()`. **STOP: Luis approves the rule.** Only
-   then run E16 live (cap USD 0.10) and commit its outcome.
+4. **E16 registration and runner.** The registration text goes in `experiments_plan.yaml` with
+   `approved_by: Luis` (approved 2026-10-12, see the contract); `run_dev.py` gets E16;
+   `decide.e16()`. Then run E16 live (cap USD 0.10) and commit its outcome. The rule text must
+   match the contract; a change needs a new approval.
 5. **Shadow storage and stage.** The migration step, the store methods, the worker stage, the CLI
    flag, and parity with shadow on.
 6. **Shadow read side.** `GET /receipts/{id}/shadow`, `epv shadow report` (with disposition

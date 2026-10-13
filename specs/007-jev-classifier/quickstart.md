@@ -48,7 +48,7 @@ receipts in `data/` before E16 names a jev variant a finalist** (principle V).
 
 1. Read `specs/007-jev-classifier/contracts/e16-rule.md` and the E16 entry in
    `explorations/research/experiments_plan.yaml`.
-2. **Luis approves** by writing `approved_by: Luis` in that entry. Until then:
+2. **Luis approved** the rule on 2026-10-12 (`approved_by: Luis` in the entry). Without that line:
 
    ```bash
    uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-hybrid

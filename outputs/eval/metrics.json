@@ -64,6 +64,13 @@
       "factor": "policy retriever",
       "why_others_lost": "all_rules: same findings, harder to explain",
       "winner": "trigger_map"
+    },
+    {
+      "evidence": "accuracy 130/130 (95 % CI 0.971-1.000), restricted F1 1.0, E16 spend USD 0.0064",
+      "experiment": "E16",
+      "factor": "item classifier, a decision model for the category",
+      "why_others_lost": "gpt-oss-120b: a superior challenger is chosen before the reference; jev-1.13: more than 2 extra A6/A9 items wrong (23/29)",
+      "winner": "jev-hybrid"
     }
   ],
   "oracle": {

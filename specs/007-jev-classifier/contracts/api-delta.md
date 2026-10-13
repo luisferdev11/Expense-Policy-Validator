@@ -39,6 +39,11 @@ Returns the shadow comparison for the receipt's **current** revision.
 - **`primary`** is the stored classification of that revision. The shadow never changes it.
 - **Typed schemas.** `ShadowLine` and `ShadowView` are declared in `app/api/schemas.py`, so they
   appear in `openapi.json`.
+- **As built.** `shadow.classifier` is the factory name the rows were stored under (`jev-hybrid`,
+  the value of `--shadow`), not the composite source's `hybrid` of the example; `primary` comes
+  from the stored classification's source. A line the shadow has no row for is left out of `lines`
+  and of the summary. `created_at` is the latest shadow row's. `/health` now reports
+  `schema_version: 3`.
 
 **404 `not_found`**: there is no such receipt.
 

@@ -1,0 +1,129 @@
+{
+  "items": [
+    {
+      "description_clean": "grilled chicken sandwich with fries",
+      "mcc": 5812,
+      "merchant_name": "Harbor Street Diner",
+      "payload": {
+        "questions": {
+          "category": {
+            "criteria": {
+              "airfare": "tickets, seat and bag fees",
+              "alcohol": "beer, wine, spirits, cocktails, corkage",
+              "clothing": "apparel, footwear, fashion accessories (belts, ties, bags)",
+              "computer_accessory": "cables, adapters, docks, mice, keyboards, monitors",
+              "food_beverage": "meals, non-alcoholic drinks, snacks, catering",
+              "gambling": "casino chips, betting stakes, lottery",
+              "gift": "items made to be given: flowers, gift baskets, greeting cards, branded merchandise",
+              "gift_card": "gift cards, prepaid cards, vouchers",
+              "ground_transport": "taxi, rideshare, transit, parking, tolls, fuel",
+              "health_otc": "over-the-counter medication, cough and throat lozenges, first aid",
+              "household_goods": "cleaning supplies, paper towels, kitchenware, drinkware, bedding, home décor",
+              "jewelry": "non-electronic watches, bracelets, precious metal items",
+              "laundry_service": "laundry, dry cleaning, pressing",
+              "lodging": "room charges, resort fees, lodging tax",
+              "office_supplies": "stationery, notebooks, printing, shipping",
+              "other": "anything that fits nothing above, including a non-itemized charge whose contents are unknown; explain it in the output",
+              "personal_care": "toiletries, cosmetics, haircuts, spa and massage",
+              "personal_electronics": "headphones, tablets, smart watches, cameras, trackers, and accessories made for them (cases, chargers)",
+              "service_fee": "service charge, gratuity, delivery fee, booking fee",
+              "software_subscription": "SaaS and software licences",
+              "tobacco": "cigarettes, cigars, vaping products"
+            },
+            "instructions": "Choose the spend category of one line item from an expense receipt. The state gives the item text exactly as printed (it may be in English, Spanish, French, German, Portuguese or Japanese), the merchant name and the merchant category code (MCC). Classify what the item IS, not the words in its name: food cooked with alcohol (beer-battered fish, rum cake, wine sauce) is food_beverage; non-alcoholic drinks and mocktails are food_beverage; cooking wine is alcohol; barware and drinkware are household_goods. Accessories made for a personal device (cases, chargers) are personal_electronics; non-electronic watches are jewelry. Mobile phones, prescription medication and event tickets have no category of their own: choose other. A charge with unknown contents is other.",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": "grilled chicken sandwich with fries",
+          "mcc": "5812",
+          "merchant": "Harbor Street Diner"
+        }
+      }
+    },
+    {
+      "description_clean": "ワイヤレス充電器",
+      "mcc": 5732,
+      "merchant_name": "Sakura Denki Shop",
+      "payload": {
+        "questions": {
+          "category": {
+            "criteria": {
+              "airfare": "tickets, seat and bag fees",
+              "alcohol": "beer, wine, spirits, cocktails, corkage",
+              "clothing": "apparel, footwear, fashion accessories (belts, ties, bags)",
+              "computer_accessory": "cables, adapters, docks, mice, keyboards, monitors",
+              "food_beverage": "meals, non-alcoholic drinks, snacks, catering",
+              "gambling": "casino chips, betting stakes, lottery",
+              "gift": "items made to be given: flowers, gift baskets, greeting cards, branded merchandise",
+              "gift_card": "gift cards, prepaid cards, vouchers",
+              "ground_transport": "taxi, rideshare, transit, parking, tolls, fuel",
+              "health_otc": "over-the-counter medication, cough and throat lozenges, first aid",
+              "household_goods": "cleaning supplies, paper towels, kitchenware, drinkware, bedding, home décor",
+              "jewelry": "non-electronic watches, bracelets, precious metal items",
+              "laundry_service": "laundry, dry cleaning, pressing",
+              "lodging": "room charges, resort fees, lodging tax",
+              "office_supplies": "stationery, notebooks, printing, shipping",
+              "other": "anything that fits nothing above, including a non-itemized charge whose contents are unknown; explain it in the output",
+              "personal_care": "toiletries, cosmetics, haircuts, spa and massage",
+              "personal_electronics": "headphones, tablets, smart watches, cameras, trackers, and accessories made for them (cases, chargers)",
+              "service_fee": "service charge, gratuity, delivery fee, booking fee",
+              "software_subscription": "SaaS and software licences",
+              "tobacco": "cigarettes, cigars, vaping products"
+            },
+            "instructions": "Choose the spend category of one line item from an expense receipt. The state gives the item text exactly as printed (it may be in English, Spanish, French, German, Portuguese or Japanese), the merchant name and the merchant category code (MCC). Classify what the item IS, not the words in its name: food cooked with alcohol (beer-battered fish, rum cake, wine sauce) is food_beverage; non-alcoholic drinks and mocktails are food_beverage; cooking wine is alcohol; barware and drinkware are household_goods. Accessories made for a personal device (cases, chargers) are personal_electronics; non-electronic watches are jewelry. Mobile phones, prescription medication and event tickets have no category of their own: choose other. A charge with unknown contents is other.",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": "ワイヤレス充電器",
+          "mcc": "5732",
+          "merchant": "Sakura Denki Shop"
+        }
+      }
+    },
+    {
+      "description_clean": "Moscow Mule copper mug",
+      "mcc": 5719,
+      "merchant_name": "Alder and Finch Home",
+      "payload": {
+        "questions": {
+          "category": {
+            "criteria": {
+              "airfare": "tickets, seat and bag fees",
+              "alcohol": "beer, wine, spirits, cocktails, corkage",
+              "clothing": "apparel, footwear, fashion accessories (belts, ties, bags)",
+              "computer_accessory": "cables, adapters, docks, mice, keyboards, monitors",
+              "food_beverage": "meals, non-alcoholic drinks, snacks, catering",
+              "gambling": "casino chips, betting stakes, lottery",
+              "gift": "items made to be given: flowers, gift baskets, greeting cards, branded merchandise",
+              "gift_card": "gift cards, prepaid cards, vouchers",
+              "ground_transport": "taxi, rideshare, transit, parking, tolls, fuel",
+              "health_otc": "over-the-counter medication, cough and throat lozenges, first aid",
+              "household_goods": "cleaning supplies, paper towels, kitchenware, drinkware, bedding, home décor",
+              "jewelry": "non-electronic watches, bracelets, precious metal items",
+              "laundry_service": "laundry, dry cleaning, pressing",
+              "lodging": "room charges, resort fees, lodging tax",
+              "office_supplies": "stationery, notebooks, printing, shipping",
+              "other": "anything that fits nothing above, including a non-itemized charge whose contents are unknown; explain it in the output",
+              "personal_care": "toiletries, cosmetics, haircuts, spa and massage",
+              "personal_electronics": "headphones, tablets, smart watches, cameras, trackers, and accessories made for them (cases, chargers)",
+              "service_fee": "service charge, gratuity, delivery fee, booking fee",
+              "software_subscription": "SaaS and software licences",
+              "tobacco": "cigarettes, cigars, vaping products"
+            },
+            "instructions": "Choose the spend category of one line item from an expense receipt. The state gives the item text exactly as printed (it may be in English, Spanish, French, German, Portuguese or Japanese), the merchant name and the merchant category code (MCC). Classify what the item IS, not the words in its name: food cooked with alcohol (beer-battered fish, rum cake, wine sauce) is food_beverage; non-alcoholic drinks and mocktails are food_beverage; cooking wine is alcohol; barware and drinkware are household_goods. Accessories made for a personal device (cases, chargers) are personal_electronics; non-electronic watches are jewelry. Mobile phones, prescription medication and event tickets have no category of their own: choose other. A charge with unknown contents is other.",
+            "type": "choice"
+          }
+        },
+        "state": {
+          "item": "Moscow Mule copper mug",
+          "mcc": "5719",
+          "merchant": "Alder and Finch Home"
+        }
+      }
+    }
+  ],
+  "prompt_version": "dec-v1",
+  "source": "explorations/lib/decision_adapters.py, captured by this script"
+}

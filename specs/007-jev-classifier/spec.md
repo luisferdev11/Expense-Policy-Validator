@@ -351,7 +351,9 @@ build today's adapter, unchanged.
   E14's committed outcome is unchanged.
 - **FR-020**: E16 MUST be registered in `explorations/research/experiments_plan.yaml` under
   `iteration_2` with the text of `contracts/e16-rule.md`, the frozen set's hash and
-  `registered_at`, before any E16 run. `approved_by` MUST be set only by Luis.
+  `registered_at`, before any E16 run. `approved_by` MUST be set only with Luis's approval of the
+  rule text; he gave it on 2026-10-12 (`contracts/e16-rule.md`), so the entry carries `Luis`, and
+  any later change to the rule text needs a new approval.
 - **FR-021**: `eval/experiments/run_dev.py` MUST accept `--experiment E16 --variant
   {jev-1.13,jev-hybrid}` and refuse to run unless E16 is registered and approved on the frozen
   set's hash (the existing `check_registration`).

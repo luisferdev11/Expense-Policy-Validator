@@ -11,6 +11,14 @@ import warnings
 from typing import Any
 
 from expense_validator.adapters.openrouter.classifier import ENDPOINT, MAX_TOKENS, MODEL_ID
+from expense_validator.adapters.openrouter.decision_prompt import (
+    DECISION_ENDPOINT_PATH,
+    DECISION_INSTRUCTIONS,
+    DECISION_MODEL_ID,
+    DECISION_PROMPT_NAME,
+    DECISION_PROMPT_VERSION,
+    criteria,
+)
 from expense_validator.adapters.openrouter.prompt import PROMPT_NAME, PROMPT_VERSION, SCHEMA, SYSTEM
 from expense_validator.adapters.tracing import GuardedTracer, LangfuseTracer, TracingWarning
 
@@ -28,36 +36,80 @@ CONFIG: dict[str, Any] = {
 }
 
 
-def sync_prompt(tracer: GuardedTracer) -> Any:
-    """Return the Langfuse prompt client for cls-v2, or None when tracing is off."""
+def _sync(
+    tracer: GuardedTracer,
+    name: str,
+    label: str,
+    kind: str,
+    prompt: Any,
+    config: dict[str, Any],
+    commit_message: str,
+) -> Any:
+    """Create the prompt under its label when the stored text or config differs; return the
+    client's prompt object, or None when tracing is off or the sync failed."""
     inner = tracer.inner
     if not isinstance(inner, LangfuseTracer):
         return None
     client = inner.client
     try:
         try:
-            current = client.get_prompt(
-                PROMPT_NAME, label=PROMPT_VERSION, type="chat", cache_ttl_seconds=0
-            )
-            if current.prompt == CHAT_PROMPT and (current.config or {}) == CONFIG:
+            current = client.get_prompt(name, label=label, type=kind, cache_ttl_seconds=0)
+            if current.prompt == prompt and (current.config or {}) == config:
                 return current
         except Exception:
             current = None
         client.create_prompt(
-            name=PROMPT_NAME,
-            type="chat",
-            prompt=CHAT_PROMPT,
-            labels=[PROMPT_VERSION],
-            config=CONFIG,
-            commit_message=f"{PROMPT_VERSION}: category, subtype (A6), recipient fields (A9)",
+            name=name,
+            type=kind,
+            prompt=prompt,
+            labels=[label],
+            config=config,
+            commit_message=commit_message,
         )
-        return client.get_prompt(
-            PROMPT_NAME, label=PROMPT_VERSION, type="chat", cache_ttl_seconds=0
-        )
+        return client.get_prompt(name, label=label, type=kind, cache_ttl_seconds=0)
     except Exception as exc:
         warnings.warn(
-            f"could not sync prompt {PROMPT_NAME}/{PROMPT_VERSION}: {type(exc).__name__}",
+            f"could not sync prompt {name}/{label}: {type(exc).__name__}",
             TracingWarning,
-            stacklevel=2,
+            stacklevel=3,
         )
         return None
+
+
+def sync_prompt(tracer: GuardedTracer) -> Any:
+    """Return the Langfuse prompt client for cls-v2, or None when tracing is off."""
+    return _sync(
+        tracer,
+        PROMPT_NAME,
+        PROMPT_VERSION,
+        "chat",
+        CHAT_PROMPT,
+        CONFIG,
+        f"{PROMPT_VERSION}: category, subtype (A6), recipient fields (A9)",
+    )
+
+
+DECISION_TEXT = (
+    DECISION_INSTRUCTIONS
+    + "\n\nCriteria (option: typical examples):\n"
+    + "\n".join(f"- {option}: {examples}" for option, examples in criteria().items())
+    + "\n\nState: item={{description_clean}}, merchant={{merchant_name}}, mcc={{mcc}}"
+)
+DECISION_CONFIG: dict[str, Any] = {
+    "model": DECISION_MODEL_ID,
+    "endpoint": DECISION_ENDPOINT_PATH,
+    "kind": "decision",
+}
+
+
+def sync_decision_prompt(tracer: GuardedTracer) -> Any:
+    """Return the Langfuse prompt client for dec-v1 (`classify-item-decision`), or None."""
+    return _sync(
+        tracer,
+        DECISION_PROMPT_NAME,
+        DECISION_PROMPT_VERSION,
+        "text",
+        DECISION_TEXT,
+        DECISION_CONFIG,
+        f"{DECISION_PROMPT_VERSION}: decision payload moved into the package (category only)",
+    )

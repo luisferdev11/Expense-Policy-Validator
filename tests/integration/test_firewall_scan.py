@@ -17,6 +17,7 @@ import pytest
 from fastapi.testclient import TestClient
 
 from expense_validator.adapters.config_files import load_pipeline_config
+from expense_validator.adapters.openrouter.decision_classifier import DecisionClassifier
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.sqlite_cache import SqliteClassificationCache
 from expense_validator.adapters.sqlite_store import utc_now
@@ -112,6 +113,85 @@ def test_every_trace_input_and_output_is_free_of_answer_keys(
         return json.dumps(value, default=str)
 
     text = "\n".join(dump([o.fields, o.updates]) for o in tracer.observations)
+    assert found_in(text) == []
+
+
+@pytest.fixture(scope="module")
+def processed_with_shadow(
+    tmp_path_factory: pytest.TempPathFactory,
+) -> tuple[Stack, RecordingTracer, list[str]]:
+    """The same 32 receipts with answer keys in their bodies, with a shadow classifier on."""
+    directory = tmp_path_factory.mktemp("firewall-shadow")
+    tracer = RecordingTracer()
+    stack = build_stack(directory, tracer)
+    SqliteClassificationCache(stack.store.path, utc_now).seed_from(CLASSIFICATIONS_FILE)
+    shadow = DecisionClassifier(
+        SqliteClassificationCache(stack.store.path, utc_now),
+        tracer,
+        transport=fake_jev,
+        raw_dir=directory / "raw",
+    )
+    worker = stack.worker(
+        offline_classifier(directory),
+        tracer,
+        config=load_pipeline_config(),
+        shadow=shadow,
+        shadow_name="jev-1.13",
+    )
+    lines = raw_lines()
+    client = TestClient(create_app(stack.service))
+    for line in lines:
+        response = client.post(
+            "/receipts", content=line, headers={"Content-Type": "application/json"}
+        )
+        assert response.status_code == 202
+    worker.run_once()
+    return stack, tracer, lines
+
+
+def fake_jev(payload: dict[str, Any]) -> tuple[dict[str, Any], str]:
+    body = {
+        "id": "jev-firewall",
+        "provider": "typesafe",
+        "answers": {"category": {"choice": "other", "probabilities": {"other": 0.8}}},
+        "usage": {"input_tokens": 1, "output_tokens": 1, "cost": 0.0},
+    }
+    return body, json.dumps(body)
+
+
+def test_the_shadow_table_holds_no_answer_key(
+    processed_with_shadow: tuple[Stack, RecordingTracer, list[str]],
+) -> None:
+    stack, _, _ = processed_with_shadow
+    with closing(sqlite3.connect(stack.store.path)) as conn:
+        rows = [r[0] for r in conn.execute("SELECT payload FROM shadow_classifications")]
+        dump = "\n".join(conn.iterdump())
+    assert len(rows) == sum(len(r.line_items) for r in load_receipts())  # every line has a row
+    assert found_in("\n".join(rows)) == []
+    assert found_in(dump) == []
+
+
+def test_every_shadow_response_is_free_of_answer_keys(
+    processed_with_shadow: tuple[Stack, RecordingTracer, list[str]],
+) -> None:
+    stack, _, lines = processed_with_shadow
+    client = TestClient(create_app(stack.service))
+    seen = []
+    for line in lines:
+        response = client.get(f"/receipts/{json.loads(line)['receipt_id']}/shadow")
+        assert response.status_code == 200
+        seen.append(response.text)
+    assert len(seen) == 32
+    assert found_in("\n".join(seen)) == []
+
+
+def test_the_shadow_trace_inputs_and_outputs_are_free_of_answer_keys(
+    processed_with_shadow: tuple[Stack, RecordingTracer, list[str]],
+) -> None:
+    _, tracer, _ = processed_with_shadow
+    shadow_traces = [o for o in tracer.observations if o.name == "shadow-classify-receipt"]
+    assert len(shadow_traces) == 32
+    text = "\n".join(json.dumps([o.fields, o.updates], default=str) for o in tracer.observations)
     assert found_in(text) == []
 
 

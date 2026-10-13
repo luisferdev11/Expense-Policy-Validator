@@ -1625,6 +1625,204 @@
         "title": "RunMetadata",
         "type": "object"
       },
+      "ShadowAnswer": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "confidence": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Confidence"
+          },
+          "recipient_kind": {
+            "title": "Recipient Kind",
+            "type": "string"
+          },
+          "recipient_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Recipient Name"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          },
+          "subtype": {
+            "title": "Subtype",
+            "type": "string"
+          },
+          "unclassified_reason": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Unclassified Reason"
+          }
+        },
+        "required": [
+          "status",
+          "category",
+          "confidence",
+          "subtype",
+          "recipient_kind",
+          "recipient_name",
+          "unclassified_reason"
+        ],
+        "title": "ShadowAnswer",
+        "type": "object"
+      },
+      "ShadowIdentity": {
+        "description": "Who answered: the classifier, its model and its prompt version.",
+        "properties": {
+          "classifier": {
+            "title": "Classifier",
+            "type": "string"
+          },
+          "model_id": {
+            "title": "Model Id",
+            "type": "string"
+          },
+          "prompt_version": {
+            "title": "Prompt Version",
+            "type": "string"
+          }
+        },
+        "required": [
+          "classifier",
+          "model_id",
+          "prompt_version"
+        ],
+        "title": "ShadowIdentity",
+        "type": "object"
+      },
+      "ShadowLine": {
+        "properties": {
+          "agrees_all": {
+            "title": "Agrees All",
+            "type": "boolean"
+          },
+          "agrees_category": {
+            "title": "Agrees Category",
+            "type": "boolean"
+          },
+          "line_id": {
+            "title": "Line Id",
+            "type": "string"
+          },
+          "primary": {
+            "$ref": "#/components/schemas/ShadowAnswer"
+          },
+          "shadow": {
+            "$ref": "#/components/schemas/ShadowAnswer"
+          }
+        },
+        "required": [
+          "line_id",
+          "primary",
+          "shadow",
+          "agrees_category",
+          "agrees_all"
+        ],
+        "title": "ShadowLine",
+        "type": "object"
+      },
+      "ShadowSummary": {
+        "properties": {
+          "agree_all": {
+            "title": "Agree All",
+            "type": "integer"
+          },
+          "agree_category": {
+            "title": "Agree Category",
+            "type": "integer"
+          },
+          "comparable": {
+            "title": "Comparable",
+            "type": "integer"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "lines",
+          "comparable",
+          "agree_category",
+          "agree_all"
+        ],
+        "title": "ShadowSummary",
+        "type": "object"
+      },
+      "ShadowView": {
+        "description": "The deciding classifier's answers beside a shadow's, for the current revision.",
+        "properties": {
+          "created_at": {
+            "title": "Created At",
+            "type": "string"
+          },
+          "lines": {
+            "items": {
+              "$ref": "#/components/schemas/ShadowLine"
+            },
+            "title": "Lines",
+            "type": "array"
+          },
+          "primary": {
+            "$ref": "#/components/schemas/ShadowIdentity"
+          },
+          "receipt_id": {
+            "title": "Receipt Id",
+            "type": "string"
+          },
+          "revision": {
+            "title": "Revision",
+            "type": "integer"
+          },
+          "shadow": {
+            "$ref": "#/components/schemas/ShadowIdentity"
+          },
+          "summary": {
+            "$ref": "#/components/schemas/ShadowSummary"
+          }
+        },
+        "required": [
+          "receipt_id",
+          "revision",
+          "primary",
+          "shadow",
+          "lines",
+          "summary",
+          "created_at"
+        ],
+        "title": "ShadowView",
+        "type": "object"
+      },
       "SubmitResponse": {
         "properties": {
           "outcome": {
@@ -2218,6 +2416,48 @@
           }
         },
         "summary": "Get Revision",
+        "tags": [
+          "receipts"
+        ]
+      }
+    },
+    "/receipts/{receipt_id}/shadow": {
+      "get": {
+        "operationId": "get_shadow_receipts__receipt_id__shadow_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "receipt_id",
+            "required": true,
+            "schema": {
+              "title": "Receipt Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ShadowView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "The shadow classifier's answers beside the deciding one's (404 no_shadow if none)",
         "tags": [
           "receipts"
         ]

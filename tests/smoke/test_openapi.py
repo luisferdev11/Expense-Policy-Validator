@@ -16,6 +16,7 @@ EXPECTED_PATHS = {
     "/receipts",
     "/receipts/{receipt_id}",
     "/receipts/{receipt_id}/events",
+    "/receipts/{receipt_id}/shadow",
     "/receipts/{receipt_id}/revisions/{revision}",
     "/receipts/{receipt_id}/retry",
     "/receipts/{receipt_id}/actions/{action}",

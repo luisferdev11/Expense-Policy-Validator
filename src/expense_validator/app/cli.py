@@ -8,8 +8,10 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -17,13 +19,17 @@ from pathlib import Path
 from expense_validator.adapters.classification_cache import ClassificationCache
 from expense_validator.adapters.config_files import load_pipeline_config, load_settings
 from expense_validator.adapters.keyword_classifier import KeywordClassifier
-from expense_validator.adapters.openrouter.classifier import CAP_USD, OpenRouterClassifier
-from expense_validator.adapters.openrouter.models import PINS
-from expense_validator.adapters.openrouter.prompt_sync import sync_prompt
+from expense_validator.adapters.openrouter.classifier import CAP_USD
 from expense_validator.adapters.receipts_file import load_receipts
 from expense_validator.adapters.results_files import write_results
 from expense_validator.adapters.sqlite_store import SqliteStore
 from expense_validator.adapters.tracing import make_tracer
+from expense_validator.app.classifiers import (
+    SHADOW_CAP_USD,
+    SHADOW_NAMES,
+    build_classifier,
+    sync_prompt_links,
+)
 from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.worker import Worker
 from expense_validator.paths import (
@@ -86,13 +92,12 @@ def run_command(
     cache = ClassificationCache(cache_path)
     clf: ItemClassifier
     if classifier == "openrouter":
-        prompt_link = None if offline else sync_prompt(tracer)
-        clf = OpenRouterClassifier(
-            cache,
+        clf = build_classifier(
+            config.classifier_model,
             tracer,
+            cache,
             offline=offline,
-            prompt_link=prompt_link,
-            pin=PINS[config.classifier_model],
+            prompt_links=sync_prompt_links(config.classifier_model, tracer, offline),
             null_subtype_as_none=config.null_subtype_as_none,
         )
     elif classifier == "keyword":
@@ -159,6 +164,8 @@ class WorkerOptions:
     classifier: str = "openrouter"
     simulated_latency_ms: int = 0
     cap_usd: float = CAP_USD
+    shadow: str | None = None  # a second classifier stored beside the deciding one (spec 007)
+    shadow_cap_usd: float = SHADOW_CAP_USD
 
 
 def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
@@ -173,6 +180,8 @@ def _build_worker(store: SqliteStore, options: WorkerOptions) -> Worker:
         cap_usd=options.cap_usd,
         classifier=options.classifier,
         simulated_latency_ms=options.simulated_latency_ms,
+        shadow=options.shadow,
+        shadow_cap_usd=options.shadow_cap_usd,
     )
 
 
@@ -242,6 +251,16 @@ def worker_command(
     return 0
 
 
+def shadow_name(chosen: str | None, env: Mapping[str, str] | None = None) -> str | None:
+    """The shadow classifier: the flag, else `EPV_SHADOW`, else none. An unknown value is refused
+    with the accepted ones, whichever way it arrived."""
+    env = os.environ if env is None else env
+    name = chosen or env.get("EPV_SHADOW") or None
+    if name is not None and name not in SHADOW_NAMES:
+        raise SystemExit(f"unknown shadow classifier {name!r}; accepted: {', '.join(SHADOW_NAMES)}")
+    return name
+
+
 def worker_options(args: argparse.Namespace) -> WorkerOptions:
     return WorkerOptions(
         offline=args.offline,
@@ -250,6 +269,8 @@ def worker_options(args: argparse.Namespace) -> WorkerOptions:
         classifier=args.classifier,
         simulated_latency_ms=args.simulated_latency_ms,
         cap_usd=args.cap_usd,
+        shadow=shadow_name(args.shadow),
+        shadow_cap_usd=args.shadow_cap_usd,
     )
 
 
@@ -308,6 +329,18 @@ def _add_worker_options(parser: argparse.ArgumentParser) -> None:
         "--cache",
         help="JSONL file that seeds an empty answer table (default: outputs/classifications.jsonl)",
     )
+    parser.add_argument(
+        "--shadow",
+        choices=list(SHADOW_NAMES),
+        help="also classify every revision with this classifier and store its answers beside the "
+        "deciding one's; it decides nothing (default: $EPV_SHADOW, else off)",
+    )
+    parser.add_argument(
+        "--shadow-cap-usd",
+        type=_non_negative_float,
+        default=SHADOW_CAP_USD,
+        help="the most the shadow classifier may bill in this process (default 0.25)",
+    )
 
 
 def cache_export_command(db: str | None, out: str | None, seed: str | None) -> int:
@@ -333,6 +366,25 @@ def cache_export_command(db: str | None, out: str | None, seed: str | None) -> i
 
 def _cmd_cache(args: argparse.Namespace) -> int:
     return cache_export_command(args.db, args.out, args.cache)
+
+
+def shadow_report_command(db: str | None, as_json: bool, classifier: str | None = None) -> int:
+    """Print how each shadow classifier in the database compares with the deciding one. It reads
+    the store only: no model call, no key, no answer label."""
+    from expense_validator.app.composition import db_path, open_store
+    from expense_validator.app.shadow_report import build_shadow_report, render, to_dict
+
+    reports = build_shadow_report(open_store(db_path(db)), load_settings(), classifier)
+    if as_json:
+        document = {"reports": [to_dict(r) for r in reports]}
+        sys.stdout.write(json.dumps(document, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(render(reports))
+    return 0
+
+
+def _cmd_shadow(args: argparse.Namespace) -> int:
+    return shadow_report_command(args.db, args.json, args.classifier)
 
 
 def _cmd_openapi(args: argparse.Namespace) -> int:
@@ -371,6 +423,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSONL file that seeds an empty table (default: outputs/classifications.jsonl)",
     )
     export.set_defaults(func=_cmd_cache)
+    shadow = sub.add_parser("shadow", help="the shadow classifier's answers")
+    shadow_sub = shadow.add_subparsers(dest="shadow_command", required=True)
+    shadow_report = shadow_sub.add_parser(
+        "report", help="agreement with the deciding classifier, from the store alone"
+    )
+    shadow_report.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    shadow_report.add_argument("--json", action="store_true", help="print JSON instead of text")
+    shadow_report.add_argument(
+        "--classifier", choices=list(SHADOW_NAMES), help="only this shadow classifier"
+    )
+    shadow_report.set_defaults(func=_cmd_shadow)
     serve = sub.add_parser("serve", help="run the HTTP API")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)

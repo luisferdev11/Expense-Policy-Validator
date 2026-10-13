@@ -1,7 +1,8 @@
 # ADR 0010: Roles and access
 
 - **Status:** proposed. Designed on 2026-10-12 at Luis's request; **not implemented** in this
-  iteration. The specification is `specs/009-roles/spec.md`.
+  iteration. R1 to R4 were answered by Luis on 2026-10-12 and R5 is open (see the section below).
+  The specification is `specs/009-roles/spec.md`.
 - **Date:** 2026-10-12
 - **Supersedes in part:** ADR 0007 D8 ("the actor is free text; no authentication in this
   iteration") once implemented.
@@ -52,6 +53,8 @@ The state rules of `domain/lifecycle.py` stay. A role only narrows them, never w
 | `approve`, `reject`, `correct-category`, `request-info` in `in_review` | – | ✓ | – | – | – |
 | `escalate` in `in_review` | – | ✓ | – | – | – |
 | `reject` in `auto_approved` (quality sample) | – | ✓ | – | – | – |
+| Clear a receipt from the quality sample | – | ✓, not the one who approved it (R3) | – | – | – |
+| `return-to-review` in `compliance` (R2) | – | – | ✓ | – | – |
 | `reject` in `needs_info` | – | ✓ | – | – | – |
 | `approve`, `reject`, `correct-category`, `request-info` in `compliance` | – | – | ✓ | – | – |
 | `retry` a failed receipt | – | – | – | – | ✓ |
@@ -92,8 +95,8 @@ The state rules of `domain/lifecycle.py` stay. A role only narrows them, never w
   - 403 `own_receipt_only` when a submitter sends a receipt for another employee.
 - **`decided_by`** (spec 006) holds the principal id. A separate `decided_by_name` holds the display
   name at decision time, so the screens never need a lookup.
-- **Submitters see only their own receipts.** They do not see the engine's findings until a human
-  decides, which is open question R4 below.
+- **Submitters see only their own receipts.** They do not see the engine's findings: only the state
+  and, after a human decides, the decision and its reason code (R4).
 
 ### D5. The front end follows the principal
 
@@ -110,15 +113,15 @@ The state rules of `domain/lifecycle.py` stay. A role only narrows them, never w
   dev auth mode. Spec 006 already generates its receipts with `TEST-` employee ids. The Postman
   collection's demo receipts move to the same prefix when this ADR is implemented.
 
-## Open questions for Luis (product decisions, needed before implementation)
+## Luis's answers to the open questions (2026-10-12)
 
-| # | Question | Why it matters |
-|---|---|---|
-| R1 | Do the API's five reason codes or the brand book's codes win (F-07)? | Changing the closed list changes `auditor_agreement` (ADR 0007 D10) |
-| R2 | Does Compliance get a "rejected and referred" outcome and a "back to review" action (F-11)? | Both are new lifecycle transitions and new events |
-| R3 | Can the reviewer who approved a receipt also clear it from the quality sample, or is a second pair of eyes required? | Four-eyes on the sample changes who sees `auto_approved` receipts |
-| R4 | Should a submitter see the engine's findings before a human decides? | Showing them invites rewording recipient text until a gift passes (Q3) |
-| R5 | Is the IdP the company's (federated) or a Cognito pool owned by this service? | Who manages the groups, and how roles are audited |
+| # | Question | Answer | Effect |
+|---|---|---|---|
+| R1 | Do the API's five reason codes or the brand book's codes win (F-07)? | **The API's.** | The closed list is unchanged, so `auditor_agreement` (ADR 0007 D10) is unaffected. The brand book is aligned to the API when this is implemented. |
+| R2 | Does Compliance get a "rejected and referred" outcome and a "back to review" action (F-11)? | **Only "back to review".** | One new transition (`compliance` to `in_review`) and one new event. No "rejected and referred" outcome; the lifecycle board is corrected. |
+| R3 | Can the reviewer who approved a receipt also clear it from the quality sample, or is a second pair of eyes required? | **A second person is the target rule, but it cannot be verified yet.** It needs roles and sessions. | Enforced only once this ADR is implemented (403 `own_decision`). Until then the same person may clear it. |
+| R4 | Should a submitter see the engine's findings before a human decides? | **No, only the status.** | A submitter sees the state and, after a decision, the decision and its reason code. Findings stay with reviewers (Q3). |
+| R5 | Is the IdP the company's (federated) or a Cognito pool owned by this service? | **Not known yet.** | The design reads the groups claim of a token and does not depend on it. It is settled before a real deployment. |
 
 ## Consequences
 

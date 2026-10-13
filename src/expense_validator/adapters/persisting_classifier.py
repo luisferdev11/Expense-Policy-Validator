@@ -34,6 +34,12 @@ class PersistingClassifier:
     def cache_hits(self) -> int:
         return int(getattr(self._inner, "cache_hits", 0))
 
+    @property
+    def last_flags(self) -> dict[str, bool]:
+        """The hybrid's per-call trace flags, passed through; empty for any other classifier."""
+        flags: dict[str, bool] = getattr(self._inner, "last_flags", {})
+        return flags
+
     def classify(self, line_id: str, request: ClassifierRequest) -> Classification:
         before = self.calls_made
         result = self._inner.classify(line_id, request)

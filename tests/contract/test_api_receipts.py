@@ -36,7 +36,7 @@ def post(client: TestClient, body: str, key: str | None = None):  # type: ignore
 def test_health_reports_the_schema_version_and_the_open_work(client: TestClient) -> None:
     response = client.get("/health")
     assert response.status_code == 200
-    assert response.json() == {"status": "ok", "schema_version": 2, "open_work": 0}
+    assert response.json() == {"status": "ok", "schema_version": 3, "open_work": 0}
 
 
 def test_open_work_counts_pending_and_claimed_items_of_the_outbox(tmp_path: Path) -> None:

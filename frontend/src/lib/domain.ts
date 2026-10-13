@@ -48,6 +48,22 @@ export const REASON_CODES: { id: ReasonCode; label: string }[] = [
   { id: "other", label: "Other (note required)" },
 ];
 
+// Which reasons can describe which decision (spec 008 FR-019). Front end only: the API accepts any
+// reason code with any decision.
+const REASONS_BY_ACTION: Record<"approve" | "reject", ReasonCode[]> = {
+  approve: ["policy_exception_granted", "engine_false_positive", "documentation_provided", "other"],
+  reject: ["engine_missed_issue", "other"],
+};
+
+export function reasonsFor(action: "approve" | "reject"): { id: ReasonCode; label: string }[] {
+  return REASON_CODES.filter((r) => REASONS_BY_ACTION[action].includes(r.id));
+}
+
+/** Approve may always carry a reason; Reject only needs one when it goes against a `pass` proposal. */
+export function showsReason(action: "approve" | "reject", disposition: Disposition | null): boolean {
+  return action === "approve" || overrides(action, disposition);
+}
+
 export const STATE_LABEL: Record<State, string> = {
   submitted: "Submitted",
   classifying: "Reading items",

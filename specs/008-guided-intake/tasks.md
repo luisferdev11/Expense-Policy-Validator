@@ -71,6 +71,15 @@ body.
 - [ ] T028 [US4] Add "Open as JSON" (form → textarea with `JSON.stringify(formToReceipt(form), null, 2)`) and "Edit in the form" (shown when `planIntake` is `single`; uses `receiptToForm` and shows "N keys not shown in the form were dropped" when `dropped` is not empty) to `frontend/src/pages/IntakePage.tsx`
 - [ ] T029 Verify and commit: `feat(frontend): revise a receipt in the form, and move between form and JSON (008)`
 
+## Phase 3b: Reasons shown per decision (FR-019, FR-020)
+
+**Goal**: Approve and Reject show only the reasons that fit them; a Reject that agrees with the
+proposal shows no reason list. Front end only; the API still accepts any reason.
+**Independent test**: `npx vitest run src/lib/lib.test.ts` and the e2e checks below pass.
+
+- [ ] T027a [P] Extend `frontend/src/lib/lib.test.ts`: `reasonsFor("approve")` ids are `policy_exception_granted`, `engine_false_positive`, `documentation_provided`, `other`; `reasonsFor("reject")` ids are `engine_missed_issue`, `other`; every id is a member of `REASON_CODES`; `showsReason` is true for approve with any proposal, true for reject only when the proposal is `pass`, false for reject on `flag`, `review` and `null`
+- [ ] T027b Add `reasonsFor` and `showsReason` to `frontend/src/lib/domain.ts` and use them in `frontend/src/components/ActionDialog.tsx`: the reason select lists `reasonsFor(action)` and is rendered only when `showsReason`; the note stays for both; no `reason_code` is sent without the select. Extend the e2e tests in `frontend/e2e/smoke.spec.ts`: in "rejecting confirms the flag" the dialog has no "Reason" select; in "approving a flag is an override" the reason options do not include "The engine missed an issue". Commit: `feat(frontend): reasons shown per decision (008)`
+
 ## Phase 4: Polish
 
 - [ ] T030 [P] Bump the release to `1.3.0` in all three places: `pyproject.toml` `version`, `frontend/package.json` `version`, and the `version` passed to FastAPI in `create_app` (`src/expense_validator/app/api/__init__.py`); regenerate `docs/api/openapi.json` (`uv run epv openapi > docs/api/openapi.json`, only `info.version` changes) so `tests/smoke/test_openapi.py` stays green

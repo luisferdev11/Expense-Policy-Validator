@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from "react";
 import type { FormEvent } from "react";
 import { ApiError, api } from "../api/client";
 import type { Action, ActionBody, ActionResponse, ReasonCode, ReceiptDetail } from "../api/types";
-import { ACTION_LABEL, CATEGORIES, REASON_CODES, categoryLabel, overrides } from "../lib/domain";
+import { ACTION_LABEL, CATEGORIES, categoryLabel, overrides, reasonsFor, showsReason } from "../lib/domain";
 import { useActor } from "../lib/hooks";
 import { Icon } from "./Icon";
 
@@ -43,6 +43,8 @@ export function ActionDialog({
 
   const isDecision = action === "approve" || action === "reject";
   const needsReason = isDecision && overrides(action, detail.disposition);
+  // Reject agreeing with the proposal has no reason to give: only the optional note (spec 008 FR-020).
+  const withReason = isDecision && showsReason(action, detail.disposition);
   const line = detail.result?.line_items.find((l) => l.line_id === lineId);
 
   const missing = (() => {
@@ -66,7 +68,7 @@ export function ActionDialog({
     }
     const body: ActionBody = { actor: actorDraft.trim(), evaluation_version: detail.evaluation_version };
     if (note.trim()) body.note = note.trim();
-    if (isDecision && reasonCode) body.reason_code = reasonCode;
+    if (withReason && reasonCode) body.reason_code = reasonCode;
     if (action === "request-info") body.question = text.trim();
     if (action === "escalate") body.reason = text.trim();
     if (action === "correct-category") {
@@ -124,17 +126,19 @@ export function ActionDialog({
 
         {isDecision && (
           <>
-            <div className="ll-field">
-              <label htmlFor="reason">Reason{needsReason ? "" : " (optional)"}</label>
-              <select id="reason" className="ll-select" value={reasonCode} onChange={(e) => setReasonCode(e.target.value as ReasonCode | "")}>
-                <option value="">{needsReason ? "Choose a reason…" : "No reason"}</option>
-                {REASON_CODES.map((r) => (
-                  <option key={r.id} value={r.id}>
-                    {r.label}
-                  </option>
-                ))}
-              </select>
-            </div>
+            {withReason && (
+              <div className="ll-field">
+                <label htmlFor="reason">Reason{needsReason ? "" : " (optional)"}</label>
+                <select id="reason" className="ll-select" value={reasonCode} onChange={(e) => setReasonCode(e.target.value as ReasonCode | "")}>
+                  <option value="">{needsReason ? "Choose a reason…" : "No reason"}</option>
+                  {reasonsFor(action).map((r) => (
+                    <option key={r.id} value={r.id}>
+                      {r.label}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
             <div className="ll-field">
               <label htmlFor="note">Note{reasonCode === "other" ? "" : " (optional)"}</label>
               <textarea id="note" className="ll-input textarea" rows={3} value={note} onChange={(e) => setNote(e.target.value)} />

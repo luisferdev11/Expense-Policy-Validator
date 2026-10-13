@@ -7,7 +7,10 @@ import {
   describeEvent,
   diffRevisions,
   findingTitle,
+  REASON_CODES,
   overrides,
+  reasonsFor,
+  showsReason,
   sortFindings,
   verdictLine,
 } from "./domain";
@@ -52,6 +55,17 @@ describe("domain", () => {
     expect(overrides("reject", "pass")).toBe(true);
     expect(overrides("approve", "review")).toBe(false);
     expect(overrides("reject", "flag")).toBe(false);
+  });
+  it("offers each decision only the reasons that can describe it (spec 008 FR-019)", () => {
+    expect(reasonsFor("approve").map((r) => r.id)).toEqual(["policy_exception_granted", "engine_false_positive", "documentation_provided", "other"]);
+    expect(reasonsFor("reject").map((r) => r.id)).toEqual(["engine_missed_issue", "other"]);
+    const all = REASON_CODES.map((r) => r.id);
+    for (const action of ["approve", "reject"] as const) for (const r of reasonsFor(action)) expect(all).toContain(r.id);
+  });
+  it("shows the reason list for approve always, and for reject only when it overrides a pass (FR-020)", () => {
+    for (const d of ["flag", "review", "pass", null] as const) expect(showsReason("approve", d)).toBe(true);
+    expect(showsReason("reject", "pass")).toBe(true);
+    for (const d of ["flag", "review", null] as const) expect(showsReason("reject", d)).toBe(false);
   });
   it("drops the rule id from a finding title", () => {
     expect(findingTitle(finding({}))).toBe("Line L1 is alcohol.");

@@ -267,6 +267,9 @@ test("workbench: a category correction raises a finding with the policy text, an
 
   // Confirming the flag (reject) matches the proposal, so no reason is needed.
   await page.keyboard.press("r");
+  // Rejecting what the engine flagged agrees with it: only the optional note, no reason list (008 FR-020).
+  await expect(page.getByRole("dialog").getByLabel("Note (optional)")).toBeVisible();
+  await expect(page.getByRole("dialog").getByLabel("Reason")).toHaveCount(0);
   await page.getByRole("dialog").getByRole("button", { name: "Reject expense" }).click();
   await expect(pane.locator(".state-chip")).toHaveText("Rejected");
   await expect(pane.getByText("Rejected", { exact: true }).first()).toBeVisible();
@@ -287,6 +290,14 @@ test("workbench: approving a flag is an override and needs a reason", async ({ p
   await pane.getByRole("button", { name: /^Approve/ }).click();
   const dlg = page.getByRole("dialog");
   await expect(dlg).toContainText("goes against that proposal");
+  // Approve offers its own reasons, not "The engine missed an issue" (008 FR-019).
+  await expect(dlg.getByLabel("Reason").locator("option")).toHaveText([
+    "Choose a reason…",
+    "Policy exception granted",
+    "The engine flagged something that is fine",
+    "Documentation was provided",
+    "Other (note required)",
+  ]);
   await dlg.getByRole("button", { name: "Approve anyway" }).click();
   await expect(dlg.getByRole("alert")).toContainText("Choose a reason");
   await dlg.getByLabel("Reason").selectOption("policy_exception_granted");

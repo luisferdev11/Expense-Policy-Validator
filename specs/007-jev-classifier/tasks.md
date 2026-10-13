@@ -115,14 +115,14 @@ for the migration list. If they are missing, stop and implement them first.
 **Goal**: see the shadow for one receipt, and the agreement report over the store.
 **Independent test**: the endpoint on a stored receipt; the report on a synthetic store of 20 lines or more.
 
-- [ ] T036 [P] [US2] Move `wilson` from `eval/stats.py` into `src/expense_validator/domain/stats.py` and re-export it from `eval/stats.py`; the existing `tests/unit/test_stats.py` passes unchanged; the architecture test stays green
-- [ ] T037 [P] [US2] Write `tests/unit/test_shadow.py`: `compare()` gives `agrees_category` and `agrees_all` (names casefolded and trimmed), skips non-comparable lines from the agreement N but counts them; the report counts category, restricted, subtype and recipient-kind agreement with k/N and Wilson intervals; the confusion table; reviewer-correction matches for each side (from `LineCategoryCorrected` events, k/N)
-- [ ] T038 [US2] Implement `src/expense_validator/domain/shadow.py`
-- [ ] T039 [P] [US2] Write `tests/contract/test_api_shadow.py`: 200 with the shape of `contracts/api-delta.md`; 404 `not_found`; 404 `no_shadow`; the schemas appear in `openapi.json`
-- [ ] T040 [US2] Add `ShadowLine` and `ShadowView` to `src/expense_validator/app/api/schemas.py` and the route to `src/expense_validator/app/api/routes.py`; regenerate `docs/api/openapi.json` with `uv run epv openapi > docs/api/openapi.json`; update the path set in `tests/smoke/test_openapi.py`
-- [ ] T041 [US2] Implement `src/expense_validator/app/shadow_report.py` and `epv shadow report [--db] [--json]` in `src/expense_validator/app/cli.py`. The disposition impact re-runs `app/decide.py` over receipts whose every line has a classified shadow answer, with the context built from that set; it reports k/N and makes no call. Smoke test in `tests/smoke/test_shadow_report.py` on a temporary store
-- [ ] T042 [P] [US2] Add the `GET /receipts/{id}/shadow` 404 `no_shadow` request to `docs/api/build_collection.py`, regenerate the collection, and run Newman (`specs/004-backend-lifecycle/quickstart.md`)
-- [ ] T043 Verify and commit: `feat: shadow comparison endpoint and agreement report`
+- [x] T036 [P] [US2] Move `wilson` from `eval/stats.py` into `src/expense_validator/domain/stats.py` and re-export it from `eval/stats.py`; the existing `tests/unit/test_stats.py` passes unchanged; the architecture test stays green
+- [x] T037 [P] [US2] Write `tests/unit/test_shadow.py`: `compare()` gives `agrees_category` and `agrees_all` (names casefolded and trimmed), skips non-comparable lines from the agreement N but counts them; the report counts category, restricted, subtype and recipient-kind agreement with k/N and Wilson intervals; the confusion table; reviewer-correction matches for each side (from `LineCategoryCorrected` events, k/N)
+- [x] T038 [US2] Implement `src/expense_validator/domain/shadow.py`
+- [x] T039 [P] [US2] Write `tests/contract/test_api_shadow.py`: 200 with the shape of `contracts/api-delta.md`; 404 `not_found`; 404 `no_shadow`; the schemas appear in `openapi.json`
+- [x] T040 [US2] Add `ShadowLine` and `ShadowView` to `src/expense_validator/app/api/schemas.py` and the route to `src/expense_validator/app/api/routes.py`; regenerate `docs/api/openapi.json` with `uv run epv openapi > docs/api/openapi.json`; update the path set in `tests/smoke/test_openapi.py`
+- [x] T041 [US2] Implement `src/expense_validator/app/shadow_report.py` and `epv shadow report [--db] [--json]` in `src/expense_validator/app/cli.py`. The disposition impact re-runs `app/decide.py` over receipts whose every line has a classified shadow answer, with the context built from that set; it reports k/N and makes no call. Smoke test in `tests/smoke/test_shadow_report.py` on a temporary store
+- [x] T042 [P] [US2] Add the `GET /receipts/{id}/shadow` 404 `no_shadow` request to `docs/api/build_collection.py`, regenerate the collection, and run Newman (`specs/004-backend-lifecycle/quickstart.md`)
+- [x] T043 Verify and commit: `feat: shadow comparison endpoint and agreement report`
 
 ## Phase 7: Runbook and notes, US4 (slice 7)
 

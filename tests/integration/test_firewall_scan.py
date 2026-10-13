@@ -171,6 +171,20 @@ def test_the_shadow_table_holds_no_answer_key(
     assert found_in(dump) == []
 
 
+def test_every_shadow_response_is_free_of_answer_keys(
+    processed_with_shadow: tuple[Stack, RecordingTracer, list[str]],
+) -> None:
+    stack, _, lines = processed_with_shadow
+    client = TestClient(create_app(stack.service))
+    seen = []
+    for line in lines:
+        response = client.get(f"/receipts/{json.loads(line)['receipt_id']}/shadow")
+        assert response.status_code == 200
+        seen.append(response.text)
+    assert len(seen) == 32
+    assert found_in("\n".join(seen)) == []
+
+
 def test_the_shadow_trace_inputs_and_outputs_are_free_of_answer_keys(
     processed_with_shadow: tuple[Stack, RecordingTracer, list[str]],
 ) -> None:

@@ -368,6 +368,25 @@ def _cmd_cache(args: argparse.Namespace) -> int:
     return cache_export_command(args.db, args.out, args.cache)
 
 
+def shadow_report_command(db: str | None, as_json: bool, classifier: str | None = None) -> int:
+    """Print how each shadow classifier in the database compares with the deciding one. It reads
+    the store only: no model call, no key, no answer label."""
+    from expense_validator.app.composition import db_path, open_store
+    from expense_validator.app.shadow_report import build_shadow_report, render, to_dict
+
+    reports = build_shadow_report(open_store(db_path(db)), load_settings(), classifier)
+    if as_json:
+        document = {"reports": [to_dict(r) for r in reports]}
+        sys.stdout.write(json.dumps(document, indent=2, sort_keys=True) + "\n")
+    else:
+        sys.stdout.write(render(reports))
+    return 0
+
+
+def _cmd_shadow(args: argparse.Namespace) -> int:
+    return shadow_report_command(args.db, args.json, args.classifier)
+
+
 def _cmd_openapi(args: argparse.Namespace) -> int:
     from expense_validator.app.composition import openapi_document
 
@@ -404,6 +423,17 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSONL file that seeds an empty table (default: outputs/classifications.jsonl)",
     )
     export.set_defaults(func=_cmd_cache)
+    shadow = sub.add_parser("shadow", help="the shadow classifier's answers")
+    shadow_sub = shadow.add_subparsers(dest="shadow_command", required=True)
+    shadow_report = shadow_sub.add_parser(
+        "report", help="agreement with the deciding classifier, from the store alone"
+    )
+    shadow_report.add_argument("--db", help="SQLite file (default: $EPV_DB or var/epv.sqlite3)")
+    shadow_report.add_argument("--json", action="store_true", help="print JSON instead of text")
+    shadow_report.add_argument(
+        "--classifier", choices=list(SHADOW_NAMES), help="only this shadow classifier"
+    )
+    shadow_report.set_defaults(func=_cmd_shadow)
     serve = sub.add_parser("serve", help="run the HTTP API")
     serve.add_argument("--host", default="127.0.0.1")
     serve.add_argument("--port", type=int, default=8000)

@@ -22,13 +22,15 @@ from expense_validator.app.errors import (
     IdempotencyKeyReuseError,
     InvalidIdempotencyKeyError,
     InvalidReceiptError,
+    NoShadowError,
     NotFoundError,
 )
 from expense_validator.domain.cascade import sharing_keys
 from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded, StageRetried
 from expense_validator.domain.idempotency import content_hash, default_key, validate_client_key
 from expense_validator.domain.lifecycle import Action, allowed_actions, decision_after
-from expense_validator.domain.models import ReceiptInput, ReceiptResult
+from expense_validator.domain.models import ClassificationSource, ReceiptInput, ReceiptResult
+from expense_validator.domain.shadow import LineComparison, compare
 from expense_validator.ports.store import (
     Clock,
     EvaluationRecord,
@@ -37,6 +39,7 @@ from expense_validator.ports.store import (
     ReceiptRecord,
     ReceiptStore,
     RevisionRecord,
+    ShadowRecord,
     StoreTx,
     SubmissionRecord,
     stamp,
@@ -69,6 +72,17 @@ class ReceiptView:
 class RevisionView:
     revision: RevisionRecord
     evaluations: tuple[EvaluationRecord, ...]
+
+
+@dataclass(frozen=True)
+class ShadowComparison:
+    """The deciding classifier's stored answers beside a shadow's, for a current revision."""
+
+    receipt_id: str
+    revision: int
+    primary: ClassificationSource  # who answered, from the stored classification
+    shadow: tuple[ShadowRecord, ...]
+    lines: tuple[LineComparison, ...]
 
 
 def parse_receipt(raw: str | bytes) -> ReceiptInput:
@@ -154,6 +168,29 @@ class ReceiptService:
         return updated
 
     # Reads
+
+    def get_shadow(self, receipt_id: str) -> ShadowComparison:
+        """The shadow comparison of the receipt's current revision. It reads only: the shadow
+        never changes a receipt."""
+        with self.store.transaction(write=False) as tx:
+            record = tx.get_receipt(receipt_id)
+            if record is None:
+                raise NotFoundError(f"no receipt {receipt_id!r}")
+            revision = record.current_revision
+            rows = tx.shadow_for(receipt_id, revision)
+            primary = tx.load_classifications(receipt_id, revision)
+        if not rows or not primary:
+            raise NoShadowError(
+                f"no shadow answers for the current revision of {receipt_id!r}",
+                {"revision": revision},
+            )
+        return ShadowComparison(
+            receipt_id=receipt_id,
+            revision=revision,
+            primary=primary[0].source,
+            shadow=tuple(rows),
+            lines=tuple(compare(primary, [r.classification for r in rows])),
+        )
 
     def get_receipt(self, receipt_id: str) -> ReceiptView:
         with self.store.transaction(write=False) as tx:

@@ -388,6 +388,27 @@ def build() -> dict[str, Any]:
                     "});",
                 ],
             ),
+            request(
+                "The shadow comparison is empty when shadow mode is off",
+                "GET",
+                "/receipts/" + rid("OFFICE") + "/shadow",
+                description=(
+                    "The server runs without `--shadow`, so the current revision has no shadow "
+                    "answers: 404 `no_shadow`, with the usual error shape."
+                ),
+                tests=[
+                    status(404),
+                    error_code("no_shadow"),
+                    'pm.test("the error has its details", () =>',
+                    '  pm.expect(pm.response.json().error).to.have.keys("code", "message", "details"));',
+                ],
+            ),
+            request(
+                "The shadow comparison of an unknown receipt",
+                "GET",
+                "/receipts/" + rid("NO-SUCH-RECEIPT") + "/shadow",
+                tests=[status(404), error_code("not_found")],
+            ),
             wait(
                 "Wait for revision 2",
                 "/receipts/" + rid("OFFICE"),

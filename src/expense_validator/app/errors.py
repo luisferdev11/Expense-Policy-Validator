@@ -30,6 +30,13 @@ class NotFoundError(AppError):
     code = "not_found"
 
 
+class NoShadowError(AppError):
+    """The receipt exists but its current revision has no shadow answers: shadow mode was off, or
+    its work is still pending."""
+
+    code = "no_shadow"
+
+
 class ActionNotAllowedError(AppError):
     code = "action_not_allowed"
 

@@ -33,6 +33,17 @@ ALTER TABLE outbox_v3 RENAME TO outbox;
 CREATE UNIQUE INDEX outbox_open ON outbox (receipt_id, revision, stage) WHERE state = 'pending';
 ```
 
+**As built.** The SQL above would leave `outbox` with the text `CREATE TABLE "outbox"` that
+`ALTER TABLE ... RENAME` writes, so a migrated file would differ from a fresh one in `sqlite_master`.
+The step renames the old table first (`outbox_v2`), creates the new `outbox` from the very statement
+of `_SCHEMA`, copies the rows with their ids, drops `outbox_v2`, re-creates each index from its
+statement in `_SCHEMA`, and restores the sequence (the highest id ever used). A test compares the
+whole of `sqlite_master` of a fresh v3 file and a migrated one. `/health` reports `schema_version: 3`.
+
+When the last attempt of a `shadow` item fails with an error (not an answer), its lines are stored as
+`unclassified` with the reason `shadow_error`; a `gateway_error` answer is retried like an error and
+stored as it is on the last attempt; `budget_refused` and `offline_cache_miss` are final at once.
+
 **Indexes.** The implementation re-creates every index that `sqlite_master` lists for `outbox` at
 v2. `outbox_open` is the only one at v0.4.0; if spec 006 added any, re-create those too. It
 asserts that the list is the same before and after.

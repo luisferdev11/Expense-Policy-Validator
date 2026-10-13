@@ -139,7 +139,7 @@ session only runs `/speckit-implement`. Order: 006 first (its schema migration i
 |---|---|---|---|
 | `specs/006-api-hardening/` | v1.1.0 | Classification cache as a table behind a port (the committed JSONL stays as seed and export); schema v2 with the first real migration; `created_at` (first receipt) and one timestamp format; `decided_by` and `decided_at`; `receipt` and `result` typed in OpenAPI with generated front-end types; a Locust load test with a committed report | Implemented on `feat/006-api-hardening` (2026-10-12), pending review; no tag yet |
 | `specs/007-jev-classifier/` | v1.2.0 | The jev decision adapter and a hybrid classifier (jev for the category, gpt-oss-120b for subtype and recipient); shadow mode in the worker with an agreement report; E16 registered before running, with the A6/A9 guard checked before "superior"; switching the classifier is a configuration change, gated on E16 and an ADR | Specified; E16 needs Luis's approval before any run |
-| `specs/008-guided-intake/` | v1.3.0 | A guided form for one receipt, with a draft saved in the browser and revision prefill | Specified |
+| `specs/008-guided-intake/` | v1.3.0 | A guided form for one receipt, with a draft saved in the browser and revision prefill; the Approve and Reject dialogs also show only the reasons that fit each decision (FR-019, FR-020, approved by Luis, front end only) | Implemented on `feat/008-guided-intake` (2026-10-12), pending review; it was built on `feat/006-api-hardening`, so open its PR after 006 merges; no tag yet |
 | `specs/009-roles/` | – | Roles and access (ADR 0010): five roles from the identity provider, OIDC, actor from the token | Designed, deferred; needs answers R1 to R5 |
 
 ## Candidates after delivery

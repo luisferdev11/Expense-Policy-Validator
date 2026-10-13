@@ -1,10 +1,11 @@
 # Contract: experiment E16, jev for the category
 
-**Status: proposed. It needs Luis's approval before any run.** Nothing below takes effect until
-Luis writes `approved_by: Luis` in the registration. `eval/experiments/run_dev.py` refuses to run
-otherwise (FR-021). The text is written on 2026-10-12, before any E16 run, and after the
-demonstrative jev-1.13 run of 2026-10-11, whose numbers are known. That run decides nothing; E16
-calls jev again.
+**Status: approved by Luis on 2026-10-12, before any E16 run.** He asked for it in the
+conversation, to decide with real measurements which classifier spends less and gives the better
+results in a test environment with low traffic. The registration below therefore carries
+`approved_by: Luis`; `eval/experiments/run_dev.py` still refuses to run without it (FR-021). The
+text is written on 2026-10-12, before any E16 run, and after the demonstrative jev-1.13 run of
+2026-10-11, whose numbers are known. That run decides nothing; E16 calls jev again.
 
 ## Registration text (to append under `iteration_2:` in `explorations/research/experiments_plan.yaml`)
 
@@ -56,7 +57,7 @@ calls jev again.
       calls (k/20). It is reported, it decides nothing, and its calls count in the budget.
     budget: USD 0.10 for the whole experiment (jev about USD 0.006 per pass of 130 items).
     data: "5f34f08ec59f487c9483378cfe3e0a4904f9985086d677b7c619ce210fe000a7"
-    approved_by:   # Luis writes his name here; until then run_dev.py refuses E16
+    approved_by: Luis   # approved in conversation on 2026-10-12, before any E16 run
 ```
 
 ## How the rule differs from E14, and why

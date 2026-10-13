@@ -14,8 +14,8 @@
 
 ## Requirement Completeness
 
-- [ ] No [NEEDS CLARIFICATION] markers remain. **Open on purpose**: R1 to R5 in ADR 0010 are
-  product decisions for Luis before implementation; R3 affects the edge case on the quality sample
+- [x] No [NEEDS CLARIFICATION] markers remain. R1 to R4 were answered by Luis on 2026-10-12 and
+  are in the spec; R5 (whose identity provider) is open and does not affect the design
 - [x] Requirements are testable and unambiguous
 - [x] Success criteria are measurable and state their N
 - [x] All acceptance scenarios are defined
@@ -31,4 +31,4 @@
 
 ## Notes
 
-- Status: designed, deferred. Do not run `/speckit-plan` until R1 to R5 are answered.
+- Status: designed, deferred. R1 to R4 are answered; `/speckit-plan` can run when Luis schedules it.

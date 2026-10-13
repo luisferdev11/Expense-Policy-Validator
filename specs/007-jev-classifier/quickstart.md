@@ -31,6 +31,10 @@ curl -s localhost:8000/receipts/<receipt_id>/shadow | jq
 uv run epv shadow report --db /tmp/epv-shadow.sqlite3
 ```
 
+If port 8000 is taken, add `--port 8792` to `epv serve` and use it in the `curl` URLs. (Checked on
+2026-10-12 on port 8792: the sample's two lines come back `offline_cache_miss`, the report counts
+them under "could not classify", zero model calls.)
+
 **Live (billed, cap USD 0.05).** Use the synthetic samples only:
 
 ```bash
@@ -38,6 +42,12 @@ uv run epv serve --with-worker --shadow jev-hybrid --shadow-cap-usd 0.05 --db /t
 # submit docs/samples/upload-demo.jsonl through POST /batches, wait for processing, then
 uv run epv shadow report --db /tmp/epv-shadow-live.sqlite3
 ```
+
+Checked on 2026-10-12 with `docs/samples/receipt-one.json` and `--shadow-cap-usd 0.02`: two jev
+calls, USD 0.000085, both lines agree with the deciding classifier, the endpoint and the report
+show them. In a git worktree `epv` looks for `.env` only in that worktree, so the key is not found
+and every shadow line retries as `gateway_error`; load it first with `eval.experiments.run_dev.
+load_env()` (it also looks in the main checkout) or put `.env` in the worktree.
 
 The report gives category, restricted, subtype and recipient-kind agreement as k/N with 95 %
 Wilson intervals, the disagreement table, agreement with reviewer corrections, and how many
@@ -55,17 +65,24 @@ receipts in `data/` before E16 names a jev variant a finalist** (principle V).
    # RegistrationError: E16 is registered but not approved by Luis
    ```
 
-3. After approval (**billed**, cap USD 0.10 for the whole experiment):
+3. After approval (**billed**, cap USD 0.10 for the whole experiment). Run on 2026-10-12, USD
+   0.006391 in all:
 
    ```bash
-   uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-1.13
-   uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-hybrid
-   uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-hybrid --repeat-subset 20
+   uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-1.13 --repeat-subset 20
+   uv run python -I eval/experiments/run_dev.py --experiment E16 --variant jev-hybrid   # no new call
    uv run python -I eval/experiments/decide.py
    ```
 
+   The repeat pass belongs to `jev-1.13` (the hybrid's category side is the same call). The rows
+   are committed (`explorations/results/iter2/E16/`); `decide.py` reproduces the outcome from them
+   with no model call. The jev caches are gitignored, like E14's.
+
 4. Read E16 in `outputs/eval/experiments.json`: every variant with its N, the winner, why the
-   others lost, the threshold and the dev items it sends to review.
+   others lost, the threshold and the dev items it sends to review. Outcome: `jev-hybrid` is
+   superior (130/130 against 123/130, McNemar b = 7, c = 0, p = 0.0156), `jev-1.13` fails the A6/A9
+   guard (23 of 29 wrong), threshold 0 on the top probability (0 of 130 sent to review), 0 of 20
+   categories changed on repeat. The configured classifier is still `gpt-oss-120b`.
 
 ## 5. Migration runbook: only if E16 selects a jev variant
 

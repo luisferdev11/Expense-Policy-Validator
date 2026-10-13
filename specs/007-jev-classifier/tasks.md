@@ -126,10 +126,10 @@ for the migration list. If they are missing, stop and implement them first.
 
 ## Phase 7: Runbook and notes, US4 (slice 7)
 
-- [ ] T044 [US4] Follow `specs/007-jev-classifier/quickstart.md` end to end except the migration itself and E16's live run (if T026 is still open); fix any step that does not work
-- [ ] T045 [P] Add AI_NOTES entries for any assistant mistake found in this feature (what, how it was caught, what changed), and update the "Open issues" section if the cache issue is closed by 006
-- [ ] T046 [P] Update `docs/roadmap.md` (iteration 6, spec 007 status) and, outside git, mark the jev entry in `../MEJORAS-ITERACION-FINAL.md`
-- [ ] T047 Run `/speckit-analyze` on `specs/007-jev-classifier/` and resolve any critical finding
+- [x] T044 [US4] Follow `specs/007-jev-classifier/quickstart.md` end to end except the migration itself and E16's live run (if T026 is still open); fix any step that does not work
+- [x] T045 [P] Add AI_NOTES entries for any assistant mistake found in this feature (what, how it was caught, what changed), and update the "Open issues" section if the cache issue is closed by 006
+- [x] T046 [P] Update `docs/roadmap.md` (iteration 6, spec 007 status) and, outside git, mark the jev entry in `../MEJORAS-ITERACION-FINAL.md`
+- [x] T047 Run `/speckit-analyze` on `specs/007-jev-classifier/` and resolve any critical finding
 - [ ] T048 Final verification and PR `feat/007-jev-classifier` → `main`; tag `v1.2.0` after Luis merges. Check that the version is `1.2.0` in `pyproject.toml`, `frontend/package.json` and `docs/api/openapi.json`
 
 ## Verification commands

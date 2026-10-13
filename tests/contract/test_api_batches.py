@@ -42,6 +42,12 @@ def test_a_clean_jsonl_batch_is_202_with_one_item_per_row(client: TestClient) ->
     ]
 
 
+def test_a_batch_has_the_time_it_was_received_on_post_and_get(client: TestClient) -> None:
+    posted = client.post("/batches", content=ndjson(receipt_json("SYN-1")), headers=NDJSON).json()
+    assert len(posted["created_at"]) == 32 and posted["created_at"].endswith("+00:00")
+    assert client.get(f"/batches/{posted['batch_id']}").json()["created_at"] == posted["created_at"]
+
+
 def test_a_batch_with_a_bad_row_is_207_and_names_the_row(client: TestClient) -> None:
     text = ndjson(receipt_json("SYN-1"), "{broken", receipt_json("SYN-2"))
     response = client.post("/batches", content=text, headers=NDJSON)

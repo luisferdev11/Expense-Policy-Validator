@@ -16,7 +16,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-from expense_validator.adapters.classification_cache import ClassificationCache, cache_key
+from expense_validator.adapters.classification_cache import cache_key
 from expense_validator.adapters.openrouter.models import REFERENCE, ModelPin
 from expense_validator.adapters.openrouter.prompt import (
     PROMPT_VERSION,
@@ -33,6 +33,7 @@ from expense_validator.domain.models import (
 )
 from expense_validator.domain.taxonomy import restricted_for
 from expense_validator.paths import RAW_CACHE_DIR
+from expense_validator.ports.classification_cache import ClassificationCachePort
 from expense_validator.ports.tracer import Tracer
 
 MODEL_ID = REFERENCE.model_id
@@ -90,7 +91,7 @@ class OpenRouterClassifier:
 
     def __init__(
         self,
-        cache: ClassificationCache,
+        cache: ClassificationCachePort,
         tracer: Tracer,
         transport: Transport | None = None,
         offline: bool = False,
@@ -193,7 +194,7 @@ class OpenRouterClassifier:
             return self._from_entry(line_id, hit, cache_hit=True)
         if self.offline:
             return self._unclassified(line_id, key, "offline_cache_miss")
-        if self.cache.total_cost_usd() >= self.cap_usd:
+        if self.run_spend_usd >= self.cap_usd:  # this process's spend, not the cache's history
             return self._unclassified(line_id, key, "budget_refused")
         return self._call(line_id, request, key)
 
@@ -259,5 +260,9 @@ class OpenRouterClassifier:
             reasoning=reasoning,
             served_by=body.get("provider"),
         )
-        self.cache.put(entry)
-        return self._from_entry(line_id, entry, cache_hit=False)
+        if self.cache.put(entry):
+            return self._from_entry(line_id, entry, cache_hit=False)
+        # Another worker stored this key while the call was in flight: its row wins, so every
+        # receipt sees the same answer. This call was billed and is counted in `calls_made`.
+        stored = self.cache.get(key)
+        return self._from_entry(line_id, stored if stored is not None else entry, cache_hit=True)

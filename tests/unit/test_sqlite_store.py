@@ -9,6 +9,7 @@ from pathlib import Path
 
 import pytest
 
+from expense_validator.adapters import sqlite_store
 from expense_validator.adapters.sqlite_store import (
     SCHEMA_VERSION,
     SchemaTooNewError,
@@ -26,6 +27,7 @@ from expense_validator.ports.store import (
 from tests.factories import receipt
 
 T0 = datetime(2026, 10, 10, 12, 0, tzinfo=UTC)
+V1_FIXTURE = Path(__file__).resolve().parent.parent / "fixtures" / "schema_v1.sql"
 
 
 @pytest.fixture
@@ -33,7 +35,32 @@ def store(tmp_path: Path) -> SqliteStore:
     return SqliteStore(tmp_path / "epv.sqlite3")
 
 
-def _record(receipt_id: str = "R-1", revision: int = 1, state: str = "submitted") -> ReceiptRecord:
+def _v1_database(tmp_path: Path) -> Path:
+    """A schema-1 file with five receipts, built by the v0.4.0 code (`schema_v1.sql`)."""
+    path = tmp_path / "v1.sqlite3"
+    with closing(sqlite3.connect(path)) as conn:
+        conn.executescript(V1_FIXTURE.read_text(encoding="utf-8"))
+        assert conn.execute("PRAGMA user_version").fetchone()[0] == 1
+    return path
+
+
+def _columns(path: Path, table: str) -> set[str]:
+    with closing(sqlite3.connect(path)) as conn:
+        return {row[1] for row in conn.execute(f"PRAGMA table_info({table})")}
+
+
+def _version(path: Path) -> int:
+    with closing(sqlite3.connect(path)) as conn:
+        return int(conn.execute("PRAGMA user_version").fetchone()[0])
+
+
+def _record(
+    receipt_id: str = "R-1",
+    revision: int = 1,
+    state: str = "submitted",
+    created_at: str = "2026-10-10T12:00:00.000000+00:00",
+    updated_at: str = "2026-10-10T12:00:00.000000+00:00",
+) -> ReceiptRecord:
     return ReceiptRecord(
         receipt_id=receipt_id,
         current_revision=revision,
@@ -45,7 +72,8 @@ def _record(receipt_id: str = "R-1", revision: int = 1, state: str = "submitted"
         qa_sample=False,
         failed_stage=None,
         failed_reason=None,
-        updated_at="t",
+        updated_at=updated_at,
+        created_at=created_at,
     )
 
 
@@ -66,6 +94,65 @@ def test_a_newer_schema_is_refused(tmp_path: Path) -> None:
     path = tmp_path / "newer.sqlite3"
     with sqlite3.connect(path) as conn:
         conn.execute(f"PRAGMA user_version = {SCHEMA_VERSION + 1}")
+    with pytest.raises(SchemaTooNewError):
+        SqliteStore(path)
+
+
+def test_a_fresh_file_is_schema_two_with_the_cache_table_and_the_new_columns(
+    tmp_path: Path,
+) -> None:
+    path = tmp_path / "fresh.sqlite3"
+    assert SqliteStore(path).schema_version == 2
+    assert _version(path) == 2
+    assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
+    assert _columns(path, "classification_cache") == {
+        "cache_key",
+        "entry",
+        "model_id",
+        "prompt_version",
+        "cost_usd",
+        "seeded",
+        "created_at",
+    }
+    with closing(sqlite3.connect(path)) as conn:
+        indexes = {row[1] for row in conn.execute("PRAGMA index_list(receipts)")}
+    assert {"receipts_created", "receipts_updated"} <= indexes
+
+
+def test_a_schema_one_file_is_migrated_to_two_in_place(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    assert SqliteStore(path).schema_version == 2
+    assert _version(path) == 2
+    assert {"created_at", "decided_by", "decided_at"} <= _columns(path, "receipts")
+    with closing(sqlite3.connect(path)) as conn:
+        tables = {r[0] for r in conn.execute("SELECT name FROM sqlite_master WHERE type='table'")}
+        assert "classification_cache" in tables
+        assert conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 5
+        assert conn.execute("SELECT COUNT(*) FROM events").fetchone()[0] > 5
+
+
+def test_a_migration_step_that_fails_leaves_schema_one_and_the_data_intact(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path = _v1_database(tmp_path)
+
+    def broken(conn: sqlite3.Connection) -> None:
+        conn.execute("ALTER TABLE receipts ADD COLUMN created_at TEXT NOT NULL DEFAULT ''")
+        raise RuntimeError("step failed")
+
+    monkeypatch.setattr(sqlite_store, "MIGRATIONS", [(2, broken)])
+    with pytest.raises(RuntimeError, match="step failed"):
+        SqliteStore(path)
+    assert _version(path) == 1
+    assert "created_at" not in _columns(path, "receipts")
+    with closing(sqlite3.connect(path)) as conn:
+        assert conn.execute("SELECT COUNT(*) FROM receipts").fetchone()[0] == 5
+
+
+def test_a_schema_three_file_is_still_refused(tmp_path: Path) -> None:
+    path = tmp_path / "three.sqlite3"
+    with closing(sqlite3.connect(path)) as conn:
+        conn.execute("PRAGMA user_version = 3")
     with pytest.raises(SchemaTooNewError):
         SqliteStore(path)
 
@@ -228,6 +315,132 @@ def test_a_cancelled_stage_can_be_enqueued_again(store: SqliteStore) -> None:
         tx.enqueue("R-1", 1, "classify", T0)
         tx.cancel_open_work("R-1", 1)
         assert tx.enqueue("R-1", 1, "classify", T0) is True
+
+
+def test_created_at_is_written_once_and_an_upsert_never_changes_it(store: SqliteStore) -> None:
+    first = "2026-10-10T12:00:00.000000+00:00"
+    later = "2026-10-10T12:30:00.000000+00:00"
+    with store.transaction() as tx:
+        tx.put_receipt(_record("R-1", created_at=first, updated_at=first))
+        tx.put_receipt(_record("R-1", state="in_review", created_at=later, updated_at=later))
+        found = tx.get_receipt("R-1")
+    assert found is not None
+    assert (found.created_at, found.updated_at, found.state) == (first, later, "in_review")
+
+
+def test_the_list_orders_by_a_whitelisted_column_with_the_id_as_tiebreak(
+    store: SqliteStore,
+) -> None:
+    def at(minute: int) -> str:
+        return f"2026-10-10T12:{minute:02d}:00.000000+00:00"
+
+    with store.transaction() as tx:
+        tx.put_receipt(_record("R-1", created_at=at(3), updated_at=at(1)))
+        tx.put_receipt(_record("R-2", created_at=at(1), updated_at=at(3)))
+        tx.put_receipt(_record("R-3", created_at=at(1), updated_at=at(2)))
+        by = {
+            order: [r.receipt_id for r in tx.list_receipts(order=order)[0]]  # type: ignore[arg-type]
+            for order in ("receipt_id", "created_at", "updated_at")
+        }
+        with pytest.raises(ValueError, match="order"):
+            tx.list_receipts(order="receipt_id; DROP TABLE receipts")  # type: ignore[arg-type]
+    assert by == {
+        "receipt_id": ["R-1", "R-2", "R-3"],
+        "created_at": ["R-2", "R-3", "R-1"],  # R-2 and R-3 tie on time: the id decides
+        "updated_at": ["R-1", "R-3", "R-2"],
+    }
+
+
+# Backfill of schema 1 -> 2 (data-model.md sections 3.3 and 3.4)
+
+
+def _first_revision_times(path: Path) -> dict[str, str]:
+    with closing(sqlite3.connect(path)) as conn:
+        rows = conn.execute("SELECT receipt_id, MIN(created_at) FROM revisions GROUP BY receipt_id")
+        return dict(rows.fetchall())
+
+
+def test_the_migration_dates_each_receipt_from_its_earliest_revision(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    expected = _first_revision_times(path)
+    assert set(expected) == {"R-A", "R-B", "R-C", "R-D", "R-E"}
+    SqliteStore(path)
+    with closing(sqlite3.connect(path)) as conn:
+        found = dict(conn.execute("SELECT receipt_id, created_at FROM receipts").fetchall())
+    assert found == expected
+    assert all(len(text) == 32 for text in found.values())
+
+
+def test_the_migration_rewrites_every_updated_at_to_one_format_and_keeps_the_instant(
+    tmp_path: Path,
+) -> None:
+    path = _v1_database(tmp_path)
+    with closing(sqlite3.connect(path)) as conn:
+        before = dict(conn.execute("SELECT receipt_id, updated_at FROM receipts").fetchall())
+    assert {len(text) for text in before.values()} != {32}  # the fixture mixes formats
+    SqliteStore(path)
+    with closing(sqlite3.connect(path)) as conn:
+        after = dict(conn.execute("SELECT receipt_id, updated_at FROM receipts").fetchall())
+    assert {len(text) for text in after.values()} == {32}
+    for receipt_id, old in before.items():
+        assert datetime.fromisoformat(after[receipt_id]) == datetime.fromisoformat(old)
+
+
+def test_a_missing_first_revision_falls_back_to_the_earliest_that_remains(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    with closing(sqlite3.connect(path)) as conn:
+        second = conn.execute(
+            "SELECT created_at FROM revisions WHERE receipt_id = 'R-B' AND revision = 2"
+        ).fetchone()[0]
+        conn.execute("DELETE FROM revisions WHERE receipt_id = 'R-B' AND revision = 1")
+        conn.commit()
+    SqliteStore(path)
+    with closing(sqlite3.connect(path)) as conn:
+        found = conn.execute("SELECT created_at FROM receipts WHERE receipt_id = 'R-B'")
+        assert found.fetchone()[0] == second
+
+
+def test_a_receipt_with_no_revision_stops_the_migration_and_leaves_schema_one(
+    tmp_path: Path,
+) -> None:
+    path = _v1_database(tmp_path)
+    with closing(sqlite3.connect(path)) as conn:
+        conn.execute("DELETE FROM revisions WHERE receipt_id = 'R-D'")
+        conn.commit()
+    with pytest.raises(sqlite_store.MigrationError, match="R-D"):
+        SqliteStore(path)
+    assert _version(path) == 1
+    assert "created_at" not in _columns(path, "receipts")
+
+
+def test_the_migration_backfills_who_decided_and_when_from_the_events(tmp_path: Path) -> None:
+    path = _v1_database(tmp_path)
+    with closing(sqlite3.connect(path)) as conn:
+
+        def event_time(receipt_id: str, kind: str) -> str:
+            row = conn.execute(
+                "SELECT at FROM events WHERE receipt_id = ? AND type = ? ORDER BY seq DESC",
+                (receipt_id, kind),
+            ).fetchone()
+            return str(row[0])
+
+        evaluated = conn.execute(
+            "SELECT MAX(created_at) FROM evaluations WHERE receipt_id = 'R-D' AND revision = 1"
+        ).fetchone()[0]
+        expected = {
+            "R-A": (None, None),
+            "R-B": (None, None),
+            "R-C": ("alice", event_time("R-C", "ReceiptApproved")),
+            "R-D": ("system", evaluated),
+            "R-E": ("bob", event_time("R-E", "ReceiptRejected")),
+        }
+    SqliteStore(path)
+    with closing(sqlite3.connect(path)) as conn:
+        found = {
+            r[0]: (r[1], r[2])
+            for r in conn.execute("SELECT receipt_id, decided_by, decided_at FROM receipts")
+        }
+    assert found == expected
 
 
 def test_the_receipt_list_filters_and_counts(store: SqliteStore) -> None:

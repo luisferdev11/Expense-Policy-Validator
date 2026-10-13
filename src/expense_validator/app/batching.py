@@ -38,6 +38,7 @@ class BatchItemView:
 class BatchView:
     batch_id: str
     total: int
+    created_at: str
     counts: dict[str, int]
     items: tuple[BatchItemView, ...]
 
@@ -107,4 +108,4 @@ class BatchService:
             )
             for i in batch.items
         )
-        return BatchView(batch_id, batch.total, counts, items)
+        return BatchView(batch_id, batch.total, batch.created_at, counts, items)

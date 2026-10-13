@@ -110,7 +110,7 @@ asserts so.
 ## Store port additions (`ports/store.py`)
 
 ```python
-def save_shadow(self, records: Sequence[ShadowRecord]) -> None: ...            # in a transaction
+def save_shadow(self, records: Sequence[ShadowRecord]) -> None: ...  # in a transaction
 def shadow_for(self, receipt_id: str, revision: int) -> list[ShadowRecord]: ...
 def iter_shadow(self, classifier: str | None = None) -> Iterator[ShadowRecord]: ...
 ```

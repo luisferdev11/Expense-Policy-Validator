@@ -122,12 +122,14 @@ query validation errors).
 ### `epv cache export`
 
 ```text
-epv cache export [--db PATH] [--out PATH]
+epv cache export [--db PATH] [--out PATH] [--cache SEED]
 ```
 
 Writes the database's classification cache as JSONL sorted by `cache_key`, one `CacheEntry` per line,
 the same bytes `ClassificationCache.save` writes. Default `--db` follows `db_path` (flag, `$EPV_DB`,
-`var/epv.sqlite3`); default `--out` is stdout. Exit 0; prints the row count to stderr.
+`var/epv.sqlite3`); default `--out` is stdout. A fresh database is seeded first (from `--cache`,
+default `outputs/classifications.jsonl`; a table that already has rows is left alone), so exporting
+it reproduces the committed file. Exit 0; prints the row count to stderr.
 
 ```bash
 uv run epv cache export --db var/epv.sqlite3 > /tmp/cache.jsonl
@@ -157,8 +159,11 @@ uv run python -m perf.report --profile smoke --raw docs/perf/raw/$DATE-smoke \
     --out docs/perf/$DATE-smoke.md --drain --host http://127.0.0.1:8000
 ```
 
-`--profile` is a custom Locust argument read by `perf/locustfile.py`; it sets the user count, spawn
-rate, run time and task weights from `perf/profiles.py` (research R14). The queue is judged only
+`--profile` is Locust's own option (a free-text label that groups runs); `perf/locustfile.py` reads it
+and checks it against `perf/profiles.py`, and fills the user count, spawn rate and run time from the
+profile unless `-u`, `-r` or `-t` are given (research R14). `uv run python -m perf.run --profile P`
+does all of this in one command: a fresh database, the API, the extra workers, Locust and the
+report. The task functions are in `perf/tasks.py`, which does not import Locust. The queue is judged only
 through `GET /health`: during the run a background greenlet samples `open_work` every 0.5 s (peak
 backlog, written to `backlog.csv`), the `test_stop` hook records the moment the load stopped in
 `stop.json`, and `perf.report --drain` polls `/health` until `open_work` is 0 (drain time). Generated

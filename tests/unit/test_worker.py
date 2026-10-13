@@ -9,6 +9,7 @@ import pytest
 
 from expense_validator.adapters.config_files import load_settings
 from expense_validator.adapters.tracing import NoopTracer
+from expense_validator.app import worker as worker_module
 from expense_validator.app.errors import ActionNotAllowedError
 from expense_validator.app.pipeline import run_pipeline
 from expense_validator.app.service import parse_receipt
@@ -21,7 +22,15 @@ from expense_validator.domain.events import (
     StageRetried,
 )
 from tests.fakes import BillingClassifier, RecordingTracer, SimulatedCrash
-from tests.support import DESCRIPTION, Stack, build_stack, notebook_classifier, receipt_json
+from tests.support import (
+    DESCRIPTION,
+    MEAL,
+    ReviewEnv,
+    Stack,
+    build_stack,
+    notebook_classifier,
+    receipt_json,
+)
 
 
 @pytest.fixture
@@ -196,3 +205,64 @@ def test_only_a_stored_evaluation_version_gets_a_decision_trace(tmp_path: Path) 
     worker.run_once()
     assert len(tracer.named("decide-receipt")) == 1  # unchanged: nothing new to observe
     assert len(tracer.named("validate-receipt")) == 1  # one classification trace
+
+
+# Decision fields (spec 006, US3)
+
+
+def test_an_evaluation_to_auto_approved_is_decided_by_the_system_at_that_time(stack: Stack) -> None:
+    stack.service.submit(receipt_json())
+    stack.worker(notebook_classifier()).run_once()
+    record = stack.service.get_receipt("SYN-1").record
+    assert record.state == "auto_approved"
+    evaluated_at = next(
+        e.at for e in stack.service.list_events("SYN-1") if isinstance(e.event, ReceiptEvaluated)
+    )
+    assert (record.decided_by, record.decided_at) == ("system", evaluated_at)
+
+
+def test_a_re_evaluation_that_sends_an_approved_receipt_back_to_review_clears_the_decision(
+    tmp_path: Path,
+) -> None:
+    env = ReviewEnv(tmp_path)
+    env.seed()
+    env.act("SYN-A", "approve", reason_code="policy_exception_granted")
+    assert env.service.get_receipt("SYN-A").record.decided_by == "alice"
+    env.submit("SYN-B", "10", "Lunch B", **MEAL)  # B shrinks: A's result changes (ADR 0007 D7)
+    env.worker.run_once()
+    record = env.service.get_receipt("SYN-A").record
+    assert record.state == "in_review" and record.notice is not None
+    assert (record.decided_by, record.decided_at) == (None, None)
+
+
+def test_a_failed_re_evaluation_keeps_the_state_and_the_decision_and_does_not_ask_the_rule(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    env = ReviewEnv(tmp_path)
+    env.seed()
+    env.act("SYN-A", "approve", reason_code="policy_exception_granted")
+    before = env.service.get_receipt("SYN-A").record
+
+    original = worker_module.build_evaluation
+
+    def failing(tx: object, settings: object, meta: object, rid: str, revision: int) -> object:
+        if rid == "SYN-A":
+            raise RuntimeError("the store was busy")
+        return original(tx, settings, meta, rid, revision)  # type: ignore[arg-type]
+
+    asked: list[str] = []
+    real_rule = worker_module.decision_after
+
+    def spy(new_state: str, **kwargs: object) -> tuple[str | None, str | None]:
+        asked.append(new_state)
+        return real_rule(new_state, **kwargs)  # type: ignore[arg-type]
+
+    monkeypatch.setattr(worker_module, "build_evaluation", failing)
+    monkeypatch.setattr(worker_module, "decision_after", spy)
+    env.submit("SYN-B", "10", "Lunch B", **MEAL)
+    env.worker.run_once()
+
+    after = env.service.get_receipt("SYN-A").record
+    assert after.failed_stage == "evaluate" and after.state == "approved"
+    assert (after.decided_by, after.decided_at) == (before.decided_by, before.decided_at)
+    assert "approved" not in asked  # `_fail` kept the state, so it never asked the rule

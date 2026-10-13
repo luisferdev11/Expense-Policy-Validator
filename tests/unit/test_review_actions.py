@@ -305,3 +305,33 @@ def test_a_scored_correction_also_traces_the_new_decision(env: Env) -> None:
     assert (
         env.tracer.scores[-1]["comment"] == "correct-category; proposal=flag; evaluation_version=1"
     )
+
+
+# Decision fields (spec 006, US3)
+
+
+def _decision(env: Env, receipt_id: str) -> tuple[str | None, str | None]:
+    record = env.service.get_receipt(receipt_id).record
+    return record.decided_by, record.decided_at
+
+
+def test_an_approval_sets_who_and_when_in_the_same_transaction_as_the_event(env: Env) -> None:
+    result = env.act("SYN-A", "approve", reason_code="policy_exception_granted", actor="alice")
+    record = result.view.record
+    assert record.decided_by == "alice" and record.state == "approved"
+    assert record.decided_at == env.service.list_events("SYN-A")[-1].at  # the event's own time
+
+
+def test_a_rejection_names_the_reviewer_who_rejected_even_after_an_auto_approval(env: Env) -> None:
+    assert _decision(env, "SYN-U")[0] == "system"
+    env.act("SYN-U", "reject", reason_code="engine_missed_issue", actor="bob")
+    by, at = _decision(env, "SYN-U")
+    assert by == "bob" and at == env.service.list_events("SYN-U")[-1].at
+
+
+def test_request_info_escalate_and_a_correction_leave_no_decision(env: Env) -> None:
+    env.act("SYN-A", "request-info", question="Who attended?")
+    env.act("SYN-B", "escalate", reason="possible split bill")
+    env.act("SYN-G", "correct-category", line_id="SYN-G-L1", category="lodging")
+    for receipt_id in ("SYN-A", "SYN-B", "SYN-G"):
+        assert _decision(env, receipt_id) == (None, None), receipt_id

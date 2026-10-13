@@ -27,17 +27,19 @@ from expense_validator.app.errors import (
 from expense_validator.domain.cascade import sharing_keys
 from expense_validator.domain.events import ReceiptSubmitted, RevisionSuperseded, StageRetried
 from expense_validator.domain.idempotency import content_hash, default_key, validate_client_key
-from expense_validator.domain.lifecycle import Action, allowed_actions
+from expense_validator.domain.lifecycle import Action, allowed_actions, decision_after
 from expense_validator.domain.models import ReceiptInput, ReceiptResult
 from expense_validator.ports.store import (
     Clock,
     EvaluationRecord,
     EventRecord,
+    ListOrder,
     ReceiptRecord,
     ReceiptStore,
     RevisionRecord,
     StoreTx,
     SubmissionRecord,
+    stamp,
 )
 
 SYSTEM = "system"
@@ -130,14 +132,20 @@ class ReceiptService:
             # A receipt that never got an evaluation is `failed` and goes back into the
             # pipeline; one that already has a state (a re-evaluation failed) keeps it.
             state = record.state
+            decided_by, decided_at = record.decided_by, record.decided_at
             if state == "failed":
                 state = "submitted" if stage == "classify" else "classifying"
+                decided_by, decided_at = decision_after(
+                    state, actor=SYSTEM, at=stamp(now), by_human_action=False
+                )
             updated = replace(
                 record,
                 state=state,
                 failed_stage=None,
                 failed_reason=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
+                decided_by=decided_by,
+                decided_at=decided_at,
             )
             tx.put_receipt(updated)
             tx.append_event(
@@ -170,6 +178,7 @@ class ReceiptService:
         batch_id: str | None = None,
         limit: int = 100,
         offset: int = 0,
+        order: ListOrder = "receipt_id",
     ) -> tuple[list[ReceiptRecord], int]:
         with self.store.transaction(write=False) as tx:
             return tx.list_receipts(
@@ -178,7 +187,13 @@ class ReceiptService:
                 batch_id=batch_id,
                 limit=limit,
                 offset=offset,
+                order=order,
             )
+
+    def open_work(self) -> int:
+        """Outbox items pending or claimed: the work that is still waiting."""
+        with self.store.transaction(write=False) as tx:
+            return tx.open_work_count()
 
     def list_events(self, receipt_id: str) -> list[EventRecord]:
         with self.store.transaction(write=False) as tx:
@@ -269,6 +284,9 @@ class ReceiptService:
             SYSTEM,
             now,
         )
+        decided_by, decided_at = decision_after(
+            "submitted", actor=SYSTEM, at=stamp(now), by_human_action=False
+        )
         tx.put_receipt(
             ReceiptRecord(
                 receipt_id=rid,
@@ -281,7 +299,10 @@ class ReceiptService:
                 qa_sample=False,
                 failed_stage=None,
                 failed_reason=None,
-                updated_at=now.isoformat(),
+                updated_at=stamp(now),
+                created_at=stamp(now) if current is None else current.created_at,
+                decided_by=decided_by,
+                decided_at=decided_at,
             )
         )
         tx.enqueue(rid, revision, "classify", now)

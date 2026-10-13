@@ -67,12 +67,20 @@ uv run epv serve --with-worker --offline --no-trace &
 npx --yes newman run docs/api/epv.postman_collection.json -e docs/api/epv.local.postman_environment.json
 ```
 
-Expected: no diff; Newman passes every assertion (record the new request and assertion counts here
-when T056 is done; v0.4.0 had 51 requests and 99 assertions).
+Expected: no diff; Newman passes every assertion. v0.4.0 had 51 requests and 99 assertions; after
+T056 and the `/health` `open_work` assertion there are 53 requests and 109 assertions, all passing
+on a fresh instance (run on 2026-10-12).
 
 ## 6. Load test
 
-Start a fresh database with the simulated classifier, then run a profile:
+One command runs a profile end to end (fresh database, API, extra workers, Locust, report):
+
+```bash
+uv run python -m perf.run --profile smoke       # nominal, peak; live bills OpenRouter (cap USD 0.25)
+```
+
+By hand, which is what `perf.run` does: start a fresh database with the simulated classifier, then
+run a profile (`--profile` is Locust's own option; `perf/locustfile.py` reads it):
 
 ```bash
 rm -f var/perf.sqlite3

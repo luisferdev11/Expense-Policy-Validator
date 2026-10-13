@@ -260,6 +260,14 @@ Each one refines a decision above after the code or a test showed a gap. None ch
     `EPV_CORS_ORIGINS`. Methods are `GET` and `POST`; the headers are `Content-Type` and
     `Idempotency-Key`. No origin outside the list gets any CORS header.
 
+15. **The backend's answer cache is a table (spec 006, 2026-10-12).** Amendment 2 no longer
+    applies to the backend: answers live in the `classification_cache` table of the database,
+    written per row with first-writer-wins, so several workers share one database and one answer
+    table. `outputs/classifications.jsonl` stays the committed reproducibility artifact: the table
+    is seeded from it when empty (`--cache` now names that seed file) and `epv cache export` writes
+    it back byte for byte. `PersistingClassifier` stays in the tree for the JSONL path only. The
+    spending cap is per process (`run_spend_usd`), not the cost of every answer ever stored.
+
 ## Consequences
 
 - The engine, retriever and disposition logic are untouched; `outputs/results.jsonl` is unchanged

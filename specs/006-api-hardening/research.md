@@ -170,6 +170,12 @@ records the reasoning and the alternatives for each technical decision.
   response schema. The hook raises if a `<name>Request` key already exists. `_RECEIPT_BODY`
   (`routes.py:29-36`) refers to `#/components/schemas/ReceiptInputRequest`. The models are frozen with
   `extra="forbid"`; the response models reuse them as they are.
+- **Required fields in the response schemas** (found at implementation): pydantic marks a field with a
+  default as optional in the serialization schema, so the generated TypeScript had `line_ids?` and
+  `pipeline_config_version?`, although the API always sends them. `_Frozen` in
+  `src/expense_validator/domain/models.py` sets `json_schema_serialization_defaults_required=True`.
+  It changes only the serialization-mode schema (the OpenAPI response side); the validation-mode
+  schema, the request side and the spec 001 contract are unchanged, and a test checks the latter.
 - **Test**: `tests/contract/test_api_receipts.py` asserts that `ReceiptInput`, `ReceiptInputRequest`,
   `LineItemInput` and `LineItemInputRequest` all exist, that each request schema differs from its
   response schema (money is `string` in the response, `number` or `string` in the request), and that
@@ -205,8 +211,8 @@ records the reasoning and the alternatives for each technical decision.
   ```
 
   Spec 008 (guided intake) imports only these names from `types.ts`, never `generated.ts` directly. A
-  vitest case regenerates into memory (the library's programmatic API) and compares with the
-  committed file.
+  vitest case runs the generator's own `--check` mode (it regenerates in memory with the script's
+  options and exits non-zero on a difference), which avoids copying the CLI's option mapping.
 - **Rationale**: one generator, no runtime dependency, types only; the staleness test turns drift
   into a test failure like the backend's `tests/smoke/test_openapi.py:31-35`.
 - **Alternatives**: `openapi-generator` (Java, generates a client the front end does not need);
@@ -253,6 +259,12 @@ records the reasoning and the alternatives for each technical decision.
   Generated receipts use `receipt_id = LT-<run>-<n>` and `employee_id = TEST-LT-<run>-<n % 50>`. The
   `TEST-` prefix marks synthetic employees, so the load test keeps working once roles land (spec 009,
   ADR 0010 D6).
+
+  The worker count is part of each profile (`smoke` 1, `nominal` 5, `peak` 10, `live` 1): one
+  worker handles a receipt in lines x latency seconds (about 3 s for the sample receipt's two lines
+  at 1500 ms), so `nominal` needs about 4 workers and `peak` about 36; the 10 of `peak` is what one
+  laptop can run, and the report says how far the backlog grows. Extra workers are `epv worker`
+  processes on the same SQLite file, started by `perf/run.py`.
 
   Each simulated user mixes tasks by weight: submit 5, submit with key 1, batch of 100 rows 0.1,
   list by `updated_at` 3, detail 3, approve 0.5. The 1500 ms latency is the midpoint of the 1 to 4
